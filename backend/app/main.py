@@ -3,35 +3,81 @@ Camp Connect - Registration & Event Management Platform
 FastAPI Backend Application
 """
 
+from __future__ import annotations
+
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+
+from app.config import settings
+from app.database import engine
+
+# API Routers
+from app.api.v1.auth import router as auth_router
+from app.api.v1.organizations import router as org_router
+from app.api.v1.locations import router as locations_router
+from app.api.v1.roles import router as roles_router
+from app.api.v1.users import router as users_router
+from app.api.v1.settings import router as settings_router
+from app.api.v1.permissions import router as permissions_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan: startup and shutdown events."""
+    # Startup: verify database connectivity
+    if engine is not None:
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("SELECT 1"))
+            print("Database connection verified")
+        except Exception as e:
+            print(f"Database connection failed: {e}")
+    else:
+        print("No DATABASE_URL configured - app starting without database")
+    yield
+    # Shutdown: dispose engine
+    if engine is not None:
+        await engine.dispose()
+        print("Database connections closed")
+
 
 app = FastAPI(
-    title="Camp Connect API",
+    title=settings.app_name,
     description="Registration & Event Management Platform",
     version="0.1.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    lifespan=lifespan,
 )
 
-# CORS middleware for frontend communication
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",
-    ],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
+# Register API routers
+app.include_router(auth_router, prefix=settings.api_v1_prefix)
+app.include_router(org_router, prefix=settings.api_v1_prefix)
+app.include_router(locations_router, prefix=settings.api_v1_prefix)
+app.include_router(roles_router, prefix=settings.api_v1_prefix)
+app.include_router(users_router, prefix=settings.api_v1_prefix)
+app.include_router(settings_router, prefix=settings.api_v1_prefix)
+app.include_router(permissions_router, prefix=settings.api_v1_prefix)
+
+
 @app.get("/")
 async def root():
-    """Root endpoint - API health check."""
+    """Root endpoint - API info."""
     return {
-        "name": "Camp Connect API",
+        "name": settings.app_name,
         "version": "0.1.0",
         "status": "operational",
     }

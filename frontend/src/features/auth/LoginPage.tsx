@@ -1,15 +1,31 @@
 import { useState } from 'react'
-import { Tent, Eye, EyeOff } from 'lucide-react'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Tent, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
 
 export function LoginPage() {
+  const navigate = useNavigate()
+  const { login, isAuthenticated, isLoading, error, clearError } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // If already authenticated, redirect to dashboard
+  if (isAuthenticated && !isLoading) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // No auth logic -- UI shell only
+    clearError()
+    setSubmitting(true)
+
+    const success = await login(email, password)
+    if (success) {
+      navigate('/dashboard', { replace: true })
+    }
+    setSubmitting(false)
   }
 
   return (
@@ -31,6 +47,13 @@ export function LoginPage() {
 
         {/* Form Card */}
         <div className="rounded-2xl border border-white/10 bg-white p-8 shadow-2xl">
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 border border-red-200">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}
             <div>
@@ -47,6 +70,7 @@ export function LoginPage() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
                 className="mt-1.5 block w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -67,6 +91,7 @@ export function LoginPage() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
                   className="block w-full rounded-lg border border-gray-200 px-3.5 py-2.5 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button
@@ -83,36 +108,38 @@ export function LoginPage() {
               </div>
             </div>
 
-            {/* Remember Me */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-600">Remember me</span>
-              </label>
+            {/* Forgot password link */}
+            <div className="flex items-center justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline"
+              >
+                Forgot your password?
+              </Link>
             </div>
 
             {/* Sign In Button */}
             <button
               type="submit"
-              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              disabled={submitting}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign In
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {submitting ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
-          {/* Forgot Password */}
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              className="text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline"
-            >
-              Forgot your password?
-            </button>
+          {/* Register link */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-500">
+              Don't have an account?{' '}
+              <Link
+                to="/register"
+                className="font-medium text-blue-600 transition-colors hover:text-blue-700 hover:underline"
+              >
+                Register your organization
+              </Link>
+            </p>
           </div>
         </div>
 
