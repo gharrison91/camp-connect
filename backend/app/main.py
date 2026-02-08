@@ -114,12 +114,39 @@ async def root():
 
 @app.get("/api/v1/health")
 async def health_check():
-    """Health check endpoint for monitoring."""
+    """Health check endpoint with connectivity diagnostics."""
+    import httpx
+
     db_ok = engine is not None
+    db_live = False
+    jwks_ok = False
+    errors = []
+
+    # Test DB connectivity
+    if engine is not None:
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("SELECT 1"))
+            db_live = True
+        except Exception as e:
+            errors.append(f"DB: {type(e).__name__}: {str(e)}")
+
+    # Test JWKS fetch
+    if settings.supabase_url:
+        jwks_url = f"{settings.supabase_url}/auth/v1/.well-known/jwks.json"
+        try:
+            resp = httpx.get(jwks_url, timeout=10.0)
+            resp.raise_for_status()
+            jwks_ok = True
+        except Exception as e:
+            errors.append(f"JWKS: {type(e).__name__}: {str(e)}")
+
     return {
-        "status": "healthy",
+        "status": "healthy" if db_live else "degraded",
         "database_configured": db_ok,
+        "database_live": db_live,
+        "jwks_reachable": jwks_ok,
         "supabase_url_set": bool(settings.supabase_url),
         "jwt_secret_set": bool(settings.supabase_jwt_secret),
-        "cors_origins": settings.cors_origins,
+        "errors": errors,
     }
