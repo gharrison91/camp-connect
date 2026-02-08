@@ -100,4 +100,11 @@ async def root():
 @app.get("/api/v1/health")
 async def health_check():
     """Health check endpoint for monitoring."""
-    return {"status": "healthy"}
+    db_ok = engine is not None
+    return {
+        "status": "healthy",
+        "database_configured": db_ok,
+        "supabase_url_set": bool(settings.supabase_url),
+        "jwt_secret_set": bool(settings.supabase_jwt_secret),
+        "cors_origins": settings.cors_origins,
+    }

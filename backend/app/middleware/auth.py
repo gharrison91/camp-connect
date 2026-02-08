@@ -77,8 +77,11 @@ async def verify_supabase_token(
                 detail="Token has expired",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        except (pyjwt.InvalidTokenError, Exception):
+        except pyjwt.InvalidTokenError:
             # Fall through to HS256 attempt
+            pass
+        except Exception:
+            # Network / JWKS fetch errors — fall through to HS256
             pass
 
     # Fallback: try HS256 with legacy JWT secret
