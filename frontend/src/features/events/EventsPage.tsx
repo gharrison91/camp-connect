@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Plus,
   Search,
@@ -83,6 +84,7 @@ function getCapacityTrackColor(enrolled: number, capacity: number): string {
 }
 
 export function EventsPage() {
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -163,6 +165,7 @@ export function EventsPage() {
             return (
               <div
                 key={event.id}
+                onClick={() => navigate(`/events/${event.id}`)}
                 className="group cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:border-gray-200 hover:shadow-md"
               >
                 <div className="p-5">

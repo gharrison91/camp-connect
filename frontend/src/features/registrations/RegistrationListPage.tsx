@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  Plus,
   Search,
   Loader2,
   XCircle,
@@ -10,6 +11,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useRegistrations, useCancelRegistration } from '@/hooks/useRegistrations'
 import { usePermissions } from '@/hooks/usePermissions'
+import { RegisterCamperModal } from './RegisterCamperModal'
 import type { Registration } from '@/types'
 
 const statusConfig: Record<
@@ -62,6 +64,7 @@ const paymentStatusConfig: Record<
 
 export function RegistrationListPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
   const { hasPermission } = usePermissions()
   const cancelRegistration = useCancelRegistration()
 
@@ -92,6 +95,15 @@ export function RegistrationListPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
           Registrations
         </h1>
+        {hasPermission('core.registrations.create') && (
+          <button
+            onClick={() => setShowRegisterModal(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <Plus className="h-4 w-4" />
+            Register Camper
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -218,6 +230,11 @@ export function RegistrationListPage() {
               : 'Register a camper for an event to get started.'}
           </p>
         </div>
+      )}
+
+      {/* Register Camper Modal */}
+      {showRegisterModal && (
+        <RegisterCamperModal onClose={() => setShowRegisterModal(false)} />
       )}
     </div>
   )

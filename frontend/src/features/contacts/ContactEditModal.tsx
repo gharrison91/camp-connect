@@ -1,43 +1,44 @@
 import { useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
-import { useCreateContact } from '@/hooks/useContacts'
+import { useUpdateContact } from '@/hooks/useContacts'
 import { useToast } from '@/components/ui/Toast'
-import type { ContactCreate } from '@/types'
+import type { Contact, ContactUpdate } from '@/types'
 
-interface ContactCreateModalProps {
+interface ContactEditModalProps {
+  contact: Contact
   onClose: () => void
 }
 
-export function ContactCreateModal({ onClose }: ContactCreateModalProps) {
-  const createContact = useCreateContact()
+export function ContactEditModal({ contact, onClose }: ContactEditModalProps) {
+  const updateContact = useUpdateContact()
   const { toast } = useToast()
-  const [form, setForm] = useState<ContactCreate>({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    relationship_type: 'parent',
-    address: '',
-    city: '',
-    state: '',
-    zip_code: '',
-    account_status: 'active',
+  const [form, setForm] = useState<ContactUpdate>({
+    first_name: contact.first_name,
+    last_name: contact.last_name,
+    email: contact.email || '',
+    phone: contact.phone || '',
+    relationship_type: contact.relationship_type || 'parent',
+    address: contact.address || '',
+    city: contact.city || '',
+    state: contact.state || '',
+    zip_code: contact.zip_code || '',
+    account_status: contact.account_status,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createContact.mutateAsync(form)
-      toast({ type: 'success', message: 'Contact added successfully!' })
+      await updateContact.mutateAsync({ id: contact.id, data: form })
+      toast({ type: 'success', message: 'Contact updated successfully!' })
       onClose()
     } catch {
-      toast({ type: 'error', message: 'Failed to add contact.' })
+      toast({ type: 'error', message: 'Failed to update contact.' })
     }
   }
 
-  const updateField = <K extends keyof ContactCreate>(
+  const updateField = <K extends keyof ContactUpdate>(
     key: K,
-    value: ContactCreate[K]
+    value: ContactUpdate[K]
   ) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
@@ -48,7 +49,7 @@ export function ContactCreateModal({ onClose }: ContactCreateModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <h2 className="text-lg font-semibold text-gray-900">
-            Add Contact
+            Edit Contact
           </h2>
           <button
             onClick={onClose}
@@ -69,7 +70,7 @@ export function ContactCreateModal({ onClose }: ContactCreateModalProps) {
               <input
                 type="text"
                 required
-                value={form.first_name}
+                value={form.first_name || ''}
                 onChange={(e) => updateField('first_name', e.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="First name"
@@ -82,7 +83,7 @@ export function ContactCreateModal({ onClose }: ContactCreateModalProps) {
               <input
                 type="text"
                 required
-                value={form.last_name}
+                value={form.last_name || ''}
                 onChange={(e) => updateField('last_name', e.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Last name"
@@ -186,9 +187,9 @@ export function ContactCreateModal({ onClose }: ContactCreateModalProps) {
           </div>
 
           {/* Error */}
-          {createContact.isError && (
+          {updateContact.isError && (
             <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-              Failed to create contact. Please check your inputs.
+              Failed to update contact. Please check your inputs.
             </div>
           )}
 
@@ -203,13 +204,13 @@ export function ContactCreateModal({ onClose }: ContactCreateModalProps) {
             </button>
             <button
               type="submit"
-              disabled={createContact.isPending}
+              disabled={updateContact.isPending}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {createContact.isPending && (
+              {updateContact.isPending && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
-              Add Contact
+              Save Changes
             </button>
           </div>
         </form>

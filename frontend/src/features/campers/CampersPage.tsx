@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Plus,
   Search,
@@ -9,6 +10,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useCampers } from '@/hooks/useCampers'
 import { usePermissions } from '@/hooks/usePermissions'
+import { CamperCreateModal } from './CamperCreateModal'
 import type { Camper } from '@/types'
 
 const ageGroupOptions = [
@@ -19,9 +21,11 @@ const ageGroupOptions = [
 ]
 
 export function CampersPage() {
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [ageFilter, setAgeFilter] = useState('all')
   const [page, setPage] = useState(0)
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const pageSize = 20
   const { hasPermission } = usePermissions()
 
@@ -55,7 +59,10 @@ export function CampersPage() {
           Campers
         </h1>
         {hasPermission('core.campers.update') && (
-          <button className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
             <Plus className="h-4 w-4" />
             Add Camper
           </button>
@@ -130,6 +137,7 @@ export function CampersPage() {
                 {campers.map((camper) => (
                   <tr
                     key={camper.id}
+                    onClick={() => navigate(`/campers/${camper.id}`)}
                     className="cursor-pointer transition-colors hover:bg-gray-50/80"
                   >
                     <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
@@ -215,6 +223,11 @@ export function CampersPage() {
               : 'Add your first camper to get started.'}
           </p>
         </div>
+      )}
+
+      {/* Create Camper Modal */}
+      {showCreateModal && (
+        <CamperCreateModal onClose={() => setShowCreateModal(false)} />
       )}
     </div>
   )

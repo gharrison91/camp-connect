@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Plus,
   Search,
@@ -12,6 +13,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { ContactCreateModal } from './ContactCreateModal'
 
 export function ContactsPage() {
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const { hasPermission } = usePermissions()
@@ -87,6 +89,7 @@ export function ContactsPage() {
                 {contacts.map((contact) => (
                   <tr
                     key={contact.id}
+                    onClick={() => navigate(`/contacts/${contact.id}`)}
                     className="cursor-pointer transition-colors hover:bg-gray-50/80"
                   >
                     <td className="whitespace-nowrap px-6 py-4">

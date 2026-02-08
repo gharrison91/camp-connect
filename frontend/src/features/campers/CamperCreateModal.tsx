@@ -1,43 +1,41 @@
 import { useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
-import { useCreateContact } from '@/hooks/useContacts'
+import { useCreateCamper } from '@/hooks/useCampers'
 import { useToast } from '@/components/ui/Toast'
-import type { ContactCreate } from '@/types'
+import type { CamperCreate } from '@/types'
 
-interface ContactCreateModalProps {
+interface CamperCreateModalProps {
   onClose: () => void
 }
 
-export function ContactCreateModal({ onClose }: ContactCreateModalProps) {
-  const createContact = useCreateContact()
+export function CamperCreateModal({ onClose }: CamperCreateModalProps) {
+  const createCamper = useCreateCamper()
   const { toast } = useToast()
-  const [form, setForm] = useState<ContactCreate>({
+  const [form, setForm] = useState<CamperCreate>({
     first_name: '',
     last_name: '',
-    email: '',
-    phone: '',
-    relationship_type: 'parent',
-    address: '',
+    date_of_birth: undefined,
+    gender: undefined,
+    school: '',
+    grade: '',
     city: '',
     state: '',
-    zip_code: '',
-    account_status: 'active',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createContact.mutateAsync(form)
-      toast({ type: 'success', message: 'Contact added successfully!' })
+      await createCamper.mutateAsync(form)
+      toast({ type: 'success', message: 'Camper added successfully!' })
       onClose()
     } catch {
-      toast({ type: 'error', message: 'Failed to add contact.' })
+      toast({ type: 'error', message: 'Failed to add camper.' })
     }
   }
 
-  const updateField = <K extends keyof ContactCreate>(
+  const updateField = <K extends keyof CamperCreate>(
     key: K,
-    value: ContactCreate[K]
+    value: CamperCreate[K]
   ) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
@@ -48,7 +46,7 @@ export function ContactCreateModal({ onClose }: ContactCreateModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <h2 className="text-lg font-semibold text-gray-900">
-            Add Contact
+            Add Camper
           </h2>
           <button
             onClick={onClose}
@@ -90,66 +88,80 @@ export function ContactCreateModal({ onClose }: ContactCreateModalProps) {
             </div>
           </div>
 
-          {/* Email & Phone */}
+          {/* Date of Birth & Gender */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Email
+                Date of Birth
               </label>
               <input
-                type="email"
-                value={form.email || ''}
-                onChange={(e) => updateField('email', e.target.value)}
+                type="date"
+                value={form.date_of_birth || ''}
+                onChange={(e) =>
+                  updateField(
+                    'date_of_birth',
+                    e.target.value || undefined
+                  )
+                }
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="email@example.com"
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Phone
+                Gender
+              </label>
+              <select
+                value={form.gender || ''}
+                onChange={(e) =>
+                  updateField(
+                    'gender',
+                    (e.target.value || undefined) as
+                      | 'male'
+                      | 'female'
+                      | 'other'
+                      | undefined
+                  )
+                }
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">Select...</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          {/* School & Grade */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                School
               </label>
               <input
-                type="tel"
-                value={form.phone || ''}
-                onChange={(e) => updateField('phone', e.target.value)}
+                type="text"
+                value={form.school || ''}
+                onChange={(e) => updateField('school', e.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="(555) 123-4567"
+                placeholder="School name"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Grade
+              </label>
+              <input
+                type="text"
+                value={form.grade || ''}
+                onChange={(e) => updateField('grade', e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="e.g., 5th"
               />
             </div>
           </div>
 
-          {/* Relationship Type */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Relationship
-            </label>
-            <select
-              value={form.relationship_type || 'parent'}
-              onChange={(e) => updateField('relationship_type', e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="parent">Parent</option>
-              <option value="guardian">Guardian</option>
-              <option value="emergency">Emergency Contact</option>
-            </select>
-          </div>
-
-          {/* Address */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Address
-            </label>
-            <input
-              type="text"
-              value={form.address || ''}
-              onChange={(e) => updateField('address', e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Street address"
-            />
-          </div>
-
-          {/* City, State, Zip */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* City & State */}
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
                 City
@@ -172,23 +184,12 @@ export function ContactCreateModal({ onClose }: ContactCreateModalProps) {
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Zip Code
-              </label>
-              <input
-                type="text"
-                value={form.zip_code || ''}
-                onChange={(e) => updateField('zip_code', e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
           </div>
 
           {/* Error */}
-          {createContact.isError && (
+          {createCamper.isError && (
             <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-              Failed to create contact. Please check your inputs.
+              Failed to create camper. Please check your inputs.
             </div>
           )}
 
@@ -203,13 +204,13 @@ export function ContactCreateModal({ onClose }: ContactCreateModalProps) {
             </button>
             <button
               type="submit"
-              disabled={createContact.isPending}
+              disabled={createCamper.isPending}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {createContact.isPending && (
+              {createCamper.isPending && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
-              Add Contact
+              Add Camper
             </button>
           </div>
         </form>

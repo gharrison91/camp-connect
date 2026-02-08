@@ -28,6 +28,7 @@ from app.api.v1.events import router as events_router
 from app.api.v1.contacts import router as contacts_router
 from app.api.v1.campers import router as campers_router
 from app.api.v1.registrations import router as registrations_router
+from app.api.v1.dashboard import router as dashboard_router
 
 
 @asynccontextmanager
@@ -83,6 +84,7 @@ app.include_router(events_router, prefix=settings.api_v1_prefix)
 app.include_router(contacts_router, prefix=settings.api_v1_prefix)
 app.include_router(campers_router, prefix=settings.api_v1_prefix)
 app.include_router(registrations_router, prefix=settings.api_v1_prefix)
+app.include_router(dashboard_router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/")

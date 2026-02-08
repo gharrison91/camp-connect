@@ -1,43 +1,44 @@
 import { useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
-import { useCreateEvent } from '@/hooks/useEvents'
+import { useUpdateEvent } from '@/hooks/useEvents'
 import { useToast } from '@/components/ui/Toast'
-import type { EventCreate } from '@/types'
+import type { Event, EventUpdate } from '@/types'
 
-interface EventCreateModalProps {
+interface EventEditModalProps {
+  event: Event
   onClose: () => void
 }
 
-export function EventCreateModal({ onClose }: EventCreateModalProps) {
-  const createEvent = useCreateEvent()
+export function EventEditModal({ event, onClose }: EventEditModalProps) {
+  const updateEvent = useUpdateEvent()
   const { toast } = useToast()
-  const [form, setForm] = useState<EventCreate>({
-    name: '',
-    description: '',
-    start_date: '',
-    end_date: '',
-    capacity: 50,
-    min_age: undefined,
-    max_age: undefined,
-    gender_restriction: 'all',
-    price: 0,
-    status: 'draft',
+  const [form, setForm] = useState<EventUpdate>({
+    name: event.name,
+    description: event.description || '',
+    start_date: event.start_date,
+    end_date: event.end_date,
+    capacity: event.capacity,
+    min_age: event.min_age ?? undefined,
+    max_age: event.max_age ?? undefined,
+    gender_restriction: event.gender_restriction,
+    price: event.price,
+    status: event.status,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createEvent.mutateAsync(form)
-      toast({ type: 'success', message: 'Event created successfully!' })
+      await updateEvent.mutateAsync({ id: event.id, data: form })
+      toast({ type: 'success', message: 'Event updated successfully!' })
       onClose()
     } catch {
-      toast({ type: 'error', message: 'Failed to create event.' })
+      toast({ type: 'error', message: 'Failed to update event.' })
     }
   }
 
-  const updateField = <K extends keyof EventCreate>(
+  const updateField = <K extends keyof EventUpdate>(
     key: K,
-    value: EventCreate[K]
+    value: EventUpdate[K]
   ) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
@@ -48,7 +49,7 @@ export function EventCreateModal({ onClose }: EventCreateModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <h2 className="text-lg font-semibold text-gray-900">
-            Create Event
+            Edit Event
           </h2>
           <button
             onClick={onClose}
@@ -68,7 +69,7 @@ export function EventCreateModal({ onClose }: EventCreateModalProps) {
             <input
               type="text"
               required
-              value={form.name}
+              value={form.name || ''}
               onChange={(e) => updateField('name', e.target.value)}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="e.g., Summer Adventure Week 1"
@@ -98,7 +99,7 @@ export function EventCreateModal({ onClose }: EventCreateModalProps) {
               <input
                 type="date"
                 required
-                value={form.start_date}
+                value={form.start_date || ''}
                 onChange={(e) => updateField('start_date', e.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
@@ -110,7 +111,7 @@ export function EventCreateModal({ onClose }: EventCreateModalProps) {
               <input
                 type="date"
                 required
-                value={form.end_date}
+                value={form.end_date || ''}
                 onChange={(e) => updateField('end_date', e.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
@@ -126,7 +127,7 @@ export function EventCreateModal({ onClose }: EventCreateModalProps) {
               <input
                 type="number"
                 min="0"
-                value={form.capacity || ''}
+                value={form.capacity ?? ''}
                 onChange={(e) =>
                   updateField('capacity', parseInt(e.target.value) || 0)
                 }
@@ -141,7 +142,7 @@ export function EventCreateModal({ onClose }: EventCreateModalProps) {
                 type="number"
                 min="0"
                 step="0.01"
-                value={form.price || ''}
+                value={form.price ?? ''}
                 onChange={(e) =>
                   updateField('price', parseFloat(e.target.value) || 0)
                 }
@@ -217,20 +218,22 @@ export function EventCreateModal({ onClose }: EventCreateModalProps) {
               onChange={(e) =>
                 updateField(
                   'status',
-                  e.target.value as 'draft' | 'published'
+                  e.target.value as 'draft' | 'published' | 'full' | 'archived'
                 )
               }
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="draft">Draft</option>
               <option value="published">Published</option>
+              <option value="full">Full</option>
+              <option value="archived">Archived</option>
             </select>
           </div>
 
           {/* Error */}
-          {createEvent.isError && (
+          {updateEvent.isError && (
             <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-              Failed to create event. Please check your inputs.
+              Failed to update event. Please check your inputs.
             </div>
           )}
 
@@ -245,13 +248,13 @@ export function EventCreateModal({ onClose }: EventCreateModalProps) {
             </button>
             <button
               type="submit"
-              disabled={createEvent.isPending}
+              disabled={updateEvent.isPending}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {createEvent.isPending && (
+              {updateEvent.isPending && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
-              Create Event
+              Save Changes
             </button>
           </div>
         </form>

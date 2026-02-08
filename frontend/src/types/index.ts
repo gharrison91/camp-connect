@@ -193,11 +193,19 @@ export interface WaitlistEntry {
 
 // ─── Dashboard ───────────────────────────────────────────────
 
+export interface RecentRegistration {
+  id: string;
+  camper_name: string;
+  event_name: string;
+  status: string;
+  payment_status: string;
+  created_at: string;
+}
+
 export interface DashboardStats {
-  totalCampers: number;
-  totalEvents: number;
-  totalRevenue: number;
-  capacityUtilization: number;
-  upcomingEvents: number;
-  pendingForms: number;
+  total_campers: number;
+  total_events: number;
+  upcoming_events: number;
+  total_registrations: number;
+  recent_registrations: RecentRegistration[];
 }
