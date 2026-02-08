@@ -23,6 +23,12 @@ from app.api.v1.users import router as users_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.permissions import router as permissions_router
 
+# Phase 2: Core Registration routers
+from app.api.v1.events import router as events_router
+from app.api.v1.contacts import router as contacts_router
+from app.api.v1.campers import router as campers_router
+from app.api.v1.registrations import router as registrations_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -71,6 +77,12 @@ app.include_router(roles_router, prefix=settings.api_v1_prefix)
 app.include_router(users_router, prefix=settings.api_v1_prefix)
 app.include_router(settings_router, prefix=settings.api_v1_prefix)
 app.include_router(permissions_router, prefix=settings.api_v1_prefix)
+
+# Phase 2: Core Registration
+app.include_router(events_router, prefix=settings.api_v1_prefix)
+app.include_router(contacts_router, prefix=settings.api_v1_prefix)
+app.include_router(campers_router, prefix=settings.api_v1_prefix)
+app.include_router(registrations_router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/")

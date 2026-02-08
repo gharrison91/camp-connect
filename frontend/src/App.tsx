@@ -4,6 +4,8 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { EventsPage } from '@/features/events/EventsPage'
 import { CampersPage } from '@/features/campers/CampersPage'
+import { ContactsPage } from '@/features/contacts/ContactsPage'
+import { RegistrationListPage } from '@/features/registrations/RegistrationListPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
@@ -36,6 +38,8 @@ function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="events" element={<EventsPage />} />
           <Route path="campers" element={<CampersPage />} />
+          <Route path="contacts" element={<ContactsPage />} />
+          <Route path="registrations" element={<RegistrationListPage />} />
 
           {/* Settings (nested routes) */}
           <Route path="settings" element={<SettingsLayout />}>

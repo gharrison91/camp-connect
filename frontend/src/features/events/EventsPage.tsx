@@ -5,104 +5,15 @@ import {
   CalendarDays,
   Users,
   MapPin,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Event } from '@/types'
+import { useEvents } from '@/hooks/useEvents'
+import { usePermissions } from '@/hooks/usePermissions'
+import { EventCreateModal } from './EventCreateModal'
 
 type EventStatus = Event['status']
-
-const mockEvents: Event[] = [
-  {
-    id: '1',
-    name: 'Week 1: Adventure Camp',
-    description: 'Outdoor adventures including hiking, kayaking, and rock climbing.',
-    startDate: '2026-07-07',
-    endDate: '2026-07-11',
-    capacity: 50,
-    enrolled: 45,
-    minAge: 10,
-    maxAge: 14,
-    gender: 'all',
-    price: 495,
-    status: 'published',
-    location: 'Main Campus',
-  },
-  {
-    id: '2',
-    name: 'Week 2: Explorer Camp',
-    description: 'Nature exploration with science experiments and wildlife observation.',
-    startDate: '2026-07-14',
-    endDate: '2026-07-18',
-    capacity: 50,
-    enrolled: 50,
-    minAge: 8,
-    maxAge: 12,
-    gender: 'all',
-    price: 450,
-    status: 'full',
-    location: 'Main Campus',
-  },
-  {
-    id: '3',
-    name: 'Week 3: Leadership Camp',
-    description: 'Team building, public speaking, and leadership development.',
-    startDate: '2026-07-21',
-    endDate: '2026-07-25',
-    capacity: 40,
-    enrolled: 32,
-    minAge: 14,
-    maxAge: 17,
-    gender: 'all',
-    price: 525,
-    status: 'published',
-    location: 'Main Campus',
-  },
-  {
-    id: '4',
-    name: 'Week 4: Junior Camp',
-    description: 'Fun-filled week of arts, crafts, and age-appropriate activities.',
-    startDate: '2026-07-28',
-    endDate: '2026-08-01',
-    capacity: 35,
-    enrolled: 28,
-    minAge: 6,
-    maxAge: 9,
-    gender: 'all',
-    price: 395,
-    status: 'published',
-    location: 'Main Campus',
-  },
-  {
-    id: '5',
-    name: 'Fall Retreat',
-    description: 'Weekend retreat with fall-themed activities and bonfires.',
-    startDate: '2026-09-12',
-    endDate: '2026-09-14',
-    capacity: 30,
-    enrolled: 0,
-    minAge: 12,
-    maxAge: 16,
-    gender: 'all',
-    price: 275,
-    status: 'draft',
-    location: 'Lakeside Pavilion',
-  },
-  {
-    id: '6',
-    name: 'Sports Clinic',
-    description: 'Full-day sports clinic covering basketball, soccer, and flag football.',
-    startDate: '2026-08-09',
-    endDate: '2026-08-09',
-    capacity: 20,
-    enrolled: 15,
-    minAge: 10,
-    maxAge: 16,
-    gender: 'male',
-    price: 75,
-    status: 'published',
-    location: 'Athletic Fields',
-  },
-]
 
 const statusConfig: Record<
   EventStatus,
@@ -144,7 +55,7 @@ function formatDateRange(start: string, end: string): string {
   return `${startMonth} ${startDate.getDate()} - ${endMonth} ${endDate.getDate()}`
 }
 
-function formatGender(gender: Event['gender']): string {
+function formatGender(gender: Event['gender_restriction']): string {
   switch (gender) {
     case 'all':
       return 'All Genders'
@@ -156,6 +67,7 @@ function formatGender(gender: Event['gender']): string {
 }
 
 function getCapacityColor(enrolled: number, capacity: number): string {
+  if (capacity === 0) return 'bg-gray-300'
   const pct = (enrolled / capacity) * 100
   if (pct >= 100) return 'bg-red-500'
   if (pct >= 80) return 'bg-amber-500'
@@ -163,6 +75,7 @@ function getCapacityColor(enrolled: number, capacity: number): string {
 }
 
 function getCapacityTrackColor(enrolled: number, capacity: number): string {
+  if (capacity === 0) return 'bg-gray-100'
   const pct = (enrolled / capacity) * 100
   if (pct >= 100) return 'bg-red-100'
   if (pct >= 80) return 'bg-amber-100'
@@ -172,14 +85,12 @@ function getCapacityTrackColor(enrolled: number, capacity: number): string {
 export function EventsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const { hasPermission } = usePermissions()
 
-  const filteredEvents = mockEvents.filter((event) => {
-    const matchesSearch = event.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-    const matchesStatus =
-      statusFilter === 'all' || event.status === statusFilter
-    return matchesSearch && matchesStatus
+  const { data: events = [], isLoading, error } = useEvents({
+    search: searchQuery || undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
   })
 
   return (
@@ -189,10 +100,15 @@ export function EventsPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
           Events
         </h1>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-          <Plus className="h-4 w-4" />
-          Create Event
-        </button>
+        {hasPermission('core.events.create') && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <Plus className="h-4 w-4" />
+            Create Event
+          </button>
+        )}
       </div>
 
       {/* Filter Bar */}
@@ -220,106 +136,144 @@ export function EventsPage() {
         </select>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Failed to load events. Please try again.
+        </div>
+      )}
+
       {/* Event Cards Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredEvents.map((event) => {
-          const capacityPct = Math.round(
-            (event.enrolled / event.capacity) * 100
-          )
-          const status = statusConfig[event.status]
+      {!isLoading && !error && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {events.map((event) => {
+            const capacityPct =
+              event.capacity > 0
+                ? Math.round((event.enrolled_count / event.capacity) * 100)
+                : 0
+            const status = statusConfig[event.status]
 
-          return (
-            <div
-              key={event.id}
-              className="group cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:border-gray-200 hover:shadow-md"
-            >
-              <div className="p-5">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600">
-                    {event.name}
-                  </h3>
-                  <span
-                    className={cn(
-                      'inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
-                      status.className
-                    )}
-                  >
-                    {status.label}
-                  </span>
-                </div>
-
-                {/* Details */}
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-                    <span>
-                      {formatDateRange(event.startDate, event.endDate)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Users className="h-3.5 w-3.5 shrink-0" />
-                    <span>
-                      Ages {event.minAge}-{event.maxAge} &middot;{' '}
-                      {formatGender(event.gender)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <MapPin className="h-3.5 w-3.5 shrink-0" />
-                    <span>{event.location}</span>
-                  </div>
-                </div>
-
-                {/* Capacity Bar */}
-                <div className="mt-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">
-                      {event.enrolled}/{event.capacity} spots
-                    </span>
-                    <span className="font-medium text-gray-700">
-                      {capacityPct}%
-                    </span>
-                  </div>
-                  <div
-                    className={cn(
-                      'mt-1.5 h-2 w-full overflow-hidden rounded-full',
-                      getCapacityTrackColor(event.enrolled, event.capacity)
-                    )}
-                  >
-                    <div
+            return (
+              <div
+                key={event.id}
+                className="group cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:border-gray-200 hover:shadow-md"
+              >
+                <div className="p-5">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600">
+                      {event.name}
+                    </h3>
+                    <span
                       className={cn(
-                        'h-full rounded-full transition-all',
-                        getCapacityColor(event.enrolled, event.capacity)
+                        'inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
+                        status.className
                       )}
-                      style={{ width: `${Math.min(capacityPct, 100)}%` }}
-                    />
+                    >
+                      {status.label}
+                    </span>
                   </div>
-                </div>
 
-                {/* Price */}
-                <div className="mt-4 flex items-center justify-between border-t border-gray-50 pt-4">
-                  <span className="text-lg font-semibold text-gray-900">
-                    ${event.price}
-                  </span>
-                  <span className="text-xs text-gray-400">per camper</span>
+                  {/* Details */}
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                      <span>
+                        {formatDateRange(event.start_date, event.end_date)}
+                      </span>
+                    </div>
+                    {(event.min_age || event.max_age) && (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Users className="h-3.5 w-3.5 shrink-0" />
+                        <span>
+                          Ages {event.min_age ?? '?'}-{event.max_age ?? '?'}{' '}
+                          &middot; {formatGender(event.gender_restriction)}
+                        </span>
+                      </div>
+                    )}
+                    {event.location_name && (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                        <span>{event.location_name}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Capacity Bar */}
+                  {event.capacity > 0 && (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500">
+                          {event.enrolled_count}/{event.capacity} spots
+                        </span>
+                        <span className="font-medium text-gray-700">
+                          {capacityPct}%
+                        </span>
+                      </div>
+                      <div
+                        className={cn(
+                          'mt-1.5 h-2 w-full overflow-hidden rounded-full',
+                          getCapacityTrackColor(
+                            event.enrolled_count,
+                            event.capacity
+                          )
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all',
+                            getCapacityColor(
+                              event.enrolled_count,
+                              event.capacity
+                            )
+                          )}
+                          style={{
+                            width: `${Math.min(capacityPct, 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Price */}
+                  <div className="mt-4 flex items-center justify-between border-t border-gray-50 pt-4">
+                    <span className="text-lg font-semibold text-gray-900">
+                      ${Number(event.price).toLocaleString()}
+                    </span>
+                    <span className="text-xs text-gray-400">per camper</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Empty State */}
-      {filteredEvents.length === 0 && (
+      {!isLoading && !error && events.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-16">
           <CalendarDays className="h-10 w-10 text-gray-300" />
           <p className="mt-3 text-sm font-medium text-gray-900">
             No events found
           </p>
           <p className="mt-1 text-sm text-gray-500">
-            Try adjusting your search or filter criteria.
+            {searchQuery || statusFilter !== 'all'
+              ? 'Try adjusting your search or filter criteria.'
+              : 'Create your first event to get started.'}
           </p>
         </div>
+      )}
+
+      {/* Create Event Modal */}
+      {showCreateModal && (
+        <EventCreateModal onClose={() => setShowCreateModal(false)} />
       )}
     </div>
   )

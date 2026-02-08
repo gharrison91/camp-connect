@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
+        "https://camp-connect-pi.vercel.app",
     ]
 
     model_config = {
