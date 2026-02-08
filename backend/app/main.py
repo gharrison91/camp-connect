@@ -5,10 +5,12 @@ FastAPI Backend Application
 
 from __future__ import annotations
 
+import traceback
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.config import settings
@@ -85,6 +87,19 @@ app.include_router(contacts_router, prefix=settings.api_v1_prefix)
 app.include_router(campers_router, prefix=settings.api_v1_prefix)
 app.include_router(registrations_router, prefix=settings.api_v1_prefix)
 app.include_router(dashboard_router, prefix=settings.api_v1_prefix)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch unhandled exceptions and return detailed JSON errors."""
+    tb = traceback.format_exception(type(exc), exc, exc.__traceback__)
+    print(f"Unhandled exception on {request.url}: {''.join(tb)}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Internal server error: {type(exc).__name__}: {str(exc)}",
+        },
+    )
 
 
 @app.get("/")
