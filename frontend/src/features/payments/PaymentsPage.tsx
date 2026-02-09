@@ -4,11 +4,10 @@
  */
 
 import { useState } from 'react'
-import { CreditCard, FileText, Loader2, Plus, DollarSign } from 'lucide-react'
+import { CreditCard, FileText, Loader2, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useInvoices, usePayments } from '@/hooks/usePayments'
-import { usePermissions } from '@/hooks/usePermissions'
-import type { Invoice, Payment } from '@/types'
+import type { Invoice } from '@/types'
 import { InvoiceDetailModal } from './InvoiceDetailModal'
 
 type Tab = 'invoices' | 'payments'
@@ -38,7 +37,6 @@ function getStatusBadge(status: string) {
 }
 
 export function PaymentsPage() {
-  const { hasPermission } = usePermissions()
   const [tab, setTab] = useState<Tab>('invoices')
   const [statusFilter, setStatusFilter] = useState('')
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)

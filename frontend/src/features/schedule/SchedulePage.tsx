@@ -5,14 +5,13 @@
 
 import { useState } from 'react'
 import { CalendarDays, Plus, Loader2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { useEvents } from '@/hooks/useEvents'
-import { useDailyView, useCreateSchedule, useDeleteSchedule } from '@/hooks/useSchedules'
+import { useDailyView, useDeleteSchedule } from '@/hooks/useSchedules'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useToast } from '@/components/ui/Toast'
 import { DayView } from './DayView'
 import { ScheduleSessionModal } from './ScheduleSessionModal'
-import type { Schedule, ScheduleCreate } from '@/types'
+import type { Schedule } from '@/types'
 
 export function SchedulePage() {
   const { hasPermission } = usePermissions()
@@ -31,7 +30,6 @@ export function SchedulePage() {
     selectedEventId ? selectedDate : undefined
   )
 
-  const createSchedule = useCreateSchedule()
   const deleteSchedule = useDeleteSchedule()
 
   function handleEdit(schedule: Schedule) {

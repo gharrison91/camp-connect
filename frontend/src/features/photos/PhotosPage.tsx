@@ -381,7 +381,7 @@ function PhotoDetailModal({
   const deletePhoto = useDeletePhoto()
   const reprocessPhoto = useReprocessPhoto()
   const { hasPermission } = usePermissions()
-  const { data: hookFaceTags = [], isLoading: faceTagsLoading } = usePhotoFaceTags(photo.id)
+  const { data: hookFaceTags = [] } = usePhotoFaceTags(photo.id)
   const [showFaceTags, setShowFaceTags] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
   const [imgDimensions, setImgDimensions] = useState({ width: 0, height: 0 })

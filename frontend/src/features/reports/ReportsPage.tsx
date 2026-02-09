@@ -4,17 +4,15 @@
  */
 
 import { useState } from 'react'
-import { Users, ClipboardList, Heart, DollarSign, CalendarCheck, Download, Loader2, FileSpreadsheet } from 'lucide-react'
+import { Users, ClipboardList, Heart, DollarSign, CalendarCheck, Download, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useReports } from '@/hooks/useReports'
 import { useEvents } from '@/hooks/useEvents'
-import { usePermissions } from '@/hooks/usePermissions'
 import { useToast } from '@/components/ui/Toast'
 
 type ReportKey = 'camperRoster' | 'registrations' | 'healthForms' | 'financial' | 'attendance'
 
 export function ReportsPage() {
-  const { hasPermission } = usePermissions()
   const { toast } = useToast()
   const reports = useReports()
   const { data: events = [] } = useEvents()

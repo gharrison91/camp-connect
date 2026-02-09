@@ -3,7 +3,7 @@
  * Simple layout for parent portal with top navigation.
  */
 
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import { Tent, LogOut, Home, Camera, Receipt } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
@@ -15,8 +15,6 @@ const portalNav = [
 ]
 
 export function PortalLayout() {
-  const navigate = useNavigate()
-
   async function handleLogout() {
     await supabase.auth.signOut()
     window.location.href = '/login'
