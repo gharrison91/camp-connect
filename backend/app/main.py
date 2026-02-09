@@ -32,6 +32,11 @@ from app.api.v1.campers import router as campers_router
 from app.api.v1.registrations import router as registrations_router
 from app.api.v1.dashboard import router as dashboard_router
 
+# Phase 3: Photos, Communications, Health & Safety
+from app.api.v1.photos import router as photos_router
+from app.api.v1.communications import router as communications_router
+from app.api.v1.health_forms import router as health_forms_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -87,6 +92,11 @@ app.include_router(contacts_router, prefix=settings.api_v1_prefix)
 app.include_router(campers_router, prefix=settings.api_v1_prefix)
 app.include_router(registrations_router, prefix=settings.api_v1_prefix)
 app.include_router(dashboard_router, prefix=settings.api_v1_prefix)
+
+# Phase 3: Photos, Communications, Health & Safety
+app.include_router(photos_router, prefix=settings.api_v1_prefix)
+app.include_router(communications_router, prefix=settings.api_v1_prefix)
+app.include_router(health_forms_router, prefix=settings.api_v1_prefix)
 
 
 @app.exception_handler(Exception)

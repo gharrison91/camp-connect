@@ -209,3 +209,56 @@ export interface DashboardStats {
   total_registrations: number;
   recent_registrations: RecentRegistration[];
 }
+
+// ─── Photos ─────────────────────────────────────────────────
+
+export interface Photo {
+  id: string;
+  file_name: string;
+  file_path: string;
+  url: string;
+  file_size: number;
+  mime_type: string;
+  caption: string | null;
+  tags: string[] | null;
+  category: 'camper' | 'event' | 'general';
+  entity_id: string | null;
+  is_profile_photo: boolean;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+// ─── Communications ─────────────────────────────────────────
+
+export interface Message {
+  id: string;
+  channel: 'sms' | 'email';
+  direction: 'outbound' | 'inbound';
+  status: 'queued' | 'sent' | 'delivered' | 'failed' | 'bounced';
+  from_address: string;
+  to_address: string;
+  subject: string | null;
+  body: string;
+  template_id: string | null;
+  recipient_type: string | null;
+  related_entity_type: string | null;
+  external_id: string | null;
+  error_message: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  created_at: string;
+}
+
+export interface MessageTemplate {
+  id: string;
+  name: string;
+  channel: 'sms' | 'email' | 'both';
+  subject: string | null;
+  body: string;
+  html_body: string | null;
+  category: string;
+  variables: string[];
+  is_system: boolean;
+  is_active: boolean;
+  created_at: string;
+}

@@ -18,6 +18,12 @@ from app.models.camper_contact import CamperContact
 from app.models.registration import Registration
 from app.models.waitlist import Waitlist
 
+# Phase 3: Photos, Communications, Health & Safety
+from app.models.photo import Photo
+from app.models.message import Message
+from app.models.message_template import MessageTemplate
+from app.models.health_form import HealthFormTemplate, HealthForm, HealthFormSubmission
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -36,4 +42,11 @@ __all__ = [
     "CamperContact",
     "Registration",
     "Waitlist",
+    # Phase 3
+    "Photo",
+    "Message",
+    "MessageTemplate",
+    "HealthFormTemplate",
+    "HealthForm",
+    "HealthFormSubmission",
 ]

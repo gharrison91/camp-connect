@@ -26,6 +26,21 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     secret_key: str = "change-this-in-production"
 
+    # Twilio
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""  # The Twilio phone number to send from
+
+    # SendGrid
+    sendgrid_api_key: str = ""
+    sendgrid_from_email: str = "noreply@campconnect.com"
+    sendgrid_from_name: str = "Camp Connect"
+
+    # AWS Rekognition (facial recognition for camper photos)
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    aws_region: str = "us-east-1"
+
     # CORS
     cors_origins: list[str] = [
         "http://localhost:5173",

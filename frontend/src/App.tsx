@@ -19,11 +19,11 @@ import { LocationsPage } from '@/features/admin/LocationsPage'
 import { RolesPage } from '@/features/admin/RolesPage'
 import { UsersPage } from '@/features/admin/UsersPage'
 import { GeneralSettingsPage } from '@/features/admin/GeneralSettingsPage'
+import { PhotosPage } from '@/features/photos/PhotosPage'
+import { CommunicationsPage } from '@/features/communications/CommunicationsPage'
+import { HealthSafetyPage } from '@/features/health/HealthSafetyPage'
 import {
-  CommunicationsPage,
-  HealthSafetyPage,
   StaffPage,
-  PhotosPage,
   AnalyticsPage,
   StorePage,
 } from '@/features/placeholder/PlaceholderPages'
