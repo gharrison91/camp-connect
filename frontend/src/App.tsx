@@ -27,10 +27,14 @@ import { StaffDirectoryPage } from '@/features/staff/StaffDirectoryPage'
 import { StaffProfilePage } from '@/features/staff/StaffProfilePage'
 import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard'
 import { OnboardingDashboard } from '@/features/onboarding/OnboardingDashboard'
-import {
-  AnalyticsPage,
-  StorePage,
-} from '@/features/placeholder/PlaceholderPages'
+import { StorePage } from '@/features/placeholder/PlaceholderPages'
+
+// Phase 5: Analytics, Activities, Bunks, Families
+import { AnalyticsPage } from '@/features/analytics/AnalyticsPage'
+import { ActivitiesPage } from '@/features/activities/ActivitiesPage'
+import { BunksPage } from '@/features/bunks/BunksPage'
+import { FamiliesPage } from '@/features/families/FamiliesPage'
+import { FamilyDetailPage } from '@/features/families/FamilyDetailPage'
 
 function App() {
   return (
@@ -75,8 +79,14 @@ function App() {
             <Route path="onboarding" element={<OnboardingWizard />} />
             <Route path="onboarding/manage" element={<OnboardingDashboard />} />
 
-            {/* Placeholder pages */}
+            {/* Phase 5: Analytics, Activities, Bunks, Families */}
             <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="activities" element={<ActivitiesPage />} />
+            <Route path="bunks" element={<BunksPage />} />
+            <Route path="families" element={<FamiliesPage />} />
+            <Route path="families/:id" element={<FamilyDetailPage />} />
+
+            {/* Placeholder pages */}
             <Route path="store" element={<StorePage />} />
 
             {/* Settings (nested routes) */}

@@ -33,6 +33,11 @@ from app.models.staff_onboarding import (
 )
 from app.models.photo_face_tag import PhotoFaceTag
 
+# Phase 5: Analytics, Activities, Bunks, Families
+from app.models.activity import Activity
+from app.models.bunk import Bunk, BunkAssignment
+from app.models.family import Family
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -64,4 +69,9 @@ __all__ = [
     "StaffDocument",
     "PolicyAcknowledgment",
     "PhotoFaceTag",
+    # Phase 5
+    "Activity",
+    "Bunk",
+    "BunkAssignment",
+    "Family",
 ]

@@ -58,11 +58,27 @@ class Contact(Base, TimestampMixin, SoftDeleteMixin):
         String(20), nullable=False, default="active"
     )  # active, guest
 
+    # Family & Portal
+    family_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("families.id"),
+        index=True,
+        nullable=True,
+    )
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        index=True,
+        nullable=True,
+    )
+
     # Relationships
     organization = relationship("Organization", backref="contacts")
     camper_contacts = relationship(
         "CamperContact", back_populates="contact", lazy="selectin"
     )
+    family = relationship("Family", back_populates="contacts")
+    user = relationship("User")
 
     def __repr__(self) -> str:
         return f"<Contact(id={self.id}, name='{self.first_name} {self.last_name}')>"

@@ -60,8 +60,17 @@ class Camper(Base, TimestampMixin, SoftDeleteMixin):
     # Photo for AI recognition
     reference_photo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
+    # Family
+    family_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("families.id"),
+        index=True,
+        nullable=True,
+    )
+
     # Relationships
     organization = relationship("Organization", backref="campers")
+    family = relationship("Family", back_populates="campers")
     camper_contacts = relationship(
         "CamperContact", back_populates="camper", lazy="selectin",
         cascade="all, delete-orphan",

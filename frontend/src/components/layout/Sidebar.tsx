@@ -16,6 +16,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   X,
+  UsersRound,
+  BedDouble,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -33,6 +35,9 @@ const navItems = [
   { label: 'Campers', icon: Users, path: '/app/campers', permission: 'core.campers.read' },
   { label: 'Contacts', icon: BookUser, path: '/app/contacts', permission: 'core.contacts.read' },
   { label: 'Registrations', icon: ClipboardList, path: '/app/registrations', permission: 'core.registrations.read' },
+  { label: 'Families', icon: UsersRound, path: '/app/families', permission: 'core.families.read' },
+  { label: 'Activities', icon: Tent, path: '/app/activities', permission: 'core.activities.read' },
+  { label: 'Bunks', icon: BedDouble, path: '/app/bunks', permission: 'core.bunks.read' },
   { label: 'Communications', icon: MessageSquare, path: '/app/communications', permission: 'comms.messages.read' },
   { label: 'Health & Safety', icon: Heart, path: '/app/health-safety', permission: 'health.forms.read' },
   { label: 'Staff', icon: UserCog, path: '/app/staff', permission: 'staff.employees.read' },

@@ -386,3 +386,155 @@ export interface CamperPhotoMatch {
   confidence: number;
   created_at: string;
 }
+
+// ─── Activities ─────────────────────────────────────────────
+
+export interface Activity {
+  id: string;
+  name: string;
+  description: string | null;
+  category: 'sports' | 'arts' | 'nature' | 'water' | 'education' | 'other';
+  location: string | null;
+  capacity: number | null;
+  min_age: number | null;
+  max_age: number | null;
+  duration_minutes: number | null;
+  staff_required: number;
+  equipment_needed: string[] | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ActivityCreate {
+  name: string;
+  description?: string;
+  category?: string;
+  location?: string;
+  capacity?: number;
+  min_age?: number;
+  max_age?: number;
+  duration_minutes?: number;
+  staff_required?: number;
+  equipment_needed?: string[];
+  is_active?: boolean;
+}
+
+export interface ActivityUpdate extends Partial<ActivityCreate> {}
+
+// ─── Bunks ──────────────────────────────────────────────────
+
+export interface Bunk {
+  id: string;
+  name: string;
+  capacity: number;
+  gender_restriction: string | null;
+  min_age: number | null;
+  max_age: number | null;
+  location: string | null;
+  counselor_user_id: string | null;
+  counselor_name: string | null;
+  created_at: string;
+}
+
+export interface BunkAssignment {
+  id: string;
+  bunk_id: string;
+  camper_id: string;
+  event_id: string;
+  bed_number: number | null;
+  camper_name: string;
+  camper_age: number | null;
+  camper_gender: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+}
+
+export interface BunkCreate {
+  name: string;
+  capacity: number;
+  gender_restriction?: string;
+  min_age?: number | null;
+  max_age?: number | null;
+  location?: string;
+  counselor_user_id?: string | null;
+}
+
+export interface BunkUpdate extends Partial<BunkCreate> {}
+
+// ─── Families ───────────────────────────────────────────────
+
+export interface Family {
+  id: string;
+  family_name: string;
+  camper_count: number;
+  contact_count: number;
+  campers: FamilyMemberCamper[];
+  contacts: FamilyMemberContact[];
+  created_at: string;
+}
+
+export interface FamilyMemberCamper {
+  id: string;
+  first_name: string;
+  last_name: string;
+  age: number | null;
+  gender: string | null;
+}
+
+export interface FamilyMemberContact {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  relationship_type: string;
+  user_id: string | null;
+}
+
+export interface FamilyCreate {
+  family_name: string;
+}
+
+export interface FamilyUpdate {
+  family_name?: string;
+}
+
+// ─── Analytics ──────────────────────────────────────────────
+
+export interface EnrollmentTrendItem {
+  date: string;
+  count: number;
+}
+
+export interface RevenuePeriodItem {
+  period: string;
+  total: number;
+  paid: number;
+  unpaid: number;
+}
+
+export interface EventCapacityItem {
+  event_id: string;
+  event_name: string;
+  capacity: number;
+  enrolled: number;
+  fill_rate: number;
+}
+
+export interface RegistrationStatusBreakdown {
+  status: string;
+  count: number;
+}
+
+export interface CommunicationStatsItem {
+  channel: string;
+  sent: number;
+  delivered: number;
+  failed: number;
+}
+
+export interface DemographicItem {
+  label: string;
+  count: number;
+}
