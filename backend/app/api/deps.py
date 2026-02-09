@@ -122,6 +122,9 @@ def require_permission(permission: str):
     async def _checker(
         current_user: Dict[str, Any] = Depends(get_current_user),
     ) -> Dict[str, Any]:
+        # Camp Director role always has all permissions
+        if current_user.get("role_name") == "Camp Director":
+            return current_user
         user_permissions: List[str] = current_user.get("permissions", [])
         if permission not in user_permissions:
             raise HTTPException(

@@ -1,80 +1,906 @@
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
   User,
-  GraduationCap,
+  Calendar,
   MapPin,
-  Loader2,
+  Heart,
+  Shield,
   Phone,
   Mail,
+  Camera,
+  MessageSquare,
+  DollarSign,
+  Activity,
+  Users,
   AlertTriangle,
-  UtensilsCrossed,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Star,
+  Edit,
+  ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useCamper } from '@/hooks/useCampers'
-import { useRegistrations } from '@/hooks/useRegistrations'
-import type { Registration } from '@/types'
+import { useCamperProfile } from '@/hooks/useCamperProfile'
+import type {
+  CamperProfile,
+  CamperHealthForm,
+  CamperPhoto,
+  CamperProfileContact,
+} from '@/hooks/useCamperProfile'
 
-const registrationStatusConfig: Record<
-  Registration['status'],
-  { label: string; className: string }
-> = {
-  pending: {
-    label: 'Pending',
-    className: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  },
-  confirmed: {
-    label: 'Confirmed',
-    className: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  },
-  cancelled: {
-    label: 'Cancelled',
-    className: 'bg-red-50 text-red-700 ring-red-600/20',
-  },
-  waitlisted: {
-    label: 'Waitlisted',
-    className: 'bg-blue-50 text-blue-700 ring-blue-600/20',
-  },
+// ─── Tabs ──────────────────────────────────────────────────────
+type Tab = 'overview' | 'health' | 'family' | 'events' | 'photos' | 'communications'
+
+const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
+  { key: 'overview', label: 'Overview', icon: User },
+  { key: 'health', label: 'Health & Safety', icon: Shield },
+  { key: 'family', label: 'Family & Contacts', icon: Users },
+  { key: 'events', label: 'Events', icon: Calendar },
+  { key: 'photos', label: 'Photos', icon: Camera },
+  { key: 'communications', label: 'Communications', icon: MessageSquare },
+]
+
+// ─── Helpers ───────────────────────────────────────────────────
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '--'
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
-const paymentStatusConfig: Record<
-  Registration['payment_status'],
-  { label: string; className: string }
-> = {
-  unpaid: {
-    label: 'Unpaid',
-    className: 'bg-red-50 text-red-700 ring-red-600/20',
-  },
-  deposit_paid: {
-    label: 'Deposit Paid',
-    className: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  },
-  paid: {
-    label: 'Paid',
-    className: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  },
-  refunded: {
-    label: 'Refunded',
-    className: 'bg-gray-50 text-gray-600 ring-gray-500/20',
-  },
+function formatDateTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '--'
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
+
+function formatCurrency(value: number | null | undefined): string {
+  if (value == null) return '$0.00'
+  return `$${Number(value).toFixed(2)}`
+}
+
+function getInitials(first: string, last: string): string {
+  return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase()
+}
+
+function getAvatarColor(name: string): string {
+  const colors = [
+    'bg-blue-500',
+    'bg-emerald-500',
+    'bg-violet-500',
+    'bg-rose-500',
+    'bg-amber-500',
+    'bg-cyan-500',
+    'bg-indigo-500',
+    'bg-teal-500',
+  ]
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
+}
+
+// ─── Status badge configs ──────────────────────────────────────
+const registrationStatusStyles: Record<string, string> = {
+  pending: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  cancelled: 'bg-red-50 text-red-700 ring-red-600/20',
+  waitlisted: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+}
+
+const paymentStatusStyles: Record<string, string> = {
+  unpaid: 'bg-red-50 text-red-700 ring-red-600/20',
+  deposit_paid: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  paid: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  refunded: 'bg-gray-50 text-gray-600 ring-gray-500/20',
+}
+
+const healthFormStatusStyles: Record<string, string> = {
+  approved: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  pending: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  submitted: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+  rejected: 'bg-red-50 text-red-700 ring-red-600/20',
+  overdue: 'bg-red-50 text-red-700 ring-red-600/20',
+}
+
+const communicationStatusStyles: Record<string, string> = {
+  queued: 'bg-gray-50 text-gray-600 ring-gray-500/20',
+  sent: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+  delivered: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  failed: 'bg-red-50 text-red-700 ring-red-600/20',
+  bounced: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+}
+
+function StatusBadge({ status, styles }: { status: string; styles: Record<string, string> }) {
+  const className = styles[status] ?? 'bg-gray-50 text-gray-600 ring-gray-500/20'
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset capitalize',
+        className
+      )}
+    >
+      {status.replace(/_/g, ' ')}
+    </span>
+  )
+}
+
+// ─── Sub-components ────────────────────────────────────────────
+
+function InfoCard({
+  icon: Icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: React.ElementType
+  label: string
+  value: string
+  sub?: string
+}) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <Icon className="h-4 w-4" />
+        <span>{label}</span>
+      </div>
+      <p className="mt-2 text-sm font-medium text-gray-900">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-gray-500">{sub}</p>}
+    </div>
+  )
+}
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  color = 'text-gray-900',
+}: {
+  label: string
+  value: string | number
+  icon: React.ElementType
+  color?: string
+}) {
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-50">
+        <Icon className="h-5 w-5 text-gray-600" />
+      </div>
+      <div>
+        <p className="text-xs font-medium text-gray-500">{label}</p>
+        <p className={cn('text-lg font-semibold', color)}>{value}</p>
+      </div>
+    </div>
+  )
+}
+
+function EmptyState({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-12">
+      <Icon className="h-10 w-10 text-gray-300" />
+      <p className="mt-3 text-sm font-medium text-gray-900">{title}</p>
+      <p className="mt-1 text-sm text-gray-500">{description}</p>
+    </div>
+  )
+}
+
+// ─── Tab Content Components ────────────────────────────────────
+
+function OverviewTab({ profile }: { profile: CamperProfile }) {
+  const pendingHealthForms = profile.health_forms.filter((f) => f.status === 'pending' || f.status === 'overdue').length
+  const recentRegistrations = profile.registrations.slice(0, 5)
+
+  return (
+    <div className="space-y-6">
+      {/* Info Grid */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <InfoCard
+          icon={Calendar}
+          label="Date of Birth"
+          value={profile.date_of_birth ? formatDate(profile.date_of_birth) : '--'}
+        />
+        <InfoCard icon={User} label="Age" value={profile.age != null ? String(profile.age) : '--'} />
+        <InfoCard icon={User} label="Gender" value={profile.gender ?? '--'} />
+        <InfoCard icon={Activity} label="School" value={profile.school ?? '--'} sub={profile.grade ? `Grade ${profile.grade}` : undefined} />
+        <InfoCard
+          icon={MapPin}
+          label="Location"
+          value={
+            profile.city && profile.state
+              ? `${profile.city}, ${profile.state}`
+              : profile.city || profile.state || '--'
+          }
+        />
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Total Events" value={profile.registrations.length} icon={Calendar} />
+        <StatCard
+          label="Balance Due"
+          value={formatCurrency(profile.financial_summary.balance)}
+          icon={DollarSign}
+          color={profile.financial_summary.balance > 0 ? 'text-red-600' : 'text-emerald-600'}
+        />
+        <StatCard
+          label="Health Forms Pending"
+          value={pendingHealthForms}
+          icon={Shield}
+          color={pendingHealthForms > 0 ? 'text-amber-600' : 'text-gray-900'}
+        />
+      </div>
+
+      {/* Family Card */}
+      {profile.family && (
+        <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="h-5 w-5 text-gray-600" />
+            <h3 className="text-base font-semibold text-gray-900">
+              {profile.family.family_name} Family
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {/* Siblings */}
+            {profile.family.campers.length > 0 && (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">Siblings</p>
+                <div className="space-y-2">
+                  {profile.family.campers
+                    .filter((c) => c.id !== profile.id)
+                    .map((sibling) => (
+                      <Link
+                        key={sibling.id}
+                        to={`/app/campers/${sibling.id}`}
+                        className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-gray-50"
+                      >
+                        <span className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                          {sibling.first_name} {sibling.last_name}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {sibling.age != null && (
+                            <span className="text-xs text-gray-500">Age {sibling.age}</span>
+                          )}
+                          <ChevronRight className="h-4 w-4 text-gray-400" />
+                        </div>
+                      </Link>
+                    ))}
+                  {profile.family.campers.filter((c) => c.id !== profile.id).length === 0 && (
+                    <p className="text-sm text-gray-500">No siblings in family</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {/* Family Contacts */}
+            {profile.family.contacts.length > 0 && (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">Family Contacts</p>
+                <div className="space-y-3">
+                  {profile.family.contacts.map((contact) => (
+                    <div key={contact.id} className="rounded-lg bg-gray-50 px-3 py-2">
+                      <p className="text-sm font-medium text-gray-900">
+                        {contact.first_name} {contact.last_name}
+                      </p>
+                      <div className="mt-1 space-y-0.5">
+                        {contact.email && (
+                          <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                            <Mail className="h-3 w-3 text-gray-400" />
+                            {contact.email}
+                          </div>
+                        )}
+                        {contact.phone && (
+                          <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                            <Phone className="h-3 w-3 text-gray-400" />
+                            {contact.phone}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Registrations */}
+      <div>
+        <h3 className="text-base font-semibold text-gray-900 mb-3">Recent Registrations</h3>
+        {recentRegistrations.length === 0 ? (
+          <EmptyState
+            icon={Calendar}
+            title="No registrations yet"
+            description="This camper has not been registered for any events."
+          />
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <th className="px-6 py-3">Event</th>
+                    <th className="px-6 py-3">Dates</th>
+                    <th className="px-6 py-3">Status</th>
+                    <th className="hidden px-6 py-3 sm:table-cell">Payment</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {recentRegistrations.map((reg) => (
+                    <tr key={reg.id} className="transition-colors hover:bg-gray-50/80">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                        <Link to={`/app/events/${reg.event.id}`} className="text-blue-600 hover:text-blue-700">
+                          {reg.event.name}
+                        </Link>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                        {formatDate(reg.event.start_date)}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <StatusBadge status={reg.status} styles={registrationStatusStyles} />
+                      </td>
+                      <td className="hidden whitespace-nowrap px-6 py-4 sm:table-cell">
+                        <StatusBadge status={reg.payment_status} styles={paymentStatusStyles} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function HealthTab({ profile }: { profile: CamperProfile }) {
+  const allergies = profile.allergies ?? []
+  const dietaryRestrictions = profile.dietary_restrictions ?? []
+
+  return (
+    <div className="space-y-6">
+      {/* Allergies */}
+      <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <AlertTriangle className="h-5 w-5 text-rose-500" />
+          <h3 className="text-base font-semibold text-gray-900">Allergies</h3>
+        </div>
+        {allergies.length === 0 ? (
+          <p className="text-sm text-gray-500">No allergies on file</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {allergies.map((allergy, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center rounded-full bg-rose-50 px-3 py-1 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-600/20"
+              >
+                {allergy}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Dietary Restrictions */}
+      <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <Heart className="h-5 w-5 text-blue-500" />
+          <h3 className="text-base font-semibold text-gray-900">Dietary Restrictions</h3>
+        </div>
+        {dietaryRestrictions.length === 0 ? (
+          <p className="text-sm text-gray-500">No dietary restrictions on file</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {dietaryRestrictions.map((restriction, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20"
+              >
+                {restriction}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Health Forms */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Shield className="h-5 w-5 text-gray-600" />
+          <h3 className="text-base font-semibold text-gray-900">Health Forms</h3>
+        </div>
+        {profile.health_forms.length === 0 ? (
+          <EmptyState
+            icon={Shield}
+            title="No health forms"
+            description="No health forms have been assigned to this camper."
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {profile.health_forms.map((form) => (
+              <HealthFormCard key={form.id} form={form} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function HealthFormCard({ form }: { form: CamperHealthForm }) {
+  const statusIcon =
+    form.status === 'approved' ? CheckCircle :
+    form.status === 'rejected' ? XCircle :
+    Clock
+
+  const statusIconColor =
+    form.status === 'approved' ? 'text-emerald-500' :
+    form.status === 'rejected' ? 'text-red-500' :
+    'text-amber-500'
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          {(() => {
+            const Icon = statusIcon
+            return <Icon className={cn('h-5 w-5', statusIconColor)} />
+          })()}
+          <h4 className="text-sm font-medium text-gray-900">{form.template_name}</h4>
+        </div>
+        <StatusBadge status={form.status} styles={healthFormStatusStyles} />
+      </div>
+      <div className="mt-3 space-y-1">
+        {form.event_name && (
+          <p className="text-xs text-gray-500">
+            Event: <span className="font-medium text-gray-700">{form.event_name}</span>
+          </p>
+        )}
+        {form.due_date && (
+          <p className="text-xs text-gray-500">
+            Due: <span className="font-medium text-gray-700">{formatDate(form.due_date)}</span>
+          </p>
+        )}
+        {form.submitted_at && (
+          <p className="text-xs text-gray-500">
+            Submitted: <span className="font-medium text-gray-700">{formatDateTime(form.submitted_at)}</span>
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function FamilyContactsTab({ profile }: { profile: CamperProfile }) {
+  return (
+    <div className="space-y-6">
+      {/* Contacts */}
+      <div>
+        <h3 className="text-base font-semibold text-gray-900 mb-4">Contacts</h3>
+        {profile.contacts.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No contacts linked"
+            description="No contacts have been linked to this camper yet."
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {profile.contacts.map((contact) => (
+              <ContactCard key={contact.contact_id} contact={contact} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Family Section */}
+      {profile.family ? (
+        <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="h-5 w-5 text-gray-600" />
+            <h3 className="text-base font-semibold text-gray-900">
+              {profile.family.family_name} Family
+            </h3>
+          </div>
+
+          {/* Siblings */}
+          <div className="mb-4">
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">Campers</p>
+            <div className="space-y-2">
+              {profile.family.campers.map((camper) => (
+                <Link
+                  key={camper.id}
+                  to={`/app/campers/${camper.id}`}
+                  className={cn(
+                    'flex items-center justify-between rounded-lg px-3 py-2 transition-colors',
+                    camper.id === profile.id ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'text-sm font-medium',
+                      camper.id === profile.id ? 'text-blue-700' : 'text-blue-600 hover:text-blue-700'
+                    )}
+                  >
+                    {camper.first_name} {camper.last_name}
+                    {camper.id === profile.id && (
+                      <span className="ml-2 text-xs text-blue-500">(current)</span>
+                    )}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {camper.age != null && (
+                      <span className="text-xs text-gray-500">Age {camper.age}</span>
+                    )}
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Family Contacts */}
+          {profile.family.contacts.length > 0 && (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">Family Contacts</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {profile.family.contacts.map((contact) => (
+                  <div key={contact.id} className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+                    <p className="text-sm font-medium text-gray-900">
+                      {contact.first_name} {contact.last_name}
+                    </p>
+                    <div className="mt-1.5 space-y-1">
+                      {contact.email && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                          <Mail className="h-3 w-3 text-gray-400" />
+                          {contact.email}
+                        </div>
+                      )}
+                      {contact.phone && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                          <Phone className="h-3 w-3 text-gray-400" />
+                          {contact.phone}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="h-5 w-5 text-gray-400" />
+            <h3 className="text-base font-semibold text-gray-900">Family</h3>
+          </div>
+          <p className="text-sm text-gray-500">This camper is not linked to a family.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ContactCard({ contact }: { contact: CamperProfileContact }) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-900">
+            {contact.first_name} {contact.last_name}
+          </p>
+          <p className="mt-0.5 text-xs text-gray-500 capitalize">{contact.relationship_type}</p>
+        </div>
+        <div className="flex flex-wrap gap-1.5 justify-end">
+          {contact.is_primary && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
+              <Star className="h-3 w-3" />
+              Primary
+            </span>
+          )}
+          {contact.is_emergency && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
+              <AlertTriangle className="h-3 w-3" />
+              Emergency
+            </span>
+          )}
+          {contact.is_authorized_pickup && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+              <CheckCircle className="h-3 w-3" />
+              Pickup
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="mt-3 space-y-1.5">
+        {contact.email && (
+          <div className="flex items-center gap-1.5 text-sm text-gray-600">
+            <Mail className="h-3.5 w-3.5 text-gray-400" />
+            <span className="truncate">{contact.email}</span>
+          </div>
+        )}
+        {contact.phone && (
+          <div className="flex items-center gap-1.5 text-sm text-gray-600">
+            <Phone className="h-3.5 w-3.5 text-gray-400" />
+            {contact.phone}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function EventsTab({ profile }: { profile: CamperProfile }) {
+  return (
+    <div className="space-y-6">
+      {/* Financial Summary */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <p className="text-xs font-medium text-gray-500">Total Due</p>
+          <p className="mt-1 text-xl font-semibold text-gray-900">
+            {formatCurrency(profile.financial_summary.total_due)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <p className="text-xs font-medium text-gray-500">Total Paid</p>
+          <p className="mt-1 text-xl font-semibold text-emerald-600">
+            {formatCurrency(profile.financial_summary.total_paid)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <p className="text-xs font-medium text-gray-500">Balance</p>
+          <p
+            className={cn(
+              'mt-1 text-xl font-semibold',
+              profile.financial_summary.balance > 0 ? 'text-red-600' : 'text-emerald-600'
+            )}
+          >
+            {formatCurrency(profile.financial_summary.balance)}
+          </p>
+        </div>
+      </div>
+
+      {/* Registrations Table */}
+      {profile.registrations.length === 0 ? (
+        <EmptyState
+          icon={Calendar}
+          title="No registrations"
+          description="This camper has not been registered for any events."
+        />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-6 py-3">Event</th>
+                  <th className="hidden px-6 py-3 sm:table-cell">Dates</th>
+                  <th className="px-6 py-3">Status</th>
+                  <th className="hidden px-6 py-3 md:table-cell">Payment</th>
+                  <th className="hidden px-6 py-3 lg:table-cell">Price</th>
+                  <th className="hidden px-6 py-3 md:table-cell">Registered</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {profile.registrations.map((reg) => (
+                  <tr key={reg.id} className="transition-colors hover:bg-gray-50/80">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
+                      <Link to={`/app/events/${reg.event.id}`} className="text-blue-600 hover:text-blue-700">
+                        {reg.event.name}
+                      </Link>
+                    </td>
+                    <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 sm:table-cell">
+                      {formatDate(reg.event.start_date)} - {formatDate(reg.event.end_date)}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <StatusBadge status={reg.status} styles={registrationStatusStyles} />
+                    </td>
+                    <td className="hidden whitespace-nowrap px-6 py-4 md:table-cell">
+                      <StatusBadge status={reg.payment_status} styles={paymentStatusStyles} />
+                    </td>
+                    <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 lg:table-cell">
+                      {reg.event.price != null ? formatCurrency(reg.event.price) : '--'}
+                    </td>
+                    <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 md:table-cell">
+                      {formatDateTime(reg.registered_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PhotosTab({ profile }: { profile: CamperProfile }) {
+  return (
+    <div className="space-y-6">
+      {/* Reference Photo */}
+      <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-semibold text-gray-900">Reference Photo</h3>
+          <button className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50">
+            <Camera className="h-3.5 w-3.5" />
+            Update Photo
+          </button>
+        </div>
+        {profile.reference_photo_url ? (
+          <div className="flex justify-center">
+            <img
+              src={profile.reference_photo_url}
+              alt={`${profile.first_name} ${profile.last_name} reference photo`}
+              className="h-48 w-48 rounded-xl object-cover shadow-sm"
+            />
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
+              <Camera className="h-12 w-12" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Photo Grid */}
+      {profile.photos.length === 0 ? (
+        <EmptyState
+          icon={Camera}
+          title="No photos found"
+          description="No photos found for this camper."
+        />
+      ) : (
+        <div>
+          <h3 className="text-base font-semibold text-gray-900 mb-4">
+            Detected in Photos ({profile.photos.length})
+          </h3>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {profile.photos.map((photo) => (
+              <PhotoCard key={photo.id} photo={photo} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PhotoCard({ photo }: { photo: CamperPhoto }) {
+  return (
+    <div className="group overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md">
+      <div className="aspect-square overflow-hidden bg-gray-100">
+        <img
+          src={photo.url}
+          alt={photo.caption ?? photo.file_name}
+          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+        />
+      </div>
+      <div className="p-3">
+        {photo.caption && (
+          <p className="text-xs font-medium text-gray-900 truncate">{photo.caption}</p>
+        )}
+        <div className="mt-1 flex items-center justify-between">
+          <p className="text-xs text-gray-500">{formatDateTime(photo.created_at)}</p>
+          {photo.similarity != null && (
+            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+              {Math.round(photo.similarity * 100)}% match
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CommunicationsTab({ profile }: { profile: CamperProfile }) {
+  return (
+    <div className="space-y-6">
+      {profile.communications.length === 0 ? (
+        <EmptyState
+          icon={MessageSquare}
+          title="No communications"
+          description="No messages have been sent regarding this camper."
+        />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-6 py-3">Date</th>
+                  <th className="px-6 py-3">Channel</th>
+                  <th className="px-6 py-3">Subject</th>
+                  <th className="hidden px-6 py-3 sm:table-cell">Status</th>
+                  <th className="hidden px-6 py-3 md:table-cell">Recipient</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {profile.communications.map((comm) => (
+                  <tr key={comm.id} className="transition-colors hover:bg-gray-50/80">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                      {formatDateTime(comm.sent_at)}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
+                          comm.channel === 'email'
+                            ? 'bg-blue-50 text-blue-700 ring-blue-600/20'
+                            : 'bg-violet-50 text-violet-700 ring-violet-600/20'
+                        )}
+                      >
+                        {comm.channel === 'email' ? 'Email' : 'SMS'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {comm.subject ?? '--'}
+                    </td>
+                    <td className="hidden whitespace-nowrap px-6 py-4 sm:table-cell">
+                      <StatusBadge status={comm.status} styles={communicationStatusStyles} />
+                    </td>
+                    <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 md:table-cell">
+                      {comm.to_address ?? '--'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Main Page Component ───────────────────────────────────────
 
 export function CamperDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const [activeTab, setActiveTab] = useState<Tab>('overview')
 
-  const { data: camper, isLoading, error } = useCamper(id)
-  const { data: registrations = [], isLoading: registrationsLoading } =
-    useRegistrations({ camper_id: id })
+  const { data: profile, isLoading, error } = useCamperProfile(id)
 
+  // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="space-y-6">
+        <div className="flex items-center gap-1.5">
+          <div className="h-4 w-4 rounded bg-gray-200 animate-pulse" />
+          <div className="h-4 w-24 rounded bg-gray-200 animate-pulse" />
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="h-20 w-20 rounded-full bg-gray-200 animate-pulse" />
+          <div className="space-y-2">
+            <div className="h-7 w-48 rounded bg-gray-200 animate-pulse" />
+            <div className="h-4 w-32 rounded bg-gray-200 animate-pulse" />
+          </div>
+        </div>
+        <div className="flex gap-4 border-b border-gray-200 pb-2">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="h-4 w-20 rounded bg-gray-200 animate-pulse" />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-24 rounded-xl bg-gray-200 animate-pulse" />
+          ))}
+        </div>
       </div>
     )
   }
 
-  if (error || !camper) {
+  // Error state
+  if (error || !profile) {
     return (
       <div className="space-y-4">
         <Link
@@ -85,276 +911,120 @@ export function CamperDetailPage() {
           Back to Campers
         </Link>
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          Failed to load camper. Please try again.
+          Failed to load camper profile. Please try again.
         </div>
       </div>
     )
   }
 
+  const fullName = `${profile.first_name} ${profile.last_name}`
+  const initials = getInitials(profile.first_name, profile.last_name)
+  const avatarColor = getAvatarColor(fullName)
+
   return (
     <div className="space-y-6">
-      {/* Back Button + Header */}
-      <div>
-        <Link
-          to="/app/campers"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Campers
-        </Link>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-gray-900">
-          {camper.first_name} {camper.last_name}
-        </h1>
-      </div>
+      {/* Back Button */}
+      <Link
+        to="/app/campers"
+        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Campers
+      </Link>
 
-      {/* Info Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <User className="h-4 w-4" />
-            <span>Age</span>
-          </div>
-          <p className="mt-2 text-sm font-medium text-gray-900">
-            {camper.age ?? '—'}
-          </p>
-          {camper.date_of_birth && (
-            <p className="mt-0.5 text-xs text-gray-500">
-              DOB:{' '}
-              {new Date(camper.date_of_birth + 'T00:00:00').toLocaleDateString(
-                'en-US',
-                { month: 'short', day: 'numeric', year: 'numeric' }
+      {/* Header Section */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-5">
+          {/* Avatar */}
+          {profile.reference_photo_url ? (
+            <img
+              src={profile.reference_photo_url}
+              alt={fullName}
+              className="h-20 w-20 rounded-full object-cover ring-4 ring-white shadow-lg"
+            />
+          ) : (
+            <div
+              className={cn(
+                'flex h-20 w-20 items-center justify-center rounded-full text-2xl font-bold text-white ring-4 ring-white shadow-lg',
+                avatarColor
               )}
-            </p>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <User className="h-4 w-4" />
-            <span>Gender</span>
-          </div>
-          <p className="mt-2 text-sm font-medium text-gray-900 capitalize">
-            {camper.gender ?? '—'}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <GraduationCap className="h-4 w-4" />
-            <span>School</span>
-          </div>
-          <p className="mt-2 text-sm font-medium text-gray-900">
-            {camper.school ?? '—'}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <GraduationCap className="h-4 w-4" />
-            <span>Grade</span>
-          </div>
-          <p className="mt-2 text-sm font-medium text-gray-900">
-            {camper.grade ?? '—'}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <MapPin className="h-4 w-4" />
-            <span>City / State</span>
-          </div>
-          <p className="mt-2 text-sm font-medium text-gray-900">
-            {camper.city && camper.state
-              ? `${camper.city}, ${camper.state}`
-              : camper.city || camper.state || '—'}
-          </p>
-        </div>
-      </div>
-
-      {/* Allergies & Dietary Restrictions */}
-      {((camper.allergies && camper.allergies.length > 0) ||
-        (camper.dietary_restrictions &&
-          camper.dietary_restrictions.length > 0)) && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {camper.allergies && camper.allergies.length > 0 && (
-            <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                <span>Allergies</span>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {camper.allergies.map((allergy, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20"
-                  >
-                    {allergy}
-                  </span>
-                ))}
-              </div>
+            >
+              {initials}
             </div>
           )}
-          {camper.dietary_restrictions &&
-            camper.dietary_restrictions.length > 0 && (
-              <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                  <UtensilsCrossed className="h-4 w-4" />
-                  <span>Dietary Restrictions</span>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {camper.dietary_restrictions.map((restriction, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20"
-                    >
-                      {restriction}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-        </div>
-      )}
 
-      {/* Contacts Section */}
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900">Contacts</h2>
-        {camper.contacts.length === 0 && (
-          <p className="mt-2 text-sm text-gray-500">
-            No contacts linked to this camper.
-          </p>
-        )}
-        {camper.contacts.length > 0 && (
-          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {camper.contacts.map((contact) => (
-              <div
-                key={contact.contact_id}
-                className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {contact.first_name} {contact.last_name}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-500 capitalize">
-                      {contact.relationship_type}
-                    </p>
-                  </div>
-                  <div className="flex gap-1.5">
-                    {contact.is_primary && (
-                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
-                        Primary
-                      </span>
-                    )}
-                    {contact.is_emergency && (
-                      <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
-                        Emergency
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="mt-3 space-y-1.5">
-                  {contact.email && (
-                    <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                      <Mail className="h-3.5 w-3.5 text-gray-400" />
-                      {contact.email}
-                    </div>
-                  )}
-                  {contact.phone && (
-                    <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                      <Phone className="h-3.5 w-3.5 text-gray-400" />
-                      {contact.phone}
-                    </div>
-                  )}
-                </div>
-                {contact.is_authorized_pickup && (
-                  <p className="mt-2 text-xs text-emerald-600">
-                    Authorized for pickup
-                  </p>
+          {/* Name & Info */}
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">{fullName}</h1>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              {profile.age != null && (
+                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
+                  Age {profile.age}
+                </span>
+              )}
+              {profile.gender && (
+                <span className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-500/20 capitalize">
+                  {profile.gender}
+                </span>
+              )}
+              {profile.school && (
+                <span className="inline-flex items-center gap-1 text-sm text-gray-500">
+                  <Activity className="h-3.5 w-3.5" />
+                  {profile.school}
+                  {profile.grade && ` - Grade ${profile.grade}`}
+                </span>
+              )}
+              {(profile.city || profile.state) && (
+                <span className="inline-flex items-center gap-1 text-sm text-gray-500">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {profile.city && profile.state
+                    ? `${profile.city}, ${profile.state}`
+                    : profile.city || profile.state}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Edit Button */}
+        <button className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50">
+          <Edit className="h-4 w-4" />
+          Edit Camper
+        </button>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200">
+        <div className="-mb-px flex gap-1 overflow-x-auto">
+          {tabs.map((tab) => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  'flex items-center gap-1.5 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors',
+                  activeTab === tab.key
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700'
                 )}
-              </div>
-            ))}
-          </div>
-        )}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
-      {/* Registrations Section */}
+      {/* Tab Content */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900">Registrations</h2>
-        {registrationsLoading && (
-          <div className="mt-4 flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-          </div>
-        )}
-        {!registrationsLoading && registrations.length === 0 && (
-          <p className="mt-2 text-sm text-gray-500">
-            No registrations found for this camper.
-          </p>
-        )}
-        {!registrationsLoading && registrations.length > 0 && (
-          <div className="mt-3 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    <th className="px-6 py-3">Event</th>
-                    <th className="px-6 py-3">Status</th>
-                    <th className="hidden px-6 py-3 sm:table-cell">Payment</th>
-                    <th className="hidden px-6 py-3 md:table-cell">
-                      Registered
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {registrations.map((reg) => {
-                    const regStatus = registrationStatusConfig[reg.status]
-                    const payStatus = paymentStatusConfig[reg.payment_status]
-                    return (
-                      <tr
-                        key={reg.id}
-                        className="transition-colors hover:bg-gray-50/80"
-                      >
-                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                          {reg.event_name ?? 'Unknown'}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <span
-                            className={cn(
-                              'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
-                              regStatus.className
-                            )}
-                          >
-                            {regStatus.label}
-                          </span>
-                        </td>
-                        <td className="hidden whitespace-nowrap px-6 py-4 sm:table-cell">
-                          <span
-                            className={cn(
-                              'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
-                              payStatus.className
-                            )}
-                          >
-                            {payStatus.label}
-                          </span>
-                        </td>
-                        <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 md:table-cell">
-                          {new Date(reg.registered_at).toLocaleDateString(
-                            'en-US',
-                            {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            }
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        {activeTab === 'overview' && <OverviewTab profile={profile} />}
+        {activeTab === 'health' && <HealthTab profile={profile} />}
+        {activeTab === 'family' && <FamilyContactsTab profile={profile} />}
+        {activeTab === 'events' && <EventsTab profile={profile} />}
+        {activeTab === 'photos' && <PhotosTab profile={profile} />}
+        {activeTab === 'communications' && <CommunicationsTab profile={profile} />}
       </div>
     </div>
   )

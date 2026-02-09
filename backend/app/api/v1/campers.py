@@ -15,6 +15,7 @@ from app.api.deps import require_permission
 from app.database import get_db
 from app.schemas.camper import CamperContactLink, CamperCreate, CamperResponse, CamperUpdate
 from app.services import camper_service
+from app.services.camper_profile_service import get_camper_profile
 
 router = APIRouter(prefix="/campers", tags=["Campers"])
 
@@ -68,6 +69,28 @@ async def get_camper(
             detail="Camper not found",
         )
     return camper
+
+
+@router.get("/{camper_id}/profile")
+async def get_camper_profile_endpoint(
+    camper_id: uuid.UUID,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("core.campers.read")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a comprehensive camper profile aggregating data from multiple tables."""
+    profile = await get_camper_profile(
+        db,
+        organization_id=current_user["organization_id"],
+        camper_id=camper_id,
+    )
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Camper not found",
+        )
+    return profile
 
 
 @router.post(

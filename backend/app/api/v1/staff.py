@@ -161,7 +161,7 @@ async def list_departments(
     """
     # Departments are not yet a first-class field on User,
     # so return an empty list placeholder for future extension.
-    return {"departments": []}
+    return []
 
 
 @router.get(

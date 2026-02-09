@@ -137,7 +137,7 @@ export function CampersPage() {
                 {campers.map((camper) => (
                   <tr
                     key={camper.id}
-                    onClick={() => navigate(`/campers/${camper.id}`)}
+                    onClick={() => navigate(`/app/campers/${camper.id}`)}
                     className="cursor-pointer transition-colors hover:bg-gray-50/80"
                   >
                     <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
