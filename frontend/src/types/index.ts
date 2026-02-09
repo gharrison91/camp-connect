@@ -538,3 +538,253 @@ export interface DemographicItem {
   label: string;
   count: number;
 }
+
+// ─── Schedules ──────────────────────────────────────────────
+
+export interface Schedule {
+  id: string;
+  organization_id: string;
+  event_id: string;
+  activity_id: string;
+  activity_name?: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  location: string | null;
+  staff_user_ids: string[] | null;
+  max_capacity: number | null;
+  notes: string | null;
+  is_cancelled: boolean;
+  created_at: string;
+}
+
+export interface ScheduleCreate {
+  event_id: string;
+  activity_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  location?: string;
+  staff_user_ids?: string[];
+  max_capacity?: number;
+  notes?: string;
+}
+
+export interface ScheduleUpdate extends Partial<Omit<ScheduleCreate, 'event_id'>> {}
+
+export interface ScheduleAssignment {
+  id: string;
+  schedule_id: string;
+  camper_id: string | null;
+  bunk_id: string | null;
+  assigned_by: string | null;
+  camper_name?: string;
+  bunk_name?: string;
+  created_at: string;
+}
+
+export interface ScheduleAssignmentCreate {
+  schedule_id: string;
+  camper_id?: string;
+  bunk_id?: string;
+}
+
+export interface DailyViewSlot {
+  time: string;
+  sessions: Schedule[];
+}
+
+// ─── Event Bunk Config ──────────────────────────────────────
+
+export interface EventBunkConfig {
+  id: string;
+  event_id: string;
+  bunk_id: string;
+  bunk_name?: string;
+  is_active: boolean;
+  event_capacity: number | null;
+  counselor_user_ids: string[] | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface EventBunkConfigCreate {
+  event_id: string;
+  bunk_id: string;
+  is_active?: boolean;
+  event_capacity?: number;
+  counselor_user_ids?: string[];
+  notes?: string;
+}
+
+export interface EventBunkConfigUpdate {
+  is_active?: boolean;
+  event_capacity?: number;
+  counselor_user_ids?: string[];
+  notes?: string;
+}
+
+// ─── Payments & Invoices ────────────────────────────────────
+
+export interface InvoiceLineItem {
+  description: string;
+  amount: number;
+  quantity: number;
+}
+
+export interface Invoice {
+  id: string;
+  organization_id: string;
+  family_id: string | null;
+  contact_id: string | null;
+  contact_name?: string;
+  family_name?: string;
+  registration_ids: string[] | null;
+  line_items: InvoiceLineItem[] | null;
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+  due_date: string | null;
+  paid_at: string | null;
+  stripe_invoice_id: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface InvoiceCreate {
+  family_id?: string;
+  contact_id?: string;
+  registration_ids?: string[];
+  line_items?: InvoiceLineItem[];
+  subtotal: number;
+  tax?: number;
+  total: number;
+  status?: string;
+  due_date?: string;
+  notes?: string;
+}
+
+export interface InvoiceUpdate extends Partial<InvoiceCreate> {}
+
+export interface Payment {
+  id: string;
+  organization_id: string;
+  invoice_id: string | null;
+  registration_id: string | null;
+  contact_id: string | null;
+  amount: number;
+  currency: string;
+  payment_method: string | null;
+  stripe_payment_intent_id: string | null;
+  stripe_charge_id: string | null;
+  status: 'pending' | 'completed' | 'failed' | 'refunded';
+  refund_amount: number | null;
+  paid_at: string | null;
+  created_at: string;
+}
+
+// ─── Notifications ──────────────────────────────────────────
+
+export type NotificationTriggerType =
+  | 'registration_confirmed'
+  | 'health_form_reminder'
+  | 'payment_received'
+  | 'waitlist_promoted'
+  | 'event_reminder';
+
+export type NotificationChannel = 'email' | 'sms' | 'both';
+
+export interface NotificationConfig {
+  id: string;
+  organization_id: string;
+  trigger_type: NotificationTriggerType;
+  channel: NotificationChannel;
+  is_active: boolean;
+  template_id: string | null;
+  config: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface NotificationConfigCreate {
+  trigger_type: NotificationTriggerType;
+  channel: NotificationChannel;
+  is_active?: boolean;
+  template_id?: string;
+  config?: Record<string, unknown>;
+}
+
+export interface NotificationConfigUpdate extends Partial<NotificationConfigCreate> {}
+
+// ─── Store ──────────────────────────────────────────────────
+
+export interface StoreItem {
+  id: string;
+  organization_id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  price: number;
+  quantity_in_stock: number;
+  image_url: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface StoreItemCreate {
+  name: string;
+  description?: string;
+  category?: string;
+  price: number;
+  quantity_in_stock?: number;
+  image_url?: string;
+  is_active?: boolean;
+}
+
+export interface StoreItemUpdate extends Partial<StoreItemCreate> {}
+
+export interface SpendingAccount {
+  id: string;
+  organization_id: string;
+  camper_id: string;
+  camper_name?: string;
+  balance: number;
+  daily_limit: number | null;
+  created_at: string;
+}
+
+export interface SpendingAccountUpdate {
+  balance?: number;
+  daily_limit?: number;
+}
+
+export interface StoreTransaction {
+  id: string;
+  organization_id: string;
+  camper_id: string;
+  item_id: string;
+  camper_name?: string;
+  item_name?: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+  transaction_date: string;
+  recorded_by: string | null;
+  created_at: string;
+}
+
+// ─── Portal ─────────────────────────────────────────────────
+
+export interface PortalCamper {
+  id: string;
+  first_name: string;
+  last_name: string;
+  age: number | null;
+  gender: string | null;
+  upcoming_events: string[];
+  balance_due: number;
+}
+
+export interface PortalInvoice extends Invoice {
+  camper_names?: string[];
+}

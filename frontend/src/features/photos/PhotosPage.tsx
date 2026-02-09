@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import {
   Camera,
   Upload,
@@ -7,11 +7,14 @@ import {
   Image as ImageIcon,
   X,
   Trash2,
+  ScanFace,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePhotos, useUploadPhoto, useDeletePhoto } from '@/hooks/usePhotos'
+import { usePhotoFaceTags, useReprocessPhoto } from '@/hooks/useFaceRecognition'
 import { usePermissions } from '@/hooks/usePermissions'
-import type { Photo } from '@/types'
+import { FaceTagOverlay } from './components/FaceTagOverlay'
+import type { Photo, FaceTag } from '@/types'
 
 const categoryConfig: Record<string, { label: string; color: string }> = {
   camper: { label: 'Camper', color: 'bg-blue-100 text-blue-700' },
@@ -376,12 +379,46 @@ function PhotoDetailModal({
   onClose: () => void
 }) {
   const deletePhoto = useDeletePhoto()
+  const reprocessPhoto = useReprocessPhoto()
   const { hasPermission } = usePermissions()
+  const { data: hookFaceTags = [], isLoading: faceTagsLoading } = usePhotoFaceTags(photo.id)
+  const [showFaceTags, setShowFaceTags] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+  const [imgDimensions, setImgDimensions] = useState({ width: 0, height: 0 })
+
+  // Map hook FaceTag (lowercase keys) to @/types FaceTag (capitalized keys)
+  const faceTags: FaceTag[] = hookFaceTags.map((t) => ({
+    id: t.id,
+    photo_id: t.photo_id,
+    camper_id: t.camper_id,
+    camper_name: t.camper_name,
+    face_id: null,
+    bounding_box: t.bounding_box
+      ? { Left: t.bounding_box.left, Top: t.bounding_box.top, Width: t.bounding_box.width, Height: t.bounding_box.height }
+      : null,
+    confidence: t.confidence,
+    similarity: t.similarity,
+    created_at: t.created_at,
+  }))
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this photo?')) return
     await deletePhoto.mutateAsync(photo.id)
     onClose()
+  }
+
+  const handleDetectFaces = async () => {
+    await reprocessPhoto.mutateAsync(photo.id)
+    setShowFaceTags(true)
+  }
+
+  const handleImageLoad = () => {
+    if (imgRef.current) {
+      setImgDimensions({
+        width: imgRef.current.clientWidth,
+        height: imgRef.current.clientHeight,
+      })
+    }
   }
 
   const formatFileSize = (bytes: number) => {
@@ -404,11 +441,22 @@ function PhotoDetailModal({
           {/* Image */}
           <div className="flex items-center justify-center bg-gray-900 md:w-2/3">
             {photo.url ? (
-              <img
-                src={photo.url}
-                alt={photo.caption || photo.file_name}
-                className="max-h-[500px] w-full object-contain"
-              />
+              showFaceTags && faceTags.length > 0 ? (
+                <FaceTagOverlay
+                  photoUrl={photo.url}
+                  faceTags={faceTags}
+                  imageWidth={imgDimensions.width || 500}
+                  imageHeight={imgDimensions.height || 375}
+                />
+              ) : (
+                <img
+                  ref={imgRef}
+                  src={photo.url}
+                  alt={photo.caption || photo.file_name}
+                  className="max-h-[500px] w-full object-contain"
+                  onLoad={handleImageLoad}
+                />
+              )
             ) : (
               <div className="flex h-64 items-center justify-center">
                 <ImageIcon className="h-16 w-16 text-gray-600" />
@@ -447,6 +495,42 @@ function PhotoDetailModal({
                   {new Date(photo.created_at).toLocaleDateString()}
                 </span>
               </div>
+              {faceTags.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Faces</span>
+                  <span className="text-gray-900">{faceTags.length} detected</span>
+                </div>
+              )}
+            </div>
+
+            {/* Face Detection */}
+            <div className="space-y-2">
+              <button
+                onClick={handleDetectFaces}
+                disabled={reprocessPhoto.isPending}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+              >
+                {reprocessPhoto.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ScanFace className="h-4 w-4" />
+                )}
+                {reprocessPhoto.isPending ? 'Detecting...' : 'Detect Faces'}
+              </button>
+
+              {faceTags.length > 0 && (
+                <button
+                  onClick={() => setShowFaceTags(!showFaceTags)}
+                  className={cn(
+                    'inline-flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
+                    showFaceTags
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  )}
+                >
+                  {showFaceTags ? 'Hide Face Tags' : 'Show Face Tags'}
+                </button>
+              )}
             </div>
 
             {hasPermission('photos.media.delete') && (

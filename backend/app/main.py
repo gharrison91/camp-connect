@@ -48,6 +48,16 @@ from app.api.v1.activities import router as activities_router
 from app.api.v1.bunks import router as bunks_router
 from app.api.v1.families import router as families_router
 
+# Phase 6: Parent Portal
+from app.api.v1.portal import router as portal_router
+
+# Phase 7: Scheduling, Payments, Notifications, Reports, Store
+from app.api.v1.schedules import router as schedules_router
+from app.api.v1.payments import router as payments_router
+from app.api.v1.notifications import router as notifications_router
+from app.api.v1.reports import router as reports_router
+from app.api.v1.store import router as store_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -119,6 +129,16 @@ app.include_router(analytics_router, prefix=settings.api_v1_prefix)
 app.include_router(activities_router, prefix=settings.api_v1_prefix)
 app.include_router(bunks_router, prefix=settings.api_v1_prefix)
 app.include_router(families_router, prefix=settings.api_v1_prefix)
+
+# Phase 6: Parent Portal
+app.include_router(portal_router, prefix=settings.api_v1_prefix)
+
+# Phase 7: Scheduling, Payments, Notifications, Reports, Store
+app.include_router(schedules_router, prefix=settings.api_v1_prefix)
+app.include_router(payments_router, prefix=settings.api_v1_prefix)
+app.include_router(notifications_router, prefix=settings.api_v1_prefix)
+app.include_router(reports_router, prefix=settings.api_v1_prefix)
+app.include_router(store_router, prefix=settings.api_v1_prefix)
 
 
 @app.exception_handler(Exception)

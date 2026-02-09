@@ -23,7 +23,12 @@ from app.schemas.bunk import (
     BunkWithAssignmentsResponse,
     UnassignedCamperResponse,
 )
-from app.services import bunk_service
+from app.schemas.schedule import (
+    EventBunkConfigCreate,
+    EventBunkConfigResponse,
+    EventBunkConfigUpdate,
+)
+from app.services import bunk_service, event_bunk_config_service
 
 router = APIRouter(prefix="/bunks", tags=["Bunks"])
 
@@ -155,6 +160,107 @@ async def get_unassigned_campers(
         organization_id=current_user["organization_id"],
         event_id=event_id,
     )
+
+
+# ---------------------------------------------------------------------------
+# Event Bunk Config endpoints (static paths before /{bunk_id})
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/event-config",
+    response_model=List[EventBunkConfigResponse],
+)
+async def list_event_bunk_configs(
+    event_id: uuid.UUID = Query(..., description="Event ID (required)"),
+    current_user: Dict[str, Any] = Depends(
+        require_permission("core.bunks.read")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all bunk configurations for an event."""
+    return await event_bunk_config_service.list_event_bunk_configs(
+        db,
+        organization_id=current_user["organization_id"],
+        event_id=event_id,
+    )
+
+
+@router.post(
+    "/event-config",
+    response_model=EventBunkConfigResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_event_bunk_config(
+    body: EventBunkConfigCreate,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("core.bunks.update")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create an event-specific bunk configuration."""
+    try:
+        return await event_bunk_config_service.create_event_bunk_config(
+            db,
+            organization_id=current_user["organization_id"],
+            data=body.model_dump(),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.put(
+    "/event-config/{config_id}",
+    response_model=EventBunkConfigResponse,
+)
+async def update_event_bunk_config(
+    config_id: uuid.UUID,
+    body: EventBunkConfigUpdate,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("core.bunks.update")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update an event-specific bunk configuration."""
+    result = await event_bunk_config_service.update_event_bunk_config(
+        db,
+        organization_id=current_user["organization_id"],
+        config_id=config_id,
+        data=body.model_dump(exclude_unset=True),
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event bunk config not found",
+        )
+    return result
+
+
+@router.delete(
+    "/event-config/{config_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_event_bunk_config(
+    config_id: uuid.UUID,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("core.bunks.update")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an event-specific bunk configuration."""
+    deleted = await event_bunk_config_service.delete_event_bunk_config(
+        db,
+        organization_id=current_user["organization_id"],
+        config_id=config_id,
+    )
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event bunk config not found",
+        )
 
 
 # ---------------------------------------------------------------------------

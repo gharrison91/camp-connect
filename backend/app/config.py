@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     sendgrid_from_email: str = "noreply@campconnect.com"
     sendgrid_from_name: str = "Camp Connect"
 
+    # Stripe
+    stripe_secret_key: str = ""
+    stripe_publishable_key: str = ""
+    stripe_webhook_secret: str = ""
+
     # AWS Rekognition (facial recognition for camper photos)
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""

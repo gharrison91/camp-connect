@@ -19,6 +19,7 @@ import { LocationsPage } from '@/features/admin/LocationsPage'
 import { RolesPage } from '@/features/admin/RolesPage'
 import { UsersPage } from '@/features/admin/UsersPage'
 import { GeneralSettingsPage } from '@/features/admin/GeneralSettingsPage'
+import { NotificationSettingsPage } from '@/features/admin/NotificationSettingsPage'
 import { PhotosPage } from '@/features/photos/PhotosPage'
 import { CommunicationsPage } from '@/features/communications/CommunicationsPage'
 import { HealthSafetyPage } from '@/features/health/HealthSafetyPage'
@@ -27,7 +28,6 @@ import { StaffDirectoryPage } from '@/features/staff/StaffDirectoryPage'
 import { StaffProfilePage } from '@/features/staff/StaffProfilePage'
 import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard'
 import { OnboardingDashboard } from '@/features/onboarding/OnboardingDashboard'
-import { StorePage } from '@/features/placeholder/PlaceholderPages'
 
 // Phase 5: Analytics, Activities, Bunks, Families
 import { AnalyticsPage } from '@/features/analytics/AnalyticsPage'
@@ -35,6 +35,17 @@ import { ActivitiesPage } from '@/features/activities/ActivitiesPage'
 import { BunksPage } from '@/features/bunks/BunksPage'
 import { FamiliesPage } from '@/features/families/FamiliesPage'
 import { FamilyDetailPage } from '@/features/families/FamilyDetailPage'
+
+// Phase 7: Schedule, Payments, Reports, Store, Portal
+import { SchedulePage } from '@/features/schedule/SchedulePage'
+import { PaymentsPage } from '@/features/payments/PaymentsPage'
+import { ReportsPage } from '@/features/reports/ReportsPage'
+import { StoreManagementPage } from '@/features/store/StoreManagementPage'
+import { PortalLayout } from '@/features/portal/PortalLayout'
+import { PortalDashboard } from '@/features/portal/PortalDashboard'
+import { PortalCamperView } from '@/features/portal/PortalCamperView'
+import { PortalPhotos } from '@/features/portal/PortalPhotos'
+import { PortalInvoices } from '@/features/portal/PortalInvoices'
 
 function App() {
   return (
@@ -86,8 +97,11 @@ function App() {
             <Route path="families" element={<FamiliesPage />} />
             <Route path="families/:id" element={<FamilyDetailPage />} />
 
-            {/* Placeholder pages */}
-            <Route path="store" element={<StorePage />} />
+            {/* Phase 7: Schedule, Payments, Reports, Store */}
+            <Route path="schedule" element={<SchedulePage />} />
+            <Route path="payments" element={<PaymentsPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="store" element={<StoreManagementPage />} />
 
             {/* Settings (nested routes) */}
             <Route path="settings" element={<SettingsLayout />}>
@@ -97,7 +111,23 @@ function App() {
               <Route path="roles" element={<RolesPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="general" element={<GeneralSettingsPage />} />
+              <Route path="notifications" element={<NotificationSettingsPage />} />
             </Route>
+          </Route>
+
+          {/* Parent Portal */}
+          <Route
+            path="/portal"
+            element={
+              <ProtectedRoute>
+                <PortalLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<PortalDashboard />} />
+            <Route path="campers/:id" element={<PortalCamperView />} />
+            <Route path="photos" element={<PortalPhotos />} />
+            <Route path="invoices" element={<PortalInvoices />} />
           </Route>
 
           {/* Legacy redirects - old routes to new /app prefix */}

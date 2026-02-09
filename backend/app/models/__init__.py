@@ -38,6 +38,13 @@ from app.models.activity import Activity
 from app.models.bunk import Bunk, BunkAssignment
 from app.models.family import Family
 
+# Phase 7: Scheduling, Payments, Store, Notifications, Event Bunk Config
+from app.models.schedule import Schedule, ScheduleAssignment
+from app.models.payment import Invoice, Payment
+from app.models.notification_config import NotificationConfig
+from app.models.store import StoreItem, SpendingAccount, StoreTransaction
+from app.models.event_bunk_config import EventBunkConfig
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -74,4 +81,14 @@ __all__ = [
     "Bunk",
     "BunkAssignment",
     "Family",
+    # Phase 7
+    "Schedule",
+    "ScheduleAssignment",
+    "Invoice",
+    "Payment",
+    "NotificationConfig",
+    "StoreItem",
+    "SpendingAccount",
+    "StoreTransaction",
+    "EventBunkConfig",
 ]

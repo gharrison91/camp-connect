@@ -41,6 +41,7 @@ import type { Bunk, BunkAssignment } from '@/hooks/useBunks'
 import { useToast } from '@/components/ui/Toast'
 import { CamperCard, CamperCardOverlay } from './CamperCard'
 import { BunkManageModal } from './BunkManageModal'
+import { EventBunkConfigModal } from './EventBunkConfigModal'
 
 // ─── Drag metadata stored during onDragStart ────────────────
 
@@ -137,6 +138,7 @@ export function BunksPage() {
 
   // Modal state
   const [showManageModal, setShowManageModal] = useState(false)
+  const [showBunkConfigModal, setShowBunkConfigModal] = useState(false)
 
   // Drag state
   const [activeDragData, setActiveDragData] = useState<DragData | null>(null)
@@ -273,6 +275,17 @@ export function BunksPage() {
             ))}
           </select>
 
+          {/* Configure Bunks for Event */}
+          {selectedEventId && hasPermission('core.bunks.create') && (
+            <button
+              onClick={() => setShowBunkConfigModal(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 shadow-sm transition-colors hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <BedDouble className="h-4 w-4" />
+              Configure Bunks
+            </button>
+          )}
+
           {/* Manage Bunks button */}
           {hasPermission('core.bunks.create') && (
             <button
@@ -401,6 +414,15 @@ export function BunksPage() {
       {/* Manage Bunks Modal */}
       {showManageModal && (
         <BunkManageModal onClose={() => setShowManageModal(false)} />
+      )}
+
+      {/* Event Bunk Config Modal */}
+      {showBunkConfigModal && selectedEventId && (
+        <EventBunkConfigModal
+          eventId={selectedEventId}
+          eventName={events.find((e) => e.id === selectedEventId)?.name || ''}
+          onClose={() => setShowBunkConfigModal(false)}
+        />
       )}
     </div>
   )

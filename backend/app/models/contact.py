@@ -8,7 +8,7 @@ from __future__ import annotations
 import uuid
 from typing import Optional
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -70,6 +70,14 @@ class Contact(Base, TimestampMixin, SoftDeleteMixin):
         ForeignKey("users.id"),
         index=True,
         nullable=True,
+    )
+
+    # Parent Portal access
+    portal_access: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    portal_token: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
     )
 
     # Relationships

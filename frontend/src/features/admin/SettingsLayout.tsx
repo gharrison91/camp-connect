@@ -3,7 +3,7 @@
  */
 
 import { NavLink, Outlet } from 'react-router-dom'
-import { Building2, MapPin, Shield, Users, Sliders } from 'lucide-react'
+import { Building2, MapPin, Shield, Users, Sliders, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -13,6 +13,7 @@ const settingsTabs = [
   { label: 'Roles', icon: Shield, path: '/settings/roles', permission: 'core.roles.manage' },
   { label: 'Users', icon: Users, path: '/settings/users', permission: 'core.users.read' },
   { label: 'General', icon: Sliders, path: '/settings/general', permission: 'core.settings.manage' },
+  { label: 'Notifications', icon: Bell, path: '/settings/notifications', permission: 'core.settings.manage' },
 ] as const
 
 export function SettingsLayout() {

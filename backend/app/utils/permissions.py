@@ -62,6 +62,20 @@ PERMISSIONS: Dict[str, Dict[str, List[str]]] = {
         "manage": ["manage"],
         "transactions": ["view"],
     },
+    "scheduling": {
+        "sessions": ["create", "read", "update", "delete"],
+        "assignments": ["create", "read", "delete"],
+    },
+    "payments": {
+        "invoices": ["create", "read", "update"],
+        "transactions": ["read", "process", "refund"],
+    },
+    "portal": {
+        "access": ["manage"],
+    },
+    "reports": {
+        "export": ["read"],
+    },
 }
 
 
@@ -113,6 +127,14 @@ DEFAULT_ROLE_PERMISSIONS: Dict[str, List[str]] = {
         "comms.messages.send", "comms.messages.read",
         "comms.templates.manage",
         "analytics.dashboards.read",
+        "scheduling.sessions.create", "scheduling.sessions.read",
+        "scheduling.sessions.update", "scheduling.sessions.delete",
+        "scheduling.assignments.create", "scheduling.assignments.read",
+        "scheduling.assignments.delete",
+        "payments.invoices.create", "payments.invoices.read", "payments.invoices.update",
+        "payments.transactions.read", "payments.transactions.process",
+        "portal.access.manage",
+        "reports.export.read",
     ],
     "Counselor": [
         "core.events.read",

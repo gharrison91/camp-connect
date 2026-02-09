@@ -114,7 +114,7 @@ async def get_camper_profile(
     financial_summary = _calculate_financial_summary(registrations)
 
     return {
-        "camper": camper_info,
+        **camper_info,
         "contacts": contacts,
         "family": family_data,
         "registrations": registrations,
@@ -208,8 +208,8 @@ async def _fetch_family_data(
     return {
         "id": family.id,
         "family_name": family.family_name,
-        "siblings": siblings,
-        "family_contacts": family_contacts,
+        "campers": siblings,
+        "contacts": family_contacts,
     }
 
 
@@ -287,40 +287,26 @@ async def _fetch_health_forms(
     items: List[Dict[str, Any]] = []
     for form in forms:
         template = form.template
-        template_data = None
-        if template and not template.deleted_at:
-            template_data = {
-                "id": template.id,
-                "name": template.name,
-                "description": template.description,
-                "category": template.category,
-                "required_for_registration": template.required_for_registration,
-            }
-
-        submission_data = None
-        if form.submission:
-            submission_data = {
-                "id": form.submission.id,
-                "data": form.submission.data,
-                "signature": form.submission.signature,
-                "signed_at": form.submission.signed_at,
-                "created_at": form.submission.created_at,
-            }
-
         items.append({
             "id": form.id,
-            "template_id": form.template_id,
-            "event_id": form.event_id,
+            "template_name": template.name if template and not template.deleted_at else None,
             "status": form.status,
             "due_date": form.due_date,
             "submitted_at": form.submitted_at,
-            "reviewed_at": form.reviewed_at,
-            "review_notes": form.review_notes,
-            "template": template_data,
-            "submission": submission_data,
+            "event_name": None,  # Event name would need separate lookup; keep null for now
         })
 
     return items
+
+
+def _get_photo_url(file_path: str, category: str) -> str:
+    """Generate a public URL for a photo."""
+    try:
+        from app.services.photo_service import get_public_url
+        bucket = "event-photos" if category == "event" else "camper-photos"
+        return get_public_url(file_path, bucket)
+    except Exception:
+        return ""
 
 
 async def _fetch_photos(
@@ -343,15 +329,11 @@ async def _fetch_photos(
         photo = tag.photo
         if photo and not photo.deleted_at:
             items.append({
-                "photo_id": photo.id,
+                "id": photo.id,
+                "url": _get_photo_url(photo.file_path, photo.category),
                 "file_name": photo.file_name,
-                "file_path": photo.file_path,
                 "caption": photo.caption,
-                "category": photo.category,
-                "tags": photo.tags,
-                "confidence": tag.confidence,
                 "similarity": tag.similarity,
-                "bounding_box": tag.bounding_box,
                 "created_at": photo.created_at,
             })
 
