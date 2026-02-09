@@ -3,7 +3,7 @@
  * Listens to Supabase auth state changes and loads user profile from backend.
  */
 
-import { createContext, useContext, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { api } from '@/lib/api'
 import { useAuthStore, type UserProfile } from '@/stores/authStore'
@@ -23,9 +23,26 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { setSession, setUser, setLoading, isLoading, isAuthenticated, user } =
     useAuthStore()
+  const initComplete = useRef(false)
+  const profileLoading = useRef(false)
+
+  const loadUserProfile = async () => {
+    // Prevent concurrent loads
+    if (profileLoading.current) return
+    profileLoading.current = true
+    try {
+      const response = await api.get('/auth/me')
+      setUser(response.data)
+    } catch (error) {
+      console.error('Failed to load user profile:', error)
+      setUser(null)
+    } finally {
+      profileLoading.current = false
+    }
+  }
 
   useEffect(() => {
-    // Get initial session
+    // Get initial session and load profile
     const initAuth = async () => {
       try {
         const {
@@ -40,50 +57,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Auth init error:', error)
       } finally {
+        initComplete.current = true
         setLoading(false)
       }
     }
 
-    // Safety timeout — clear loading state if init takes too long
-    // (Render free tier cold starts can take 30-60s)
+    // Safety timeout — clear loading if init takes too long
     const safetyTimeout = setTimeout(() => {
       setLoading(false)
-    }, 15000)
+    }, 30000)
 
     initAuth().finally(() => clearTimeout(safetyTimeout))
 
-    // Listen for auth state changes (login, logout, token refresh)
+    // Listen for auth state changes AFTER initial load
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Skip events during initial auth — initAuth handles that
+      if (!initComplete.current) return
+
       setSession(session)
 
       if (event === 'SIGNED_IN' && session) {
+        setLoading(true)
         await loadUserProfile()
+        setLoading(false)
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
-      } else if (event === 'TOKEN_REFRESHED' && session) {
-        // Session refreshed — profile already loaded
       }
-
-      setLoading(false)
+      // TOKEN_REFRESHED: no action needed, profile already loaded
     })
 
     return () => {
       subscription.unsubscribe()
     }
   }, [])
-
-  const loadUserProfile = async () => {
-    try {
-      const response = await api.get('/auth/me')
-      setUser(response.data)
-    } catch (error) {
-      console.error('Failed to load user profile:', error)
-      // If profile load fails, the user might not be set up yet
-      setUser(null)
-    }
-  }
 
   return (
     <AuthContext.Provider value={{ isLoading, isAuthenticated, user }}>
