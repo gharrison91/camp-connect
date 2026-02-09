@@ -28,18 +28,18 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', permission: null },
-  { label: 'Events', icon: Calendar, path: '/events', permission: 'core.events.read' },
-  { label: 'Campers', icon: Users, path: '/campers', permission: 'core.campers.read' },
-  { label: 'Contacts', icon: BookUser, path: '/contacts', permission: 'core.contacts.read' },
-  { label: 'Registrations', icon: ClipboardList, path: '/registrations', permission: 'core.registrations.read' },
-  { label: 'Communications', icon: MessageSquare, path: '/communications', permission: 'comms.messages.read' },
-  { label: 'Health & Safety', icon: Heart, path: '/health-safety', permission: 'health.forms.read' },
-  { label: 'Staff', icon: UserCog, path: '/staff', permission: 'staff.employees.read' },
-  { label: 'Photos', icon: Camera, path: '/photos', permission: 'photos.media.view' },
-  { label: 'Analytics', icon: BarChart3, path: '/analytics', permission: 'analytics.dashboards.read' },
-  { label: 'Store', icon: ShoppingBag, path: '/store', permission: 'store.manage.manage' },
-  { label: 'Settings', icon: Settings, path: '/settings', permission: null },
+  { label: 'Dashboard', icon: LayoutDashboard, path: '/app/dashboard', permission: null },
+  { label: 'Events', icon: Calendar, path: '/app/events', permission: 'core.events.read' },
+  { label: 'Campers', icon: Users, path: '/app/campers', permission: 'core.campers.read' },
+  { label: 'Contacts', icon: BookUser, path: '/app/contacts', permission: 'core.contacts.read' },
+  { label: 'Registrations', icon: ClipboardList, path: '/app/registrations', permission: 'core.registrations.read' },
+  { label: 'Communications', icon: MessageSquare, path: '/app/communications', permission: 'comms.messages.read' },
+  { label: 'Health & Safety', icon: Heart, path: '/app/health-safety', permission: 'health.forms.read' },
+  { label: 'Staff', icon: UserCog, path: '/app/staff', permission: 'staff.employees.read' },
+  { label: 'Photos', icon: Camera, path: '/app/photos', permission: 'photos.media.view' },
+  { label: 'Analytics', icon: BarChart3, path: '/app/analytics', permission: 'analytics.dashboards.read' },
+  { label: 'Store', icon: ShoppingBag, path: '/app/store', permission: 'store.manage.manage' },
+  { label: 'Settings', icon: Settings, path: '/app/settings', permission: null },
 ] as const;
 
 export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProps) {

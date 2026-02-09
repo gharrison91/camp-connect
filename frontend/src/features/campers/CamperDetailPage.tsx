@@ -78,7 +78,7 @@ export function CamperDetailPage() {
     return (
       <div className="space-y-4">
         <Link
-          to="/campers"
+          to="/app/campers"
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -96,7 +96,7 @@ export function CamperDetailPage() {
       {/* Back Button + Header */}
       <div>
         <Link
-          to="/campers"
+          to="/app/campers"
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
         >
           <ArrowLeft className="h-4 w-4" />

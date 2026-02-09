@@ -17,6 +17,7 @@ from supabase import create_client
 
 from app.config import settings
 from app.models.photo import Photo
+from app.models.photo_face_tag import PhotoFaceTag
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +174,12 @@ async def upload_photo(
     await db.commit()
     await db.refresh(photo)
 
+    # Auto-detect faces using AWS Rekognition (non-blocking best-effort)
+    try:
+        await _auto_tag_faces(db, photo, file_content, organization_id)
+    except Exception as e:
+        logger.warning(f"Face detection skipped for photo {photo.id}: {e}")
+
     # Generate signed URL
     url = get_public_url(storage_path, bucket)
 
@@ -289,6 +296,51 @@ async def delete_photo(
     photo.deleted_at = datetime.utcnow()
     await db.commit()
     return True
+
+
+async def _auto_tag_faces(
+    db: AsyncSession,
+    photo: Photo,
+    image_bytes: bytes,
+    organization_id: uuid.UUID,
+) -> None:
+    """
+    Search for known camper faces in the uploaded photo using Rekognition.
+    Creates PhotoFaceTag records for any matches found.
+    Runs synchronous Rekognition calls via asyncio.to_thread().
+    """
+    import asyncio
+    from app.services.rekognition_service import search_faces_in_photo
+
+    # Only process image types that Rekognition supports
+    if photo.mime_type not in ("image/jpeg", "image/png"):
+        return
+
+    # Run the synchronous Rekognition call in a thread
+    matches = await asyncio.to_thread(
+        search_faces_in_photo,
+        organization_id,
+        image_bytes,
+    )
+
+    if not matches:
+        return
+
+    for match in matches:
+        tag = PhotoFaceTag(
+            id=uuid.uuid4(),
+            organization_id=organization_id,
+            photo_id=photo.id,
+            camper_id=uuid.UUID(match["camper_id"]) if match.get("camper_id") else None,
+            face_id=match.get("face_id"),
+            bounding_box=match.get("bounding_box"),
+            confidence=match.get("similarity", 0.0),
+            similarity=match.get("similarity", 0.0),
+        )
+        db.add(tag)
+
+    await db.commit()
+    logger.info(f"Auto-tagged {len(matches)} face(s) in photo {photo.id}")
 
 
 def _photo_to_dict(photo: Photo, url: str) -> Dict[str, Any]:

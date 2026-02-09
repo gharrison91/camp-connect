@@ -54,6 +54,12 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
+    # Staff fields
+    department: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    onboarding_status: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, default=None
+    )  # invited, onboarding, active
+
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

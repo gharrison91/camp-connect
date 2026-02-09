@@ -24,6 +24,15 @@ from app.models.message import Message
 from app.models.message_template import MessageTemplate
 from app.models.health_form import HealthFormTemplate, HealthForm, HealthFormSubmission
 
+# Phase 4: Staff Onboarding & Facial Recognition
+from app.models.staff_onboarding import (
+    StaffOnboarding,
+    StaffCertification,
+    StaffDocument,
+    PolicyAcknowledgment,
+)
+from app.models.photo_face_tag import PhotoFaceTag
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -49,4 +58,10 @@ __all__ = [
     "HealthFormTemplate",
     "HealthForm",
     "HealthFormSubmission",
+    # Phase 4
+    "StaffOnboarding",
+    "StaffCertification",
+    "StaffDocument",
+    "PolicyAcknowledgment",
+    "PhotoFaceTag",
 ]

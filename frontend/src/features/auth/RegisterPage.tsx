@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { Tent, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Tent, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
 export function RegisterPage() {
@@ -20,7 +20,7 @@ export function RegisterPage() {
 
   // If already authenticated, redirect
   if (isAuthenticated && !isLoading) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/app/dashboard" replace />
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,7 +44,7 @@ export function RegisterPage() {
 
     const success = await register(formData)
     if (success) {
-      navigate('/dashboard', { replace: true })
+      navigate('/app/dashboard', { replace: true })
     }
     setSubmitting(false)
   }
@@ -217,8 +217,19 @@ export function RegisterPage() {
           </div>
         </div>
 
+        {/* Back to Home */}
+        <div className="mt-6 text-center">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-sm text-blue-200/80 transition-colors hover:text-white"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to Home
+          </Link>
+        </div>
+
         {/* Footer */}
-        <p className="mt-8 text-center text-xs text-blue-300/60">
+        <p className="mt-4 text-center text-xs text-blue-300/60">
           Camp Connect v0.1.0
         </p>
       </div>

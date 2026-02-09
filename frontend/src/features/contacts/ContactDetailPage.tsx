@@ -28,7 +28,7 @@ export function ContactDetailPage() {
     return (
       <div className="space-y-4">
         <Link
-          to="/contacts"
+          to="/app/contacts"
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -50,7 +50,7 @@ export function ContactDetailPage() {
       {/* Back Button + Header */}
       <div>
         <Link
-          to="/contacts"
+          to="/app/contacts"
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
         >
           <ArrowLeft className="h-4 w-4" />

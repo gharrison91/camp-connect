@@ -1,0 +1,108 @@
+/**
+ * Camp Connect - Face Recognition React Query Hooks
+ */
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api } from '../lib/api'
+
+// ─── Types ──────────────────────────────────────────────────
+
+export interface FaceTag {
+  id: string
+  photo_id: string
+  camper_id: string | null
+  camper_name: string | null
+  bounding_box: {
+    top: number
+    left: number
+    width: number
+    height: number
+  }
+  confidence: number
+  similarity: number
+  status: 'confirmed' | 'suggested' | 'rejected'
+  created_at: string
+}
+
+export interface CamperPhoto {
+  photo_id: string
+  photo_url: string
+  thumbnail_url: string | null
+  caption: string | null
+  confidence: number
+  similarity: number
+  bounding_box: {
+    top: number
+    left: number
+    width: number
+    height: number
+  }
+  taken_at: string
+  created_at: string
+}
+
+export interface IndexFaceResponse {
+  camper_id: string
+  face_indexed: boolean
+  message: string
+}
+
+export interface ReprocessPhotoResponse {
+  photo_id: string
+  faces_detected: number
+  faces_matched: number
+  message: string
+}
+
+// ─── Queries ────────────────────────────────────────────────
+
+export function usePhotoFaceTags(photoId: string) {
+  return useQuery<FaceTag[]>({
+    queryKey: ['photo-face-tags', photoId],
+    queryFn: () =>
+      api
+        .get(`/face-recognition/photos/${photoId}/faces`)
+        .then((r) => r.data),
+    enabled: !!photoId,
+  })
+}
+
+export function useCamperPhotos(camperId: string) {
+  return useQuery<CamperPhoto[]>({
+    queryKey: ['camper-photos', camperId],
+    queryFn: () =>
+      api
+        .get(`/face-recognition/campers/${camperId}/photos`)
+        .then((r) => r.data),
+    enabled: !!camperId,
+  })
+}
+
+// ─── Mutations ──────────────────────────────────────────────
+
+export function useIndexCamperFace() {
+  const queryClient = useQueryClient()
+  return useMutation<IndexFaceResponse, Error, string>({
+    mutationFn: (camperId: string) =>
+      api
+        .post(`/face-recognition/index/${camperId}`)
+        .then((r) => r.data),
+    onSuccess: (_data, camperId) => {
+      queryClient.invalidateQueries({ queryKey: ['camper-photos', camperId] })
+    },
+  })
+}
+
+export function useReprocessPhoto() {
+  const queryClient = useQueryClient()
+  return useMutation<ReprocessPhotoResponse, Error, string>({
+    mutationFn: (photoId: string) =>
+      api
+        .post(`/face-recognition/reprocess/${photoId}`)
+        .then((r) => r.data),
+    onSuccess: (_data, photoId) => {
+      queryClient.invalidateQueries({ queryKey: ['photo-face-tags', photoId] })
+      queryClient.invalidateQueries({ queryKey: ['camper-photos'] })
+    },
+  })
+}

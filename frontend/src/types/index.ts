@@ -262,3 +262,127 @@ export interface MessageTemplate {
   is_active: boolean;
   created_at: string;
 }
+
+// ─── Staff Onboarding ──────────────────────────────────────
+
+export interface StaffCertification {
+  id: string;
+  name: string;
+  issuing_authority: string | null;
+  certificate_number: string | null;
+  issued_date: string | null;
+  expiry_date: string | null;
+  document_url: string | null;
+  status: 'valid' | 'expired' | 'pending_verification';
+  created_at: string;
+}
+
+export interface StaffDocument {
+  id: string;
+  document_type: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface PolicyAcknowledgment {
+  id: string;
+  policy_name: string;
+  policy_version: string | null;
+  acknowledged_at: string;
+}
+
+export interface EmergencyContact {
+  name: string;
+  phone: string;
+  relationship: string;
+}
+
+export interface StaffOnboarding {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  status: 'invited' | 'in_progress' | 'completed';
+  current_step: number;
+  personal_info_completed: boolean;
+  emergency_contacts_completed: boolean;
+  certifications_completed: boolean;
+  policy_acknowledgments_completed: boolean;
+  payroll_info_completed: boolean;
+  emergency_contacts_data: EmergencyContact[] | null;
+  completed_at: string | null;
+  created_at: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  certifications: StaffCertification[];
+  documents: StaffDocument[];
+  acknowledgments: PolicyAcknowledgment[];
+}
+
+export interface OnboardingListResponse {
+  items: StaffOnboarding[];
+  total: number;
+}
+
+// ─── Staff Directory ────────────────────────────────────────
+
+export interface StaffMember {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string | null;
+  avatar_url: string | null;
+  department: string | null;
+  role_name: string | null;
+  is_active: boolean;
+  onboarding_status: 'invited' | 'onboarding' | 'active' | null;
+  created_at: string;
+}
+
+export interface StaffProfile extends StaffMember {
+  certifications: StaffCertification[];
+  onboarding: StaffOnboarding | null;
+}
+
+export interface StaffListResponse {
+  items: StaffMember[];
+  total: number;
+}
+
+// ─── Face Recognition ───────────────────────────────────────
+
+export interface FaceTag {
+  id: string;
+  photo_id: string;
+  camper_id: string | null;
+  camper_name: string | null;
+  face_id: string | null;
+  bounding_box: {
+    Width: number;
+    Height: number;
+    Left: number;
+    Top: number;
+  } | null;
+  confidence: number | null;
+  similarity: number | null;
+  created_at: string;
+}
+
+export interface PhotoFaceTagsResponse {
+  photo_id: string;
+  face_tags: FaceTag[];
+}
+
+export interface CamperPhotoMatch {
+  photo_id: string;
+  photo_url: string;
+  file_name: string;
+  similarity: number;
+  confidence: number;
+  created_at: string;
+}

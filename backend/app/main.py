@@ -37,6 +37,11 @@ from app.api.v1.photos import router as photos_router
 from app.api.v1.communications import router as communications_router
 from app.api.v1.health_forms import router as health_forms_router
 
+# Phase 4: Staff Onboarding, Staff Directory, Facial Recognition
+from app.api.v1.onboarding import router as onboarding_router
+from app.api.v1.staff import router as staff_router
+from app.api.v1.face_recognition import router as face_recognition_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -97,6 +102,11 @@ app.include_router(dashboard_router, prefix=settings.api_v1_prefix)
 app.include_router(photos_router, prefix=settings.api_v1_prefix)
 app.include_router(communications_router, prefix=settings.api_v1_prefix)
 app.include_router(health_forms_router, prefix=settings.api_v1_prefix)
+
+# Phase 4: Staff Onboarding, Staff Directory, Facial Recognition
+app.include_router(onboarding_router, prefix=settings.api_v1_prefix)
+app.include_router(staff_router, prefix=settings.api_v1_prefix)
+app.include_router(face_recognition_router, prefix=settings.api_v1_prefix)
 
 
 @app.exception_handler(Exception)
