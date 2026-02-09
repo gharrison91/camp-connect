@@ -44,7 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    initAuth()
+    // Safety timeout — clear loading state if init takes too long
+    // (Render free tier cold starts can take 30-60s)
+    const safetyTimeout = setTimeout(() => {
+      setLoading(false)
+    }, 15000)
+
+    initAuth().finally(() => clearTimeout(safetyTimeout))
 
     // Listen for auth state changes (login, logout, token refresh)
     const {
