@@ -27,7 +27,7 @@ PERMISSIONS: Dict[str, Dict[str, List[str]]] = {
         "families": ["read", "update"],
     },
     "health": {
-        "forms": ["read", "update"],
+        "forms": ["read", "update", "manage", "submit"],
         "medications": ["administer", "read"],
         "incidents": ["create", "read"],
     },
@@ -68,7 +68,7 @@ PERMISSIONS: Dict[str, Dict[str, List[str]]] = {
     },
     "payments": {
         "invoices": ["create", "read", "update"],
-        "transactions": ["read", "process", "refund"],
+        "transactions": ["create", "read", "update", "process", "refund"],
     },
     "portal": {
         "access": ["manage"],
