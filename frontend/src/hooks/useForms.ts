@@ -17,6 +17,9 @@ export interface FormFieldDef {
   options: { label: string; value: string }[]
   validation: Record<string, unknown>
   order: number
+  custom_css?: string
+  html_content?: string
+  css_content?: string
 }
 
 export interface FormTemplate {

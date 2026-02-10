@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class FormFieldDefinition(BaseModel):
     """A single field in a form template."""
     id: str
-    type: str  # text, textarea, number, email, phone, date, select, checkbox, radio, file, signature, heading, paragraph, divider
+    type: str  # text, textarea, number, email, phone, date, select, checkbox, radio, file, signature, heading, paragraph, divider, custom_html
     label: str = ""
     placeholder: str = ""
     required: bool = False
@@ -24,6 +24,9 @@ class FormFieldDefinition(BaseModel):
     options: List[Dict[str, Any]] = Field(default_factory=list)
     validation: Dict[str, Any] = Field(default_factory=dict)
     order: int = 0
+    custom_css: Optional[str] = None       # Per-field CSS classes
+    html_content: Optional[str] = None     # Raw HTML (custom_html type only)
+    css_content: Optional[str] = None      # Scoped CSS (custom_html type only)
 
 
 class FormSettings(BaseModel):
@@ -37,6 +40,7 @@ class FormSettings(BaseModel):
     expires_at: Optional[datetime] = None
     max_submissions: Optional[int] = None
     theme: Dict[str, Any] = Field(default_factory=dict)
+    custom_css: Optional[str] = None   # Global form-level custom CSS
 
 
 class FormTemplateCreate(BaseModel):

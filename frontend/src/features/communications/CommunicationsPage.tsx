@@ -35,7 +35,7 @@ import {
 import { useToast } from '@/components/ui/Toast'
 import type { Message } from '@/types'
 
-// \u2500\u2500\u2500 Template variable definitions \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// --- Template variable definitions ---
 
 interface TemplateVariable {
   key: string
@@ -75,7 +75,7 @@ function highlightVariables(text: string): React.ReactNode[] {
   })
 }
 
-// \u2500\u2500\u2500 Status configs \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// --- Status configs ---
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   queued: { label: 'Queued', color: 'bg-gray-100 text-gray-700', icon: Clock },
@@ -141,24 +141,29 @@ export function CommunicationsPage() {
   )
 }
 
-// \u2500\u2500\u2500 Event Quick Send (with recipient list) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// --- Compose Tab (Unified 2-Column Layout) ---
 
-function EventQuickSend() {
+function ComposeTab() {
   const { data: events = [] } = useEvents()
+  const { data: templates = [] } = useMessageTemplates()
+  const sendMessage = useSendMessage()
+  const sendBulk = useSendBulkMessages()
+  const { hasPermission } = usePermissions()
+  const { toast } = useToast()
+
+  // Mode: 'event' = select event recipients, 'manual' = single address
+  const [sendMode, setSendMode] = useState<'event' | 'manual'>('event')
+  const [channel, setChannel] = useState<'sms' | 'email'>('email')
   const [selectedEventId, setSelectedEventId] = useState('')
-  const [quickChannel, setQuickChannel] = useState<'sms' | 'email'>('email')
-  const [quickSubject, setQuickSubject] = useState('')
-  const [quickBody, setQuickBody] = useState('')
-  const [quickSent, setQuickSent] = useState(false)
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
+  const [toAddress, setToAddress] = useState('')
+  const [subject, setSubject] = useState('')
+  const [body, setBody] = useState('')
   const [selectedRecipientIds, setSelectedRecipientIds] = useState<Set<string>>(new Set())
   const [recipientSearch, setRecipientSearch] = useState('')
-  const [showAddRecipient, setShowAddRecipient] = useState(false)
-  const sendBulk = useSendBulkMessages()
-  const { toast } = useToast()
-  const { hasPermission } = usePermissions()
 
   const { data: recipients = [], isLoading: recipientsLoading } = useEventRecipients(
-    selectedEventId || undefined
+    sendMode === 'event' && selectedEventId ? selectedEventId : undefined
   )
 
   // Auto-select all recipients when they load
@@ -169,6 +174,21 @@ function EventQuickSend() {
       setSelectedRecipientIds(new Set())
     }
   }, [recipients])
+
+  // Filter templates by channel
+  const channelTemplates = useMemo(() => {
+    return templates.filter((t) => t.channel === channel || t.channel === 'both')
+  }, [templates, channel])
+
+  // Apply template when selected
+  useEffect(() => {
+    if (!selectedTemplateId) return
+    const tmpl = templates.find((t) => t.id === selectedTemplateId)
+    if (tmpl) {
+      setSubject(tmpl.subject || '')
+      setBody(tmpl.body || '')
+    }
+  }, [selectedTemplateId, templates])
 
   const filteredRecipients = useMemo(() => {
     if (!recipientSearch.trim()) return recipients
@@ -185,227 +205,352 @@ function EventQuickSend() {
   const toggleRecipient = useCallback((contactId: string) => {
     setSelectedRecipientIds((prev) => {
       const next = new Set(prev)
-      if (next.has(contactId)) {
-        next.delete(contactId)
-      } else {
-        next.add(contactId)
-      }
+      if (next.has(contactId)) next.delete(contactId)
+      else next.add(contactId)
       return next
     })
   }, [])
 
   const toggleAll = useCallback(() => {
-    if (selectedRecipientIds.size === recipients.length) {
+    if (selectedRecipientIds.size === filteredRecipients.length) {
       setSelectedRecipientIds(new Set())
     } else {
-      setSelectedRecipientIds(new Set(recipients.map((r) => r.contact_id)))
+      setSelectedRecipientIds(new Set(filteredRecipients.map((r) => r.contact_id)))
     }
-  }, [recipients, selectedRecipientIds.size])
+  }, [filteredRecipients, selectedRecipientIds.size])
 
-  const handleQuickSend = async () => {
-    if (!selectedEventId || !quickBody || selectedRecipientIds.size === 0) return
-    if (quickChannel === 'email' && !quickSubject) return
+  const handleSend = async () => {
+    if (!body) return
 
-    try {
-      await sendBulk.mutateAsync({
-        channel: quickChannel,
-        subject: quickChannel === 'email' ? quickSubject : undefined,
-        body: quickBody,
-        recipient_ids: Array.from(selectedRecipientIds),
-      })
-      setQuickSent(true)
-      setQuickSubject('')
-      setQuickBody('')
-      toast({
-        type: 'success',
-        message: `Message sent to ${selectedRecipientIds.size} recipient${selectedRecipientIds.size !== 1 ? 's' : ''}!`,
-      })
-      setTimeout(() => setQuickSent(false), 3000)
-    } catch {
-      toast({ type: 'error', message: 'Failed to send bulk message.' })
+    if (sendMode === 'manual') {
+      if (!toAddress) return
+      if (channel === 'email' && !subject) return
+      try {
+        await sendMessage.mutateAsync({
+          channel,
+          to_address: toAddress,
+          subject: channel === 'email' ? subject : undefined,
+          body,
+        })
+        toast({ type: 'success', message: 'Message sent!' })
+        setToAddress('')
+        setSubject('')
+        setBody('')
+        setSelectedTemplateId('')
+      } catch {
+        toast({ type: 'error', message: 'Failed to send message.' })
+      }
+    } else {
+      if (selectedRecipientIds.size === 0) return
+      if (channel === 'email' && !subject) return
+      try {
+        await sendBulk.mutateAsync({
+          channel,
+          subject: channel === 'email' ? subject : undefined,
+          body,
+          recipient_ids: Array.from(selectedRecipientIds),
+          template_id: selectedTemplateId || undefined,
+        })
+        toast({
+          type: 'success',
+          message: `Sent to ${selectedRecipientIds.size} recipient${selectedRecipientIds.size !== 1 ? 's' : ''}!`,
+        })
+        setSubject('')
+        setBody('')
+        setSelectedTemplateId('')
+      } catch {
+        toast({ type: 'error', message: 'Failed to send bulk message.' })
+      }
     }
   }
 
-  if (!hasPermission('comms.messages.send')) return null
+  const isSending = sendMessage.isPending || sendBulk.isPending
+  const recipientCount = sendMode === 'event' ? selectedRecipientIds.size : (toAddress ? 1 : 0)
+  const canSend =
+    !isSending &&
+    !!body &&
+    recipientCount > 0 &&
+    (channel !== 'email' || !!subject)
+
+  if (!hasPermission('comms.messages.send')) {
+    return (
+      <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-700">
+        You don&apos;t have permission to send messages.
+      </div>
+    )
+  }
 
   return (
-    <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
-      <div className="border-b border-blue-100 px-6 py-4">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="h-5 w-5 text-blue-600" />
-          <h3 className="text-sm font-semibold text-gray-900">Quick Send to Event</h3>
-        </div>
-        <p className="mt-0.5 text-xs text-gray-500">
-          Send a message to all registered contacts for an event
-        </p>
-      </div>
-      <div className="space-y-4 p-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Select Event</label>
-            <select
-              value={selectedEventId}
-              onChange={(e) => { setSelectedEventId(e.target.value); setRecipientSearch(''); setShowAddRecipient(false) }}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+    <div className="flex gap-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden" style={{ height: 'calc(100vh - 16rem)' }}>
+      {/* Left Sidebar: Recipients */}
+      <div className="w-80 shrink-0 border-r border-gray-200 flex flex-col bg-gray-50">
+        {/* Mode Toggle */}
+        <div className="border-b border-gray-200 p-3">
+          <div className="flex items-center gap-1 rounded-lg bg-white p-1 border border-gray-200">
+            <button
+              onClick={() => { setSendMode('event'); setToAddress('') }}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                sendMode === 'event' ? 'bg-emerald-50 text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              )}
             >
-              <option value="">Choose event...</option>
-              {events.map((evt) => (
-                <option key={evt.id} value={evt.id}>{evt.name} ({evt.enrolled_count} registered)</option>
+              <CalendarDays className="h-3.5 w-3.5" />
+              Event
+            </button>
+            <button
+              onClick={() => { setSendMode('manual'); setSelectedEventId('') }}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                sendMode === 'manual' ? 'bg-emerald-50 text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              )}
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              Manual
+            </button>
+          </div>
+        </div>
+
+        {sendMode === 'event' ? (
+          <>
+            {/* Event Selector */}
+            <div className="border-b border-gray-200 p-3">
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                Select Event
+              </label>
+              <select
+                value={selectedEventId}
+                onChange={(e) => { setSelectedEventId(e.target.value); setRecipientSearch('') }}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                <option value="">Choose event...</option>
+                {events.map((evt) => (
+                  <option key={evt.id} value={evt.id}>
+                    {evt.name} ({evt.enrolled_count})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Search + Select All */}
+            {selectedEventId && (
+              <div className="border-b border-gray-200 p-3 space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={recipientSearch}
+                    onChange={(e) => setRecipientSearch(e.target.value)}
+                    placeholder="Search recipients..."
+                    className="w-full rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-3 text-xs focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedRecipientIds.size === filteredRecipients.length && filteredRecipients.length > 0}
+                      onChange={toggleAll}
+                      className="h-3.5 w-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span className="text-xs text-gray-600">Select all</span>
+                  </label>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                    {selectedRecipientIds.size}/{recipients.length}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Recipient List */}
+            <div className="flex-1 overflow-y-auto">
+              {!selectedEventId ? (
+                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                  <CalendarDays className="h-8 w-8 text-gray-300" />
+                  <p className="mt-2 text-xs font-medium text-gray-500">Select an event</p>
+                  <p className="mt-0.5 text-[10px] text-gray-400">
+                    Choose an event above to see its recipients
+                  </p>
+                </div>
+              ) : recipientsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
+                </div>
+              ) : filteredRecipients.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                  <Users className="h-8 w-8 text-gray-300" />
+                  <p className="mt-2 text-xs text-gray-500">
+                    {recipientSearch ? 'No matching recipients' : 'No contacts for this event'}
+                  </p>
+                </div>
+              ) : (
+                filteredRecipients.map((r) => {
+                  const isSelected = selectedRecipientIds.has(r.contact_id)
+                  const contactInfo = channel === 'email' ? (r.email || 'No email') : (r.phone || 'No phone')
+                  return (
+                    <button
+                      key={r.contact_id}
+                      onClick={() => toggleRecipient(r.contact_id)}
+                      className={cn(
+                        'w-full flex items-center gap-3 px-3 py-2.5 text-left border-b border-gray-100 transition-colors',
+                        isSelected ? 'bg-emerald-50/60' : 'hover:bg-white'
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleRecipient(r.contact_id)}
+                        className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-gray-900 truncate">
+                          {r.first_name} {r.last_name}
+                        </p>
+                        <p className="text-[10px] text-gray-500 truncate">{contactInfo}</p>
+                      </div>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </>
+        ) : (
+          /* Manual Mode */
+          <div className="p-4 space-y-3">
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                {channel === 'email' ? 'Email Address' : 'Phone Number'}
+              </label>
+              <input
+                type="text"
+                value={toAddress}
+                onChange={(e) => setToAddress(e.target.value)}
+                placeholder={channel === 'email' ? 'recipient@example.com' : '+1 (555) 000-0000'}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-white p-3 text-center">
+              <p className="text-xs text-gray-500">
+                Send a message to a single recipient.
+              </p>
+              <p className="mt-1 text-[10px] text-gray-400">
+                Switch to Event mode to send to multiple contacts.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Right: Compose Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Compose Header */}
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
+          <div className="flex items-center gap-3">
+            {/* Channel Toggle */}
+            <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
+              <button
+                onClick={() => setChannel('email')}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                  channel === 'email' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                )}
+              >
+                <Mail className="h-3.5 w-3.5" />
+                Email
+              </button>
+              <button
+                onClick={() => setChannel('sms')}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                  channel === 'sms' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                )}
+              >
+                <Phone className="h-3.5 w-3.5" />
+                SMS
+              </button>
+            </div>
+          </div>
+
+          {/* Template Selector */}
+          <div className="flex items-center gap-2">
+            <FileText className="h-3.5 w-3.5 text-gray-400" />
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => setSelectedTemplateId(e.target.value)}
+              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            >
+              <option value="">Use template...</option>
+              {channelTemplates.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Channel</label>
-            <div className="flex items-center gap-1 rounded-lg bg-white p-1 border border-gray-200">
-              <button onClick={() => setQuickChannel('email')} className={cn('flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors', quickChannel === 'email' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
-                <Mail className="h-3.5 w-3.5" /> Email
-              </button>
-              <button onClick={() => setQuickChannel('sms')} className={cn('flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors', quickChannel === 'sms' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
-                <Phone className="h-3.5 w-3.5" /> SMS
-              </button>
-            </div>
-          </div>
         </div>
 
-        {/* Recipient List */}
-        {selectedEventId && (
-          <>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-medium text-gray-700">
-                  Recipients ({selectedRecipientIds.size} of {recipients.length} selected)
-                </label>
-                <button onClick={() => setShowAddRecipient(!showAddRecipient)} className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700">
-                  <UserPlus className="h-3.5 w-3.5" /> Find Recipient
-                </button>
-              </div>
-
-              {showAddRecipient && (
-                <div className="mb-2 relative">
-                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-                  <input type="text" value={recipientSearch} onChange={(e) => setRecipientSearch(e.target.value)} placeholder="Search by name, email, or phone..." className="w-full rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-3 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                </div>
-              )}
-
-              {recipientsLoading ? (
-                <div className="flex items-center justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-blue-500" /></div>
-              ) : recipients.length > 0 ? (
-                <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white">
-                  <table className="w-full">
-                    <thead className="sticky top-0 bg-gray-50 border-b border-gray-100">
-                      <tr>
-                        <th className="w-8 px-3 py-2"><input type="checkbox" checked={selectedRecipientIds.size === recipients.length && recipients.length > 0} onChange={toggleAll} className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" /></th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Name</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Email</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Phone</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {filteredRecipients.map((r) => (
-                        <tr key={r.contact_id} className={cn('cursor-pointer transition-colors', selectedRecipientIds.has(r.contact_id) ? 'bg-blue-50/50' : 'hover:bg-gray-50')} onClick={() => toggleRecipient(r.contact_id)}>
-                          <td className="w-8 px-3 py-1.5"><input type="checkbox" checked={selectedRecipientIds.has(r.contact_id)} onChange={() => toggleRecipient(r.contact_id)} className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" /></td>
-                          <td className="px-3 py-1.5 text-xs font-medium text-gray-900">{r.first_name} {r.last_name}</td>
-                          <td className="px-3 py-1.5 text-xs text-gray-600">{r.email || '--'}</td>
-                          <td className="px-3 py-1.5 text-xs text-gray-600">{r.phone || '--'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-gray-200 bg-white p-4 text-center text-xs text-gray-500">No contacts found for this event.</div>
-              )}
-            </div>
-
-            {quickChannel === 'email' && (
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Subject</label>
-                <input type="text" value={quickSubject} onChange={(e) => setQuickSubject(e.target.value)} placeholder="Email subject line..." className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              </div>
-            )}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Message</label>
-              <textarea value={quickBody} onChange={(e) => setQuickBody(e.target.value)} rows={4} placeholder="Type your message to all event registrants..." className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-            </div>
-
-            {quickSent && (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">Message sent to all registrants!</div>
-            )}
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <Users className="h-3.5 w-3.5" />
-                {selectedRecipientIds.size} of {recipients.length} recipients selected
-              </div>
-              <button onClick={handleQuickSend} disabled={sendBulk.isPending || !selectedEventId || !quickBody || selectedRecipientIds.size === 0 || (quickChannel === 'email' && !quickSubject)} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50">
-                {sendBulk.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Send to {selectedRecipientIds.size} Recipient{selectedRecipientIds.size !== 1 ? 's' : ''}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// \u2500\u2500\u2500 Compose Tab \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-
-function ComposeTab() {
-  const [channel, setChannel] = useState<'sms' | 'email'>('email')
-  const [toAddress, setToAddress] = useState('')
-  const [subject, setSubject] = useState('')
-  const [body, setBody] = useState('')
-  const [sent, setSent] = useState(false)
-  const sendMessage = useSendMessage()
-  const { hasPermission } = usePermissions()
-
-  const handleSend = async () => {
-    if (!toAddress || !body) return
-    if (channel === 'email' && !subject) return
-    try {
-      await sendMessage.mutateAsync({ channel, to_address: toAddress, subject: channel === 'email' ? subject : undefined, body })
-      setSent(true); setToAddress(''); setSubject(''); setBody('')
-      setTimeout(() => setSent(false), 3000)
-    } catch (err) { console.error('Send failed:', err) }
-  }
-
-  if (!hasPermission('comms.messages.send')) {
-    return <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-700">You don't have permission to send messages.</div>
-  }
-
-  return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <EventQuickSend />
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 px-6 py-4">
-          <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
-            <button onClick={() => setChannel('email')} className={cn('flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors', channel === 'email' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}><Mail className="h-4 w-4" /> Email</button>
-            <button onClick={() => setChannel('sms')} className={cn('flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors', channel === 'sms' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}><Phone className="h-4 w-4" /> SMS</button>
-          </div>
-        </div>
-        <div className="space-y-4 p-6">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">To</label>
-            <input type="text" value={toAddress} onChange={(e) => setToAddress(e.target.value)} placeholder={channel === 'email' ? 'recipient@example.com' : '+1 (555) 000-0000'} className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-          </div>
+        {/* Compose Body */}
+        <div className="flex-1 flex flex-col overflow-y-auto p-5 space-y-4">
+          {/* Subject (email only) */}
           {channel === 'email' && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Subject</label>
-              <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Message subject" className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+              <label className="mb-1 block text-xs font-medium text-gray-600">Subject</label>
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Email subject line..."
+                className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
             </div>
           )}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Message</label>
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={6} placeholder="Type your message here..." className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-            {channel === 'sms' && <p className="mt-1 text-xs text-gray-400">{body.length}/160 characters{body.length > 160 && ' (will be split into multiple messages)'}</p>}
+
+          {/* Message */}
+          <div className="flex-1 flex flex-col">
+            <label className="mb-1 block text-xs font-medium text-gray-600">Message</label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Type your message here..."
+              className="flex-1 min-h-[120px] w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
+            />
+            {channel === 'sms' && (
+              <p className="mt-1 text-xs text-gray-400">
+                {body.length}/160 characters
+                {body.length > 160 && ' (will be split into multiple messages)'}
+              </p>
+            )}
           </div>
-          {sent && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">Message sent successfully!</div>}
+
+          {/* Privacy note for bulk sends */}
+          {sendMode === 'event' && selectedRecipientIds.size > 1 && (
+            <div className="flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 p-3">
+              <AlertCircle className="h-4 w-4 shrink-0 text-blue-500 mt-0.5" />
+              <p className="text-xs text-blue-700">
+                Each recipient receives their own individual message. Recipients cannot see each other.
+              </p>
+            </div>
+          )}
         </div>
-        <div className="flex justify-end border-t border-gray-100 px-6 py-4">
-          <button onClick={handleSend} disabled={sendMessage.isPending || !toAddress || !body || (channel === 'email' && !subject)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-50">
-            {sendMessage.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Send Message
+
+        {/* Send Footer */}
+        <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3">
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            <Users className="h-3.5 w-3.5" />
+            {sendMode === 'event'
+              ? `${selectedRecipientIds.size} of ${recipients.length} recipients`
+              : toAddress ? '1 recipient' : 'No recipient'}
+          </div>
+          <button
+            onClick={handleSend}
+            disabled={!canSend}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {isSending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            {sendMode === 'event'
+              ? `Send to ${selectedRecipientIds.size} Recipient${selectedRecipientIds.size !== 1 ? 's' : ''}`
+              : 'Send Message'}
           </button>
         </div>
       </div>
@@ -413,7 +558,7 @@ function ComposeTab() {
   )
 }
 
-// \u2500\u2500\u2500 History Tab \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// --- History Tab ---
 
 function HistoryTab() {
   const [channelFilter, setChannelFilter] = useState<string>('all')
@@ -475,7 +620,7 @@ function HistoryTab() {
   )
 }
 
-// \u2500\u2500\u2500 Templates Tab (with variable highlighting) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// --- Templates Tab (with variable highlighting) ---
 
 function TemplatesTab() {
   const [showCreate, setShowCreate] = useState(false)
@@ -572,7 +717,7 @@ function VariableItem({ variable }: { variable: TemplateVariable }) {
   )
 }
 
-// \u2500\u2500\u2500 Texting Tab (Twilio-style) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// --- Texting Tab (Twilio-style) ---
 
 function TextingTab() {
   const { data: allMessages = [], isLoading } = useMessages({ channel: 'sms' })
@@ -716,7 +861,7 @@ function TextingTab() {
   )
 }
 
-// \u2500\u2500\u2500 Message Detail Modal \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// --- Message Detail Modal ---
 
 function MessageDetailModal({ message, onClose }: { message: Message; onClose: () => void }) {
   const status = statusConfig[message.status] || statusConfig.queued
@@ -747,7 +892,7 @@ function MessageDetailModal({ message, onClose }: { message: Message; onClose: (
   )
 }
 
-// \u2500\u2500\u2500 Template Create Modal (with variable insertion) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// --- Template Create Modal (with variable insertion) ---
 
 function TemplateCreateModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('')
@@ -909,7 +1054,7 @@ function TemplateCreateModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-// \u2500\u2500\u2500 Compose Message Modal (reusable from detail pages) \u2500\u2500\u2500\u2500\u2500\u2500
+// --- Compose Message Modal (reusable from detail pages) ---
 
 export function ComposeMessageModal({ onClose, prefillTo, prefillChannel }: { onClose: () => void; prefillTo?: string; prefillChannel?: 'sms' | 'email' }) {
   const [channel, setChannel] = useState<'sms' | 'email'>(prefillChannel || 'email')
