@@ -204,31 +204,25 @@ async def index_camper_face(
             detail="Camper has no reference photo. Upload one first.",
         )
 
-    # Fetch the reference photo from the photo record
-    photo_result = await db.execute(
-        select(Photo)
-        .where(Photo.entity_id == camper_id)
-        .where(Photo.organization_id == org_id)
-        .where(Photo.is_profile_photo == True)  # noqa: E712
-        .where(Photo.deleted_at.is_(None))
-        .order_by(Photo.created_at.desc())
-        .limit(1)
-    )
-    photo = photo_result.scalar_one_or_none()
-
-    if photo is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No profile photo found for this camper.",
-        )
-
-    # Download image bytes from Supabase Storage
+    # Download the profile photo directly from Supabase Storage.
+    # Profile photos are stored at a deterministic path (not as Photo records),
+    # so we extract the storage path from the public URL.
     try:
         from app.services.photo_service import _get_supabase
 
         supabase = _get_supabase()
-        bucket = _get_bucket(photo.category)
-        image_bytes = supabase.storage.from_(bucket).download(photo.file_path)
+        bucket = "camper-photos"
+        # Extract storage path from the public URL
+        # URL format: {supabase_url}/storage/v1/object/public/{bucket}/{path}
+        url_prefix = f"/storage/v1/object/public/{bucket}/"
+        ref_url = camper.reference_photo_url
+        if url_prefix in ref_url:
+            storage_path = ref_url.split(url_prefix, 1)[1]
+        else:
+            # Fallback: try the deterministic profile path
+            storage_path = f"{org_id}/profiles/{camper_id}/profile.jpg"
+
+        image_bytes = supabase.storage.from_(bucket).download(storage_path)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

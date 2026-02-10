@@ -5,6 +5,8 @@ CRUD for campers (children/participants) with contact linking.
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import uuid
 from typing import Any, Dict, Optional
 
@@ -14,8 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_permission
 from app.database import get_db
 from app.schemas.camper import CamperContactLink, CamperCreate, CamperResponse, CamperUpdate
-from app.services import camper_service, photo_service
+from app.services import camper_service, photo_service, rekognition_service
 from app.services.camper_profile_service import get_camper_profile
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/campers", tags=["Campers"])
 
@@ -159,7 +163,12 @@ async def upload_profile_photo(
     Upload a profile photo for a camper.
     This stores the photo directly in Supabase Storage and updates
     the camper's reference_photo_url. Does NOT create a Photo album record.
+    Also automatically indexes the face in AWS Rekognition for matching.
     """
+    # Read the raw bytes before passing to the service (so we can also index the face)
+    file_content = await file.read()
+    await file.seek(0)  # Reset for the service to read again
+
     try:
         url = await photo_service.upload_profile_photo(
             db,
@@ -185,6 +194,24 @@ async def upload_profile_photo(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Camper not found",
         )
+
+    # Auto-index the face in Rekognition (non-blocking best-effort)
+    content_type = file.content_type or ""
+    if content_type in ("image/jpeg", "image/png") and file_content:
+        try:
+            face_id = await asyncio.to_thread(
+                rekognition_service.index_camper_face,
+                current_user["organization_id"],
+                camper_id,
+                file_content,
+            )
+            if face_id:
+                logger.info(f"Indexed face for camper {camper_id}: {face_id}")
+            else:
+                logger.warning(f"No face detected in profile photo for camper {camper_id}")
+        except Exception as e:
+            logger.warning(f"Face indexing skipped for camper {camper_id}: {e}")
+
     return {"url": url}
 
 

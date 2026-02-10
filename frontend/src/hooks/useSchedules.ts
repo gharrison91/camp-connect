@@ -37,10 +37,22 @@ export function useSchedule(scheduleId: string | undefined) {
 export function useDailyView(eventId: string | undefined, date: string | undefined) {
   return useQuery<Schedule[]>({
     queryKey: ['schedules', 'daily-view', eventId, date],
-    queryFn: () =>
-      api
-        .get('/schedules/daily-view', { params: { event_id: eventId, date } })
-        .then((r) => r.data),
+    queryFn: async () => {
+      const res = await api.get('/schedules/daily-view', {
+        params: { event_id: eventId, date },
+      })
+      const data = res.data
+      // Backend returns { date, event_id, time_slots: [{ start_time, end_time, sessions }] }
+      // Flatten into a simple Schedule[] array for the DayView component
+      if (data && Array.isArray(data.time_slots)) {
+        return data.time_slots.flatMap(
+          (slot: { sessions: Schedule[] }) => slot.sessions || []
+        )
+      }
+      // Fallback: if backend ever returns a flat array directly
+      if (Array.isArray(data)) return data
+      return []
+    },
     enabled: !!eventId && !!date,
   })
 }
