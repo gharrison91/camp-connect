@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initComplete = useRef(false)
   const profileLoading = useRef(false)
 
-  const loadUserProfile = async () => {
+  const loadUserProfile = async (retries = 3) => {
     // Prevent concurrent loads
     if (profileLoading.current) return
     profileLoading.current = true
@@ -35,6 +35,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(response.data)
     } catch (error) {
       console.error('Failed to load user profile:', error)
+      // Retry on failure (handles Render cold starts & transient errors)
+      if (retries > 0) {
+        const delay = (4 - retries) * 2000 // 2s, 4s, 6s backoff
+        console.log(`Retrying profile load in ${delay}ms (${retries} retries left)`)
+        profileLoading.current = false
+        await new Promise((r) => setTimeout(r, delay))
+        return loadUserProfile(retries - 1)
+      }
       setUser(null)
     } finally {
       profileLoading.current = false

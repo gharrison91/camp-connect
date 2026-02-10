@@ -99,9 +99,19 @@ export function DashboardPage() {
 
       {/* Error State */}
       {error && (
-        <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <p>Failed to load dashboard data. Please try refreshing the page.</p>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            <p>Failed to load dashboard data. The server may be waking up.</p>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="rounded-md bg-red-100 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-200 transition-colors"
+            >
+              Refresh Page
+            </button>
+          </div>
         </div>
       )}
 
