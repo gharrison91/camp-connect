@@ -3,7 +3,7 @@
  * Detailed view of a staff member's profile with tabbed sections.
  */
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -19,10 +19,31 @@ import {
   Calendar,
   Tags,
   DollarSign,
+  Plus,
+  Pencil,
+  Trash2,
+  X,
+  Briefcase,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useStaffProfile, useUpdateStaffCategory } from '@/hooks/useStaff'
-import type { StaffCategory } from '@/hooks/useStaff'
+import {
+  useStaffProfile,
+  useUpdateStaffCategory,
+  useCertificationTypes,
+  useStaffCertifications,
+  useAddStaffCertification,
+  useUpdateStaffCertification,
+  useDeleteStaffCertification,
+  useJobTitles,
+  useUpdateStaffJobTitle,
+} from '@/hooks/useStaff'
+import type {
+  StaffCategory,
+  StaffCertificationRecord,
+  StaffCertificationCreate,
+  StaffCertificationUpdate,
+  CertificationType,
+} from '@/hooks/useStaff'
 import { useToast } from '@/components/ui/Toast'
 import { useOnboardingDetail } from '@/hooks/useOnboarding'
 
@@ -65,6 +86,8 @@ export function StaffProfilePage() {
   const { data: profile, isLoading, error } = useStaffProfile(id)
   const { data: onboarding, isLoading: onboardingLoading } = useOnboardingDetail(id)
   const updateCategory = useUpdateStaffCategory()
+  const updateJobTitle = useUpdateStaffJobTitle()
+  const { data: jobTitles = [] } = useJobTitles()
   const { toast } = useToast()
 
   if (isLoading) {
@@ -240,6 +263,39 @@ export function StaffProfilePage() {
 
           <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Briefcase className="h-4 w-4" />
+              <span>Job Title</span>
+            </div>
+            <select
+              value={profile.job_title_id ?? ''}
+              onChange={async (e) => {
+                const val = e.target.value || null
+                try {
+                  await updateJobTitle.mutateAsync({
+                    userId: profile.user_id,
+                    jobTitleId: val,
+                  })
+                  toast({
+                    type: 'success',
+                    message: 'Job title updated.',
+                  })
+                } catch {
+                  toast({ type: 'error', message: 'Failed to update job title.' })
+                }
+              }}
+              className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Not Set</option>
+              {jobTitles.map((jt) => (
+                <option key={jt.id} value={jt.id}>
+                  {jt.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
               <Calendar className="h-4 w-4" />
               <span>Hire Date</span>
             </div>
@@ -295,51 +351,7 @@ export function StaffProfilePage() {
       )}
 
       {activeTab === 'certifications' && (
-        <div className="space-y-3">
-          {profile.certifications && profile.certifications.length > 0 ? (
-            profile.certifications.map((cert) => (
-              <div
-                key={cert.id}
-                className="flex items-center gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
-                  <Award className="h-5 w-5 text-blue-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900">{cert.name}</p>
-                  <p className="text-xs text-gray-500">{cert.issuing_authority}</p>
-                </div>
-                <div className="text-right">
-                  {cert.certificate_number && (
-                    <p className="text-xs text-gray-500">#{cert.certificate_number}</p>
-                  )}
-                  <p className="text-xs text-gray-400">
-                    Issued: {new Date(cert.issue_date).toLocaleDateString()}
-                  </p>
-                  {cert.expiry_date && (
-                    <p
-                      className={cn(
-                        'text-xs',
-                        new Date(cert.expiry_date) < new Date()
-                          ? 'text-red-500'
-                          : 'text-gray-400'
-                      )}
-                    >
-                      Expires: {new Date(cert.expiry_date).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-12">
-              <Award className="h-10 w-10 text-gray-300" />
-              <p className="mt-3 text-sm text-gray-500">
-                No certifications on file.
-              </p>
-            </div>
-          )}
-        </div>
+        <CertificationsTab userId={id!} />
       )}
 
       {activeTab === 'financial' && (
@@ -576,6 +588,330 @@ export function StaffProfilePage() {
           })()}
         </div>
       )}
+    </div>
+  )
+}
+
+// --- Certifications Tab with full CRUD ---
+
+const CERT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  pending: { label: 'Pending', color: 'bg-amber-50 text-amber-700' },
+  valid: { label: 'Valid', color: 'bg-emerald-50 text-emerald-700' },
+  expired: { label: 'Expired', color: 'bg-red-50 text-red-700' },
+  revoked: { label: 'Revoked', color: 'bg-gray-100 text-gray-600' },
+}
+
+function CertificationsTab({ userId }: { userId: string }) {
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [editingCert, setEditingCert] = useState<StaffCertificationRecord | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const { data: certs = [], isLoading } = useStaffCertifications(userId)
+  const { data: certTypes = [] } = useCertificationTypes()
+  const deleteCert = useDeleteStaffCertification()
+  const { toast } = useToast()
+
+  const certTypeMap = useMemo(() => {
+    const map = new Map<string, CertificationType>()
+    for (const ct of certTypes) map.set(ct.id, ct)
+    return map
+  }, [certTypes])
+
+  const handleDelete = async (certId: string) => {
+    try {
+      await deleteCert.mutateAsync({ certId, userId })
+      toast({ type: 'success', message: 'Certification deleted' })
+      setDeletingId(null)
+    } catch {
+      toast({ type: 'error', message: 'Failed to delete certification' })
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          <Plus className="h-4 w-4" /> Add Certification
+        </button>
+      </div>
+
+      {certs.length > 0 ? (
+        <div className="space-y-3">
+          {certs.map((cert) => {
+            const statusInfo = CERT_STATUS_LABELS[cert.status] || CERT_STATUS_LABELS.pending
+            const typeName = cert.certification_type_name || certTypeMap.get(cert.certification_type_id)?.name || 'Unknown'
+            return (
+              <div
+                key={cert.id}
+                className="flex items-center gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
+                  <Award className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-900">{typeName}</p>
+                    <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', statusInfo.color)}>
+                      {statusInfo.label}
+                    </span>
+                  </div>
+                  {cert.notes && <p className="mt-0.5 text-xs text-gray-500">{cert.notes}</p>}
+                </div>
+                <div className="text-right shrink-0">
+                  {cert.issued_date && (
+                    <p className="text-xs text-gray-400">
+                      Issued: {new Date(cert.issued_date).toLocaleDateString()}
+                    </p>
+                  )}
+                  {cert.expiry_date && (
+                    <p
+                      className={cn(
+                        'text-xs',
+                        new Date(cert.expiry_date) < new Date()
+                          ? 'text-red-500 font-medium'
+                          : 'text-gray-400'
+                      )}
+                    >
+                      Expires: {new Date(cert.expiry_date).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => setEditingCert(cert)}
+                    className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    title="Edit"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setDeletingId(cert.id)}
+                    className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-12">
+          <Award className="h-10 w-10 text-gray-300" />
+          <p className="mt-3 text-sm font-medium text-gray-900">No certifications on file</p>
+          <p className="mt-1 text-sm text-gray-500">Add certifications to track staff qualifications.</p>
+        </div>
+      )}
+
+      {/* Add Modal */}
+      {showAddModal && (
+        <CertificationRecordModal
+          userId={userId}
+          certTypes={certTypes}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingCert && (
+        <CertificationRecordModal
+          userId={userId}
+          certTypes={certTypes}
+          existing={editingCert}
+          onClose={() => setEditingCert(null)}
+        />
+      )}
+
+      {/* Delete Confirmation */}
+      {deletingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">Delete Certification</h3>
+                <p className="text-xs text-gray-500">This cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-6">Are you sure you want to remove this certification record?</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setDeletingId(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={() => handleDelete(deletingId)} disabled={deleteCert.isPending} className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
+                {deleteCert.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Certification Add/Edit Modal ---
+
+function CertificationRecordModal({
+  userId,
+  certTypes,
+  existing,
+  onClose,
+}: {
+  userId: string
+  certTypes: CertificationType[]
+  existing?: StaffCertificationRecord
+  onClose: () => void
+}) {
+  const isEdit = !!existing
+  const [certTypeId, setCertTypeId] = useState(existing?.certification_type_id || '')
+  const [certStatus, setCertStatus] = useState(existing?.status || 'pending')
+  const [issuedDate, setIssuedDate] = useState(existing?.issued_date?.split('T')[0] || '')
+  const [expiryDate, setExpiryDate] = useState(existing?.expiry_date?.split('T')[0] || '')
+  const [notes, setNotes] = useState(existing?.notes || '')
+  const addCert = useAddStaffCertification()
+  const updateCert = useUpdateStaffCertification()
+  const { toast } = useToast()
+
+  const handleSave = async () => {
+    if (!isEdit && !certTypeId) return
+    try {
+      if (isEdit && existing) {
+        const data: StaffCertificationUpdate = {
+          status: certStatus,
+          issued_date: issuedDate || null,
+          expiry_date: expiryDate || null,
+          notes: notes || null,
+        }
+        await updateCert.mutateAsync({ certId: existing.id, userId, data })
+        toast({ type: 'success', message: 'Certification updated' })
+      } else {
+        const data: StaffCertificationCreate = {
+          certification_type_id: certTypeId,
+          status: certStatus,
+          issued_date: issuedDate || null,
+          expiry_date: expiryDate || null,
+          notes: notes || null,
+        }
+        await addCert.mutateAsync({ userId, data })
+        toast({ type: 'success', message: 'Certification added' })
+      }
+      onClose()
+    } catch {
+      toast({ type: 'error', message: `Failed to ${isEdit ? 'update' : 'add'} certification` })
+    }
+  }
+
+  const isPending = addCert.isPending || updateCert.isPending
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <h2 className="text-lg font-semibold text-gray-900">{isEdit ? 'Edit' : 'Add'} Certification</h2>
+          <button onClick={onClose} className="rounded-lg p-1 hover:bg-gray-100"><X className="h-5 w-5 text-gray-500" /></button>
+        </div>
+        <div className="space-y-4 p-6">
+          {/* Certification Type */}
+          {!isEdit && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Certification Type</label>
+              {certTypes.length > 0 ? (
+                <select
+                  value={certTypeId}
+                  onChange={(e) => setCertTypeId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Select a certification type...</option>
+                  {certTypes.map((ct) => (
+                    <option key={ct.id} value={ct.id}>
+                      {ct.name} {ct.is_required ? '(Required)' : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-sm text-gray-500">No certification types configured. Create them in Settings first.</p>
+              )}
+            </div>
+          )}
+          {isEdit && existing && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Certification Type</label>
+              <p className="text-sm text-gray-900">{existing.certification_type_name || 'Unknown'}</p>
+            </div>
+          )}
+
+          {/* Status */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+            <select
+              value={certStatus}
+              onChange={(e) => setCertStatus(e.target.value as StaffCertificationRecord['status'])}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="pending">Pending</option>
+              <option value="valid">Valid</option>
+              <option value="expired">Expired</option>
+              <option value="revoked">Revoked</option>
+            </select>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Issued Date</label>
+              <input
+                type="date"
+                value={issuedDate}
+                onChange={(e) => setIssuedDate(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Expiry Date</label>
+              <input
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Optional notes about this certification..."
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
+          <button onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+          <button
+            onClick={handleSave}
+            disabled={(!isEdit && !certTypeId) || isPending}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isEdit ? 'Save Changes' : 'Add Certification'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

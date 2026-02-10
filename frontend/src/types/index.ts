@@ -66,6 +66,13 @@ export interface Contact {
   notification_preferences: Record<string, boolean> | null;
   account_status: 'active' | 'guest';
   camper_count: number;
+  linked_campers: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    relationship_type: string;
+    is_primary: boolean;
+  }[];
   created_at: string;
 }
 

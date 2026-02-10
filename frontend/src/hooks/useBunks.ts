@@ -224,3 +224,83 @@ export function useAssignCounselor() {
     },
   })
 }
+
+// ─── Bunk Buddy Request Types & Hooks ───────────────────────
+
+export interface BuddyRequest {
+  id: string
+  event_id: string
+  event_name: string | null
+  requester_camper_id: string
+  requester_name: string
+  requested_camper_id: string
+  requested_name: string
+  status: 'pending' | 'approved' | 'denied'
+  is_mutual: boolean
+  submitted_by_contact_id: string | null
+  submitted_by_name: string | null
+  admin_notes: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  created_at: string
+}
+
+export interface BuddyRequestCreate {
+  event_id: string
+  requester_camper_id: string
+  requested_camper_id: string
+  submitted_by_contact_id?: string | null
+}
+
+export function useBuddyRequests(eventId?: string, statusFilter?: string) {
+  return useQuery<BuddyRequest[]>({
+    queryKey: ['buddy-requests', eventId, statusFilter],
+    queryFn: () =>
+      api
+        .get('/bunks/buddy-requests', {
+          params: {
+            ...(eventId ? { event_id: eventId } : {}),
+            ...(statusFilter ? { status_filter: statusFilter } : {}),
+          },
+        })
+        .then((r) => r.data),
+  })
+}
+
+export function useCreateBuddyRequest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: BuddyRequestCreate) =>
+      api.post('/bunks/buddy-requests', data).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['buddy-requests'] })
+    },
+  })
+}
+
+export function useUpdateBuddyRequest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string
+      data: { status: 'approved' | 'denied'; admin_notes?: string }
+    }) =>
+      api.put(`/bunks/buddy-requests/${id}`, data).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['buddy-requests'] })
+    },
+  })
+}
+
+export function useDeleteBuddyRequest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/bunks/buddy-requests/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['buddy-requests'] })
+    },
+  })
+}

@@ -5,6 +5,7 @@ Import all models here so Alembic can detect them.
 
 from app.models.base import Base, SoftDeleteMixin, TenantMixin, TimestampMixin
 from app.models.organization import Organization
+from app.models.job_title import JobTitle
 from app.models.user import User
 from app.models.role import Role, RolePermission
 from app.models.location import Location
@@ -57,6 +58,9 @@ from app.models.workflow import (
 # Phase 9: Staff Certification Types, Saved Lists
 from app.models.staff_certification import CertificationType, StaffCertificationRecord
 from app.models.saved_list import SavedList, SavedListMember
+
+# Phase 10: Job Titles, Bunk Buddy Requests
+from app.models.bunk_buddy import BunkBuddyRequest
 
 __all__ = [
     "Base",
@@ -116,4 +120,7 @@ __all__ = [
     "StaffCertificationRecord",
     "SavedList",
     "SavedListMember",
+    # Phase 10
+    "JobTitle",
+    "BunkBuddyRequest",
 ]

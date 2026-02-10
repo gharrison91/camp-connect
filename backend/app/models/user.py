@@ -56,6 +56,12 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
 
     # Staff fields
     department: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    job_title_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("job_titles.id", ondelete="SET NULL"),
+        nullable=True,
+        default=None,
+    )
     staff_category: Mapped[Optional[str]] = mapped_column(
         String(30), nullable=True, default=None
     )  # full_time, counselor, director
@@ -76,6 +82,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     # Relationships
     organization = relationship("Organization", back_populates="users")
     role = relationship("Role", back_populates="users", lazy="joined")
+    job_title = relationship("JobTitle", lazy="joined")
 
     @property
     def full_name(self) -> str:

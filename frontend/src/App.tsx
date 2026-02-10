@@ -21,6 +21,7 @@ import { UsersPage } from '@/features/admin/UsersPage'
 import { GeneralSettingsPage } from '@/features/admin/GeneralSettingsPage'
 import { NotificationSettingsPage } from '@/features/admin/NotificationSettingsPage'
 import { CertificationsSettingsPage } from '@/features/admin/CertificationsSettingsPage'
+import { JobTitlesSettingsPage } from '@/features/admin/JobTitlesSettingsPage'
 import { PhotosPage } from '@/features/photos/PhotosPage'
 import { CommunicationsPage } from '@/features/communications/CommunicationsPage'
 import { HealthSafetyPage } from '@/features/health/HealthSafetyPage'
@@ -53,6 +54,9 @@ import { WorkflowEditorPage } from '@/features/workflows/WorkflowEditorPage'
 // Phase 9: Lists
 import { ListsPage } from '@/features/lists/ListsPage'
 import { ListDetailPage } from '@/features/lists/ListDetailPage'
+
+// Phase 10: AI Insights
+import { AIInsightsPage } from '@/features/ai/AIInsightsPage'
 
 // Phase 7: Schedule, Payments, Reports, Store, Portal
 import { SchedulePage } from '@/features/schedule/SchedulePage'
@@ -139,6 +143,9 @@ function App() {
             <Route path="lists" element={<ListsPage />} />
             <Route path="lists/:id" element={<ListDetailPage />} />
 
+            {/* Phase 10: AI Insights */}
+            <Route path="ai-insights" element={<AIInsightsPage />} />
+
             {/* Settings (nested routes) */}
             <Route path="settings" element={<SettingsLayout />}>
               <Route index element={<Navigate to="/app/settings/profile" replace />} />
@@ -149,6 +156,7 @@ function App() {
               <Route path="general" element={<GeneralSettingsPage />} />
               <Route path="notifications" element={<NotificationSettingsPage />} />
               <Route path="certifications" element={<CertificationsSettingsPage />} />
+              <Route path="job-titles" element={<JobTitlesSettingsPage />} />
             </Route>
           </Route>
 

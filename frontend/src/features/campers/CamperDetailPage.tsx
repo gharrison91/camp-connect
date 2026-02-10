@@ -1069,18 +1069,46 @@ function PhotosTab({
               Upload photos to this camper&apos;s album. Photos are auto-renamed with today&apos;s date and your camp name.
             </p>
           </div>
-          <button
-            onClick={() => albumPhotoInputRef.current?.click()}
-            disabled={isUploadingAlbum}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isUploadingAlbum ? (
-              <Upload className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Upload className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2">
+            {profile.photos.length > 0 && (
+              <button
+                onClick={async () => {
+                  for (const photo of profile.photos) {
+                    try {
+                      const response = await fetch(photo.url)
+                      const blob = await response.blob()
+                      const url = window.URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = photo.file_name || `photo-${photo.id}.jpg`
+                      document.body.appendChild(a)
+                      a.click()
+                      document.body.removeChild(a)
+                      window.URL.revokeObjectURL(url)
+                      await new Promise((resolve) => setTimeout(resolve, 300))
+                    } catch { /* skip */ }
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                title={`Download all ${profile.photos.length} photos`}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download All ({profile.photos.length})
+              </button>
             )}
-            {isUploadingAlbum ? 'Uploading...' : 'Upload to Album'}
-          </button>
+            <button
+              onClick={() => albumPhotoInputRef.current?.click()}
+              disabled={isUploadingAlbum}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isUploadingAlbum ? (
+                <Upload className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
+              {isUploadingAlbum ? 'Uploading...' : 'Upload to Album'}
+            </button>
+          </div>
           <input
             ref={albumPhotoInputRef}
             type="file"

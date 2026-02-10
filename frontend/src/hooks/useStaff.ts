@@ -19,6 +19,8 @@ export interface StaffMember {
   avatar_url?: string | null
   department?: string | null
   staff_category?: StaffCategory
+  job_title?: string | null
+  job_title_id?: string | null
   role_name?: string | null
   status: 'active' | 'onboarding' | 'inactive'
   hire_date?: string | null
@@ -210,6 +212,9 @@ export function useAddStaffCertification() {
       queryClient.invalidateQueries({
         queryKey: ['staff', variables.userId, 'certifications'],
       })
+      queryClient.invalidateQueries({
+        queryKey: ['staff-profile', variables.userId],
+      })
     },
   })
 }
@@ -231,6 +236,25 @@ export function useUpdateStaffCertification() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['staff', variables.userId, 'certifications'],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['staff-profile', variables.userId],
+      })
+    },
+  })
+}
+
+export function useDeleteStaffCertification() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ certId }: { certId: string; userId: string }) =>
+      api.delete(`/staff/certifications/${certId}`),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['staff', variables.userId, 'certifications'],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['staff-profile', variables.userId],
       })
     },
   })
@@ -255,6 +279,86 @@ export function useUpdateStaffFinancial() {
         .then((r) => r.data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['staff', variables.userId] })
+    },
+  })
+}
+
+// ─── Job Title Types & Hooks ────────────────────────────────
+
+export interface JobTitle {
+  id: string
+  name: string
+  description?: string | null
+  is_system: boolean
+  staff_count: number
+  created_at: string
+}
+
+export interface JobTitleCreate {
+  name: string
+  description?: string | null
+}
+
+export interface JobTitleUpdate {
+  name?: string
+  description?: string | null
+}
+
+export function useJobTitles() {
+  return useQuery<JobTitle[]>({
+    queryKey: ['job-titles'],
+    queryFn: () => api.get('/staff/job-titles').then((r) => r.data),
+  })
+}
+
+export function useCreateJobTitle() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: JobTitleCreate) =>
+      api.post('/staff/job-titles', data).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['job-titles'] })
+    },
+  })
+}
+
+export function useUpdateJobTitle() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: JobTitleUpdate }) =>
+      api.put(`/staff/job-titles/${id}`, data).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['job-titles'] })
+    },
+  })
+}
+
+export function useDeleteJobTitle() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/staff/job-titles/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['job-titles'] })
+    },
+  })
+}
+
+export function useUpdateStaffJobTitle() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      userId,
+      jobTitleId,
+    }: {
+      userId: string
+      jobTitleId: string | null
+    }) =>
+      api
+        .put(`/staff/${userId}/job-title`, { job_title_id: jobTitleId })
+        .then((r) => r.data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['staff-profile', variables.userId] })
+      queryClient.invalidateQueries({ queryKey: ['staff'] })
     },
   })
 }

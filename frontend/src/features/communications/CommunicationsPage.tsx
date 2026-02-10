@@ -19,6 +19,10 @@ import {
   ChevronDown,
   Smartphone,
   UserPlus,
+  Pencil,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -29,11 +33,13 @@ import {
   useSendMessage,
   useSendBulkMessages,
   useCreateMessageTemplate,
+  useUpdateMessageTemplate,
+  useDeleteMessageTemplate,
   useEventRecipients,
   type MessageFilters,
 } from '@/hooks/useCommunications'
 import { useToast } from '@/components/ui/Toast'
-import type { Message } from '@/types'
+import type { Message, MessageTemplate } from '@/types'
 
 // --- Template variable definitions ---
 
@@ -624,8 +630,33 @@ function HistoryTab() {
 
 function TemplatesTab() {
   const [showCreate, setShowCreate] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const { data: templates = [], isLoading } = useMessageTemplates()
   const { hasPermission } = usePermissions()
+  const updateTemplate = useUpdateMessageTemplate()
+  const deleteTemplate = useDeleteMessageTemplate()
+  const { toast } = useToast()
+  const canManage = hasPermission('comms.templates.manage')
+
+  const handleToggleActive = async (tmpl: MessageTemplate) => {
+    try {
+      await updateTemplate.mutateAsync({ id: tmpl.id, data: { is_active: !tmpl.is_active } })
+      toast({ type: 'success', message: `Template ${tmpl.is_active ? 'deactivated' : 'activated'}` })
+    } catch {
+      toast({ type: 'error', message: 'Failed to update template' })
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteTemplate.mutateAsync(id)
+      toast({ type: 'success', message: 'Template deleted' })
+      setDeletingId(null)
+    } catch {
+      toast({ type: 'error', message: 'Failed to delete template' })
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -661,7 +692,7 @@ function TemplatesTab() {
         {/* Templates Grid */}
         <div className="flex-1 space-y-4">
           <div className="flex justify-end">
-            {hasPermission('comms.templates.manage') && (
+            {canManage && (
               <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"><Plus className="h-4 w-4" /> Create Template</button>
             )}
           </div>
@@ -669,10 +700,13 @@ function TemplatesTab() {
           {!isLoading && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {templates.map((tmpl) => (
-                <div key={tmpl.id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div key={tmpl.id} className={cn('rounded-xl border bg-white p-5 shadow-sm transition-colors', tmpl.is_active ? 'border-gray-200' : 'border-gray-200 bg-gray-50 opacity-75')}>
                   <div className="flex items-start justify-between">
-                    <h3 className="text-sm font-semibold text-gray-900">{tmpl.name}</h3>
-                    <div className="flex gap-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-gray-900">{tmpl.name}</h3>
+                      {!tmpl.is_active && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">Inactive</span>}
+                    </div>
+                    <div className="flex items-center gap-1.5">
                       {tmpl.channel === 'sms' || tmpl.channel === 'both' ? <Phone className="h-4 w-4 text-violet-500" /> : null}
                       {tmpl.channel === 'email' || tmpl.channel === 'both' ? <Mail className="h-4 w-4 text-blue-500" /> : null}
                     </div>
@@ -684,7 +718,27 @@ function TemplatesTab() {
                       {tmpl.variables.map((v) => <span key={v} className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-600 font-medium">{`{{${v}}}`}</span>)}
                     </div>
                   )}
-                  {tmpl.is_system && <span className="mt-2 inline-block rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">System</span>}
+                  {/* Action buttons */}
+                  {canManage && (
+                    <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
+                      <button onClick={() => handleToggleActive(tmpl)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors" title={tmpl.is_active ? 'Deactivate' : 'Activate'}>
+                        {tmpl.is_active ? <ToggleRight className="h-4 w-4 text-emerald-500" /> : <ToggleLeft className="h-4 w-4 text-gray-400" />}
+                        {tmpl.is_active ? 'Active' : 'Inactive'}
+                      </button>
+                      {!tmpl.is_system && (
+                        <>
+                          <button onClick={() => setEditingTemplate(tmpl)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+                            <Pencil className="h-3.5 w-3.5" /> Edit
+                          </button>
+                          <button onClick={() => setDeletingId(tmpl.id)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">
+                            <Trash2 className="h-3.5 w-3.5" /> Delete
+                          </button>
+                        </>
+                      )}
+                      {tmpl.is_system && <span className="ml-auto rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">System</span>}
+                    </div>
+                  )}
+                  {!canManage && tmpl.is_system && <span className="mt-2 inline-block rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">System</span>}
                 </div>
               ))}
             </div>
@@ -697,6 +751,30 @@ function TemplatesTab() {
         </div>
       </div>
       {showCreate && <TemplateCreateModal onClose={() => setShowCreate(false)} />}
+      {editingTemplate && <TemplateEditModal template={editingTemplate} onClose={() => setEditingTemplate(null)} />}
+      {/* Delete Confirmation */}
+      {deletingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">Delete Template</h3>
+                <p className="text-xs text-gray-500">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-6">Are you sure you want to delete this template? Any messages previously sent using it will not be affected.</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setDeletingId(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={() => handleDelete(deletingId)} disabled={deleteTemplate.isPending} className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
+                {deleteTemplate.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1047,6 +1125,177 @@ function TemplateCreateModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
           <button onClick={handleCreate} disabled={!name || !body || createTemplate.isPending} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
             {createTemplate.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Create Template
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// --- Template Edit Modal ---
+
+function TemplateEditModal({ template, onClose }: { template: MessageTemplate; onClose: () => void }) {
+  const [name, setName] = useState(template.name)
+  const [channel, setChannel] = useState<'sms' | 'email' | 'both'>(template.channel)
+  const [category, setCategory] = useState(template.category)
+  const [subject, setSubject] = useState(template.subject || '')
+  const [body, setBody] = useState(template.body)
+  const [showVarDropdown, setShowVarDropdown] = useState(false)
+  const [autocompleteVars, setAutocompleteVars] = useState<TemplateVariable[]>([])
+  const [autocompletePos, setAutocompletePos] = useState<{ top: number; left: number } | null>(null)
+  const bodyRef = useRef<HTMLTextAreaElement>(null)
+  const updateTemplate = useUpdateMessageTemplate()
+  const { toast } = useToast()
+
+  const extractedVariables = useMemo(() => {
+    const matches = body.match(/\{\{(\w+)\}\}/g) || []
+    return [...new Set(matches.map((m) => m.replace(/\{\{|\}\}/g, '')))]
+  }, [body])
+
+  const handleBodyChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value
+    setBody(val)
+    const cursorPos = e.target.selectionStart
+    const textBeforeCursor = val.substring(0, cursorPos)
+    const match = textBeforeCursor.match(/\{\{(\w*)$/)
+    if (match) {
+      const partial = match[1].toLowerCase()
+      const filtered = TEMPLATE_VARIABLES.filter((v) => v.key.toLowerCase().includes(partial) || v.label.toLowerCase().includes(partial))
+      if (filtered.length > 0) {
+        setAutocompleteVars(filtered)
+        const ta = bodyRef.current
+        if (ta) {
+          const lineHeight = 20
+          const lines = textBeforeCursor.split('\n')
+          const row = lines.length - 1
+          setAutocompletePos({ top: (row + 1) * lineHeight + 8, left: 16 })
+        }
+      } else { setAutocompleteVars([]); setAutocompletePos(null) }
+    } else { setAutocompleteVars([]); setAutocompletePos(null) }
+  }, [])
+
+  const insertVariable = useCallback((varKey: string) => {
+    const ta = bodyRef.current
+    if (!ta) {
+      setBody((prev) => prev + `{{${varKey}}}`)
+      setShowVarDropdown(false); setAutocompleteVars([]); setAutocompletePos(null)
+      return
+    }
+    const cursorPos = ta.selectionStart
+    const textBeforeCursor = body.substring(0, cursorPos)
+    const textAfterCursor = body.substring(cursorPos)
+    const match = textBeforeCursor.match(/\{\{(\w*)$/)
+    if (match) {
+      const insertText = `{{${varKey}}}`
+      const before = textBeforeCursor.substring(0, textBeforeCursor.length - match[0].length)
+      setBody(before + insertText + textAfterCursor)
+      setTimeout(() => { const newPos = before.length + insertText.length; ta.setSelectionRange(newPos, newPos); ta.focus() }, 0)
+    } else {
+      const insertText = `{{${varKey}}}`
+      setBody(textBeforeCursor + insertText + textAfterCursor)
+      setTimeout(() => { const newPos = cursorPos + insertText.length; ta.setSelectionRange(newPos, newPos); ta.focus() }, 0)
+    }
+    setShowVarDropdown(false); setAutocompleteVars([]); setAutocompletePos(null)
+  }, [body])
+
+  const handleSave = async () => {
+    if (!name || !body) return
+    try {
+      await updateTemplate.mutateAsync({
+        id: template.id,
+        data: { name, channel, category, subject: channel !== 'sms' ? subject : undefined, body, variables: extractedVariables },
+      })
+      toast({ type: 'success', message: 'Template updated' })
+      onClose()
+    } catch {
+      toast({ type: 'error', message: 'Failed to update template' })
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-2xl rounded-xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <h2 className="text-lg font-semibold text-gray-900">Edit Template</h2>
+          <button onClick={onClose} className="rounded-lg p-1 hover:bg-gray-100"><X className="h-5 w-5 text-gray-500" /></button>
+        </div>
+        <div className="flex">
+          <div className="flex-1 space-y-4 p-6">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Channel</label>
+                <select value={channel} onChange={(e) => setChannel(e.target.value as 'sms' | 'email' | 'both')} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"><option value="both">Both</option><option value="sms">SMS Only</option><option value="email">Email Only</option></select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Category</label>
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"><option value="general">General</option><option value="registration">Registration</option><option value="waitlist">Waitlist</option><option value="reminder">Reminder</option><option value="emergency">Emergency</option></select>
+              </div>
+            </div>
+            {channel !== 'sms' && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Subject</label>
+                <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+              </div>
+            )}
+            <div className="relative">
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">Body</label>
+                <div className="relative">
+                  <button onClick={() => setShowVarDropdown(!showVarDropdown)} className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700">Insert Variable <ChevronDown className="h-3 w-3" /></button>
+                  {showVarDropdown && (
+                    <div className="absolute right-0 top-full mt-1 z-20 w-56 rounded-lg border border-gray-200 bg-white shadow-lg">
+                      <div className="max-h-48 overflow-y-auto p-1">
+                        {TEMPLATE_VARIABLES.map((v) => (
+                          <button key={v.key} onClick={() => insertVariable(v.key)} className="w-full text-left rounded px-3 py-1.5 text-xs hover:bg-blue-50">
+                            <span className="font-mono text-blue-600">{`{{${v.key}}}`}</span><span className="ml-2 text-gray-500">{v.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <textarea ref={bodyRef} value={body} onChange={handleBodyChange} rows={5} placeholder={'Use {{variable}} for dynamic content. Type {{ to see autocomplete.'} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+              {autocompleteVars.length > 0 && autocompletePos && (
+                <div className="absolute z-20 w-56 rounded-lg border border-gray-200 bg-white shadow-lg" style={{ top: autocompletePos.top + 28, left: autocompletePos.left }}>
+                  <div className="max-h-36 overflow-y-auto p-1">
+                    {autocompleteVars.map((v) => (
+                      <button key={v.key} onClick={() => insertVariable(v.key)} className="w-full text-left rounded px-3 py-1.5 text-xs hover:bg-blue-50">
+                        <span className="font-mono text-blue-600">{`{{${v.key}}}`}</span><span className="ml-2 text-gray-500">{v.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            {extractedVariables.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-1">Detected variables:</p>
+                <div className="flex flex-wrap gap-1">
+                  {extractedVariables.map((v) => <span key={v} className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-600">{`{{${v}}}`}</span>)}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="hidden sm:block w-48 border-l border-gray-100 p-4 bg-gray-50/50">
+            <div className="flex items-center gap-1.5 mb-3"><HelpCircle className="h-3.5 w-3.5 text-blue-500" /><p className="text-xs font-semibold text-gray-700">Variables</p></div>
+            <div className="space-y-2">
+              {TEMPLATE_VARIABLES.map((v) => (
+                <button key={v.key} onClick={() => insertVariable(v.key)} className="block w-full text-left rounded px-2 py-1 text-[11px] hover:bg-white transition-colors">
+                  <span className="font-mono text-blue-600 block">{`{{${v.key}}}`}</span><span className="text-gray-400">{v.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
+          <button onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+          <button onClick={handleSave} disabled={!name || !body || updateTemplate.isPending} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
+            {updateTemplate.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Save Changes
           </button>
         </div>
       </div>

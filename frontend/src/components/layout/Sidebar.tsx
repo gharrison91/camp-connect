@@ -23,6 +23,7 @@ import {
   FileText,
   Workflow,
   ListChecks,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -36,6 +37,7 @@ interface SidebarProps {
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/app/dashboard', permission: null },
+  { label: 'AI Insights', icon: Sparkles, path: '/app/ai-insights', permission: 'analytics.insights.read' },
   { label: 'Events', icon: Calendar, path: '/app/events', permission: 'core.events.read' },
   { label: 'Campers', icon: Users, path: '/app/campers', permission: 'core.campers.read' },
   { label: 'Contacts', icon: BookUser, path: '/app/contacts', permission: 'core.contacts.read' },

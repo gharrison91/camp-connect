@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     stripe_publishable_key: str = ""
     stripe_webhook_secret: str = ""
 
+    # Anthropic (Claude AI Insights)
+    anthropic_api_key: str = ""
+    ai_model: str = "claude-sonnet-4-20250514"
+    ai_max_tokens: int = 4096
+
     # AWS Rekognition (facial recognition for camper photos)
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""

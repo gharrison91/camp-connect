@@ -161,6 +161,8 @@ async def list_staff(
             "role_name": user.role.name if user.role else None,
             "department": None,  # Department is an extension field
             "staff_category": user.staff_category,
+            "job_title": user.job_title.name if user.job_title else None,
+            "job_title_id": str(user.job_title_id) if user.job_title_id else None,
             "status": staff_status,
             "is_active": user.is_active,
             "phone": user.phone,
@@ -305,6 +307,52 @@ async def update_staff_category(
     return {"id": user.id, "staff_category": user.staff_category}
 
 
+@router.put("/{user_id}/job-title")
+async def update_staff_job_title(
+    user_id: uuid.UUID,
+    body: dict,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("staff.employees.update")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a staff member's job title."""
+    org_id = current_user["organization_id"]
+
+    result = await db.execute(
+        select(User)
+        .where(User.id == user_id)
+        .where(User.organization_id == org_id)
+        .where(User.deleted_at.is_(None))
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Staff member not found",
+        )
+
+    job_title_id = body.get("job_title_id")
+    if job_title_id:
+        from app.models.job_title import JobTitle
+        jt_result = await db.execute(
+            select(JobTitle)
+            .where(JobTitle.id == uuid.UUID(job_title_id))
+            .where(JobTitle.organization_id == org_id)
+        )
+        if jt_result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job title not found",
+            )
+        user.job_title_id = uuid.UUID(job_title_id)
+    else:
+        user.job_title_id = None
+
+    await db.commit()
+    return {"id": user.id, "job_title_id": str(user.job_title_id) if user.job_title_id else None}
+
+
 @router.get(
     "/{user_id}",
     response_model=StaffProfile,
@@ -396,6 +444,8 @@ async def get_staff_profile(
         "role_name": user.role.name if user.role else None,
         "department": None,
         "staff_category": user.staff_category,
+        "job_title": user.job_title.name if user.job_title else None,
+        "job_title_id": str(user.job_title_id) if user.job_title_id else None,
         "status": staff_status,
         "hire_date": user.created_at,
         "is_active": user.is_active,

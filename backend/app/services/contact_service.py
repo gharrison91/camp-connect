@@ -26,7 +26,9 @@ async def list_contacts(
     """List contacts for an organization with optional search."""
     query = (
         select(Contact)
-        .options(selectinload(Contact.camper_contacts))
+        .options(
+            selectinload(Contact.camper_contacts).selectinload(CamperContact.camper)
+        )
         .where(Contact.organization_id == organization_id)
         .where(Contact.deleted_at.is_(None))
     )
@@ -55,7 +57,9 @@ async def get_contact(
     """Get a single contact by ID."""
     result = await db.execute(
         select(Contact)
-        .options(selectinload(Contact.camper_contacts))
+        .options(
+            selectinload(Contact.camper_contacts).selectinload(CamperContact.camper)
+        )
         .where(Contact.id == contact_id)
         .where(Contact.organization_id == organization_id)
         .where(Contact.deleted_at.is_(None))
@@ -94,7 +98,9 @@ async def update_contact(
     """Update a contact."""
     result = await db.execute(
         select(Contact)
-        .options(selectinload(Contact.camper_contacts))
+        .options(
+            selectinload(Contact.camper_contacts).selectinload(CamperContact.camper)
+        )
         .where(Contact.id == contact_id)
         .where(Contact.organization_id == organization_id)
         .where(Contact.deleted_at.is_(None))
@@ -151,5 +157,16 @@ def _contact_to_dict(contact: Contact) -> Dict[str, Any]:
         "account_status": contact.account_status,
         "communication_preference": contact.communication_preference,
         "camper_count": len(contact.camper_contacts) if contact.camper_contacts else 0,
+        "linked_campers": [
+            {
+                "id": cc.camper.id,
+                "first_name": cc.camper.first_name,
+                "last_name": cc.camper.last_name,
+                "relationship_type": cc.relationship_type,
+                "is_primary": cc.is_primary,
+            }
+            for cc in (contact.camper_contacts or [])
+            if cc.camper is not None
+        ],
         "created_at": contact.created_at,
     }

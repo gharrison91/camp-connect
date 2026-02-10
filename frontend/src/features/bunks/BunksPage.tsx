@@ -27,6 +27,7 @@ import {
   MapPin,
   Shield,
   X,
+  Heart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEvents } from '@/hooks/useEvents'
@@ -47,6 +48,7 @@ import { CamperCard, CamperCardOverlay } from './CamperCard'
 import { CounselorCard, CounselorCardOverlay } from './CounselorCard'
 import { BunkManageModal } from './BunkManageModal'
 import { EventBunkConfigModal } from './EventBunkConfigModal'
+import { BuddyRequestsTab } from './BuddyRequestsTab'
 
 // ─── Drag metadata stored during onDragStart ────────────────
 
@@ -130,7 +132,10 @@ function formatGenderRestriction(val: string | null): string {
 
 // ─── Main page component ────────────────────────────────────
 
+type BunkTab = 'board' | 'buddy-requests'
+
 export function BunksPage() {
+  const [activeTab, setActiveTab] = useState<BunkTab>('board')
   const { hasPermission } = usePermissions()
   const { toast } = useToast()
 
@@ -338,9 +343,37 @@ export function BunksPage() {
     <div className="flex h-full flex-col space-y-6">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-          Bunk Assignments
-        </h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+            Bunk Assignments
+          </h1>
+          <div className="mt-2 flex gap-1">
+            <button
+              onClick={() => setActiveTab('board')}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+                activeTab === 'board'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+              )}
+            >
+              <BedDouble className="mr-1.5 inline h-4 w-4" />
+              Board
+            </button>
+            <button
+              onClick={() => setActiveTab('buddy-requests')}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+                activeTab === 'buddy-requests'
+                  ? 'bg-pink-100 text-pink-700'
+                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+              )}
+            >
+              <Heart className="mr-1.5 inline h-4 w-4" />
+              Buddy Requests
+            </button>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           {/* Event Selector */}
           <select
@@ -382,8 +415,11 @@ export function BunksPage() {
         </div>
       </div>
 
-      {/* Prompt to select event */}
-      {!selectedEventId && !isLoading && (
+      {/* Buddy Requests Tab */}
+      {activeTab === 'buddy-requests' && <BuddyRequestsTab />}
+
+      {/* Board Tab Content */}
+      {activeTab === 'board' && !selectedEventId && !isLoading && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-20">
           <BedDouble className="h-10 w-10 text-gray-300" />
           <p className="mt-3 text-sm font-medium text-gray-900">
@@ -396,14 +432,14 @@ export function BunksPage() {
       )}
 
       {/* Loading */}
-      {isLoading && (
+      {activeTab === 'board' && isLoading && (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
         </div>
       )}
 
       {/* Main board */}
-      {selectedEventId && !isLoading && (
+      {activeTab === 'board' && selectedEventId && !isLoading && (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}

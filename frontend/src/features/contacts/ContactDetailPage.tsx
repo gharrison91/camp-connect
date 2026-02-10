@@ -234,21 +234,48 @@ export function ContactDetailPage() {
       {/* Linked Campers Section */}
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Linked Campers</h2>
-        <div className="mt-3 rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
-              <Users className="h-5 w-5 text-blue-600" />
+        <div className="mt-3 space-y-2">
+          {contact.linked_campers && contact.linked_campers.length > 0 ? (
+            contact.linked_campers.map((camper: { id: string; first_name: string; last_name: string; relationship_type: string; is_primary: boolean }) => (
+              <Link
+                key={camper.id}
+                to={`/app/campers/${camper.id}`}
+                className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50/30"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
+                  <UserCircle className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">
+                    {camper.first_name} {camper.last_name}
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-500 capitalize">
+                    {camper.relationship_type}
+                    {camper.is_primary && (
+                      <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
+                        Primary
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <ArrowLeft className="h-4 w-4 rotate-180 text-gray-400" />
+              </Link>
+            ))
+          ) : (
+            <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50">
+                  <Users className="h-5 w-5 text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">No campers linked</p>
+                  <p className="mt-0.5 text-xs text-gray-400">
+                    Link campers through the registration process.
+                  </p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">
-                {contact.camper_count} camper
-                {contact.camper_count !== 1 ? 's' : ''} linked
-              </p>
-              <p className="mt-0.5 text-xs text-gray-500">
-                View individual camper profiles for full details.
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

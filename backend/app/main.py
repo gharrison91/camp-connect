@@ -65,6 +65,11 @@ from app.api.v1.workflows import assoc_router as contact_assoc_router
 from app.api.v1.staff_certifications import router as staff_certifications_router
 from app.api.v1.lists import router as lists_router
 
+# Phase 10: Job Titles, Bunk Buddy Requests, AI Insights
+from app.api.v1.job_titles import router as job_titles_router
+from app.api.v1.bunk_buddies import router as bunk_buddies_router
+from app.api.v1.ai import router as ai_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -156,6 +161,11 @@ app.include_router(contact_assoc_router, prefix=settings.api_v1_prefix)
 # Phase 9: Staff Certifications, Saved Lists
 app.include_router(staff_certifications_router, prefix=settings.api_v1_prefix)
 app.include_router(lists_router, prefix=settings.api_v1_prefix)
+
+# Phase 10: Job Titles, Bunk Buddy Requests, AI Insights
+app.include_router(job_titles_router, prefix=settings.api_v1_prefix)
+app.include_router(bunk_buddies_router, prefix=settings.api_v1_prefix)
+app.include_router(ai_router, prefix=settings.api_v1_prefix)
 
 
 @app.exception_handler(Exception)

@@ -24,6 +24,8 @@ class StaffListItem(BaseModel):
     role_name: Optional[str] = None
     department: Optional[str] = None
     staff_category: Optional[str] = None
+    job_title: Optional[str] = None
+    job_title_id: Optional[str] = None
     status: Optional[str] = None
     is_active: bool = True
     phone: Optional[str] = None

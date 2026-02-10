@@ -11,6 +11,7 @@ import {
   Filter,
   CheckSquare,
   Square,
+  Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePhotos, useUploadPhoto, useDeletePhoto } from '@/hooks/usePhotos'
@@ -87,6 +88,37 @@ export function PhotosPage() {
     }
   }
 
+  const [downloading, setDownloading] = useState(false)
+
+  const handleBulkDownload = async (photoIds?: string[]) => {
+    const photosToDownload = photoIds
+      ? filteredPhotos.filter((p) => photoIds.includes(p.id))
+      : filteredPhotos
+    if (photosToDownload.length === 0) return
+    setDownloading(true)
+    let downloaded = 0
+    for (const photo of photosToDownload) {
+      try {
+        const response = await fetch(photo.url)
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = photo.file_name || `photo-${photo.id}.jpg`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+        downloaded++
+        await new Promise((resolve) => setTimeout(resolve, 300))
+      } catch {
+        // Skip failed downloads
+      }
+    }
+    setDownloading(false)
+    toast({ type: 'success', message: `Downloaded ${downloaded} photo${downloaded !== 1 ? 's' : ''}` })
+  }
+
   const [eventFilter, setEventFilter] = useState<string>('')
   const [activityFilter, setActivityFilter] = useState<string>('')
   const [monthFilter, setMonthFilter] = useState<number | undefined>(undefined)
@@ -150,6 +182,14 @@ export function PhotosPage() {
           >
             {selectMode ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
             {selectMode ? 'Cancel Select' : 'Multi-Select'}
+          </button>
+          <button
+            onClick={() => handleBulkDownload()}
+            disabled={downloading || filteredPhotos.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-50"
+          >
+            {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Download All ({filteredPhotos.length})
           </button>
           <button
             onClick={() => handleBulkAnalyze(null)}
@@ -236,6 +276,14 @@ export function PhotosPage() {
               <button onClick={selectAll} className="text-xs font-medium text-blue-600 hover:text-blue-800">Select All</button>
               <button onClick={deselectAll} className="text-xs font-medium text-blue-600 hover:text-blue-800">Deselect All</button>
               <div className="flex-1" />
+              <button
+                onClick={() => handleBulkDownload(Array.from(selectedIds))}
+                disabled={selectedIds.size === 0 || downloading}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Download Selected ({selectedIds.size})
+              </button>
               <button
                 onClick={() => handleBulkAnalyze(Array.from(selectedIds))}
                 disabled={selectedIds.size === 0 || bulkReprocess.isPending}
