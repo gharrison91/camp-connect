@@ -85,8 +85,8 @@ def get_public_url(file_path: str, bucket: str) -> str:
         result = supabase.storage.from_(bucket).create_signed_url(
             file_path, 3600  # 1 hour
         )
-        if result and "signedURL" in result:
-            return result["signedURL"]
+        if result and ("signedURL" in result or "signedUrl" in result):
+            return result.get("signedURL") or result.get("signedUrl")
         # Fallback: construct a public URL
         return f"{settings.supabase_url}/storage/v1/object/public/{bucket}/{file_path}"
     except Exception as e:

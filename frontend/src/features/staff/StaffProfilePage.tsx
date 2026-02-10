@@ -335,8 +335,8 @@ export function StaffProfilePage() {
                   { label: 'Personal Info', done: onboarding.personal_info_completed },
                   { label: 'Emergency Contacts', done: onboarding.emergency_contacts_completed },
                   { label: 'Certifications', done: onboarding.certifications_completed },
-                  { label: 'Policy Acknowledgments', done: onboarding.policies_completed },
-                  { label: 'Payroll Setup', done: onboarding.payroll_completed },
+                  { label: 'Policy Acknowledgments', done: onboarding.policy_acknowledgments_completed },
+                  { label: 'Payroll Setup', done: onboarding.payroll_info_completed },
                 ].map((step) => (
                   <div
                     key={step.label}

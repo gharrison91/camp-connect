@@ -41,8 +41,8 @@ export interface OnboardingRecord {
   personal_info_completed: boolean
   emergency_contacts_completed: boolean
   certifications_completed: boolean
-  policies_completed: boolean
-  payroll_completed: boolean
+  policy_acknowledgments_completed: boolean
+  payroll_info_completed: boolean
   emergency_contacts: EmergencyContact[]
   certifications: OnboardingCertification[]
   policy_acknowledgments: PolicyAcknowledgment[]

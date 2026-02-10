@@ -23,7 +23,7 @@ export function PayrollInfoStep({
   allStepsComplete,
 }: PayrollInfoStepProps) {
   const completePayroll = useCompletePayroll()
-  const [confirmed, setConfirmed] = useState(onboarding.payroll_completed)
+  const [confirmed, setConfirmed] = useState(onboarding.payroll_info_completed)
 
   async function handleConfirm() {
     if (!confirmed) {

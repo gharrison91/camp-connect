@@ -67,8 +67,8 @@ export function OnboardingWizard() {
     onboarding.personal_info_completed,
     onboarding.emergency_contacts_completed,
     onboarding.certifications_completed,
-    onboarding.policies_completed,
-    onboarding.payroll_completed,
+    onboarding.policy_acknowledgments_completed,
+    onboarding.payroll_info_completed,
   ]
 
   const completedCount = stepCompletion.filter(Boolean).length

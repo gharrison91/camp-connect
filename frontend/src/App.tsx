@@ -24,6 +24,13 @@ import { PhotosPage } from '@/features/photos/PhotosPage'
 import { CommunicationsPage } from '@/features/communications/CommunicationsPage'
 import { HealthSafetyPage } from '@/features/health/HealthSafetyPage'
 import { LandingPage } from '@/features/landing/LandingPage'
+import { MarketingLayout } from '@/features/landing/MarketingLayout'
+import { FeaturesPage } from '@/features/landing/FeaturesPage'
+import { GalleryPage } from '@/features/landing/GalleryPage'
+import { ScheduleDemoPage } from '@/features/landing/ScheduleDemoPage'
+import { DashboardPreviewPage } from '@/features/landing/DashboardPreviewPage'
+import { AboutPage } from '@/features/landing/AboutPage'
+import { ContactPage } from '@/features/landing/ContactPage'
 import { StaffDirectoryPage } from '@/features/staff/StaffDirectoryPage'
 import { StaffProfilePage } from '@/features/staff/StaffProfilePage'
 import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard'
@@ -58,8 +65,16 @@ function App() {
     <BrowserRouter>
       <ToastProvider>
         <Routes>
-          {/* Public marketing landing page */}
+          {/* Public marketing pages */}
           <Route path="/" element={<LandingPage />} />
+          <Route element={<MarketingLayout />}>
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/gallery" element={<GalleryPage />} />
+            <Route path="/schedule-demo" element={<ScheduleDemoPage />} />
+            <Route path="/dashboard-preview" element={<DashboardPreviewPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+          </Route>
 
           {/* Public auth routes */}
           <Route path="/login" element={<LoginPage />} />

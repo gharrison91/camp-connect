@@ -30,6 +30,7 @@ export interface PaginatedStaff {
 }
 
 export interface StaffProfile extends StaffMember {
+  hire_date: string | null
   certifications: {
     id: string
     name: string
@@ -37,12 +38,22 @@ export interface StaffProfile extends StaffMember {
     certificate_number?: string | null
     issue_date: string
     expiry_date?: string | null
+    document_url?: string | null
+    status?: string | null
   }[]
   emergency_contacts: {
     name: string
     phone: string
     relationship: string
   }[]
+  onboarding?: {
+    id: string
+    status: string
+    current_step: number
+    completed_at: string | null
+  } | null
+  seasonal_access_start?: string | null
+  seasonal_access_end?: string | null
 }
 
 export interface StaffDepartment {

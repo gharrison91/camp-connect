@@ -51,7 +51,7 @@ export function useUploadPhoto() {
       if (data.caption) formData.append('caption', data.caption)
       return api
         .post('/photos', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
+          headers: { 'Content-Type': undefined },
         })
         .then((r) => r.data)
     },

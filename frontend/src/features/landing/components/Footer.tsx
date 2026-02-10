@@ -2,17 +2,18 @@ import { Link } from 'react-router-dom';
 import { Tent } from 'lucide-react';
 
 const productLinks = [
-  { label: 'Features', href: '#features' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'Integrations', href: '#' },
-  { label: 'API', href: '#' },
+  { label: 'Features', href: '/features' },
+  { label: 'Pricing', href: '/#pricing' },
+  { label: 'Schedule Demo', href: '/schedule-demo' },
+  { label: 'Dashboard Preview', href: '/dashboard-preview' },
+  { label: 'Gallery', href: '/gallery' },
 ];
 
 const companyLinks = [
-  { label: 'About', href: '#' },
-  { label: 'Careers', href: '#' },
+  { label: 'About', href: '/about' },
+  { label: 'Contact', href: '/contact' },
   { label: 'Blog', href: '#' },
-  { label: 'Contact', href: '#' },
+  { label: 'Careers', href: '#' },
 ];
 
 const legalLinks = [
@@ -36,12 +37,21 @@ function FooterLinkGroup({
       <ul className="space-y-3">
         {links.map((link) => (
           <li key={link.label}>
-            <a
-              href={link.href}
-              className="text-sm text-gray-500 hover:text-gray-300 transition-colors duration-200"
-            >
-              {link.label}
-            </a>
+            {link.href.startsWith('/') ? (
+              <Link
+                to={link.href}
+                className="text-sm text-gray-500 hover:text-gray-300 transition-colors duration-200"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                href={link.href}
+                className="text-sm text-gray-500 hover:text-gray-300 transition-colors duration-200"
+              >
+                {link.label}
+              </a>
+            )}
           </li>
         ))}
       </ul>
@@ -74,24 +84,17 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Product */}
           <FooterLinkGroup title="Product" links={productLinks} />
-
-          {/* Company */}
           <FooterLinkGroup title="Company" links={companyLinks} />
-
-          {/* Legal */}
           <FooterLinkGroup title="Legal" links={legalLinks} />
         </div>
 
-        {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-600">
             &copy; {new Date().getFullYear()} Camp Connect, Inc. All rights
             reserved.
           </p>
 
-          {/* Social Icons (placeholders) */}
           <div className="flex items-center gap-4">
             {['Twitter', 'LinkedIn', 'GitHub'].map((platform) => (
               <a
