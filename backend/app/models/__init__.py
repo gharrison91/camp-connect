@@ -45,6 +45,15 @@ from app.models.notification_config import NotificationConfig
 from app.models.store import StoreItem, SpendingAccount, StoreTransaction
 from app.models.event_bunk_config import EventBunkConfig
 
+# Phase 8: Form Builder, Workflow Engine, Contact Associations
+from app.models.form_builder import FormTemplate, FormSubmission
+from app.models.workflow import (
+    Workflow,
+    WorkflowExecution,
+    WorkflowExecutionLog,
+    ContactAssociation,
+)
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -91,4 +100,11 @@ __all__ = [
     "SpendingAccount",
     "StoreTransaction",
     "EventBunkConfig",
+    # Phase 8
+    "FormTemplate",
+    "FormSubmission",
+    "Workflow",
+    "WorkflowExecution",
+    "WorkflowExecutionLog",
+    "ContactAssociation",
 ]
