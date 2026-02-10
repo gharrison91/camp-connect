@@ -209,5 +209,34 @@ async def health_check():
         "jwks_reachable": jwks_ok,
         "supabase_url_set": bool(settings.supabase_url),
         "jwt_secret_set": bool(settings.supabase_jwt_secret),
+        "aws_rekognition_configured": bool(settings.aws_access_key_id),
         "errors": errors,
     }
+
+
+@app.get("/api/v1/health/db-tables")
+async def check_tables():
+    """Check which database tables exist. Useful for verifying migrations ran."""
+    if engine is None:
+        return {"status": "no_engine", "tables": []}
+    try:
+        async with engine.begin() as conn:
+            result = await conn.execute(
+                text(
+                    "SELECT table_name FROM information_schema.tables "
+                    "WHERE table_schema = 'public' ORDER BY table_name"
+                )
+            )
+            tables = [row[0] for row in result]
+        phase8_tables = ["form_templates", "form_submissions", "workflows",
+                         "workflow_executions", "workflow_execution_logs",
+                         "contact_associations"]
+        missing = [t for t in phase8_tables if t not in tables]
+        return {
+            "status": "ok",
+            "total_tables": len(tables),
+            "tables": tables,
+            "phase8_missing": missing,
+        }
+    except Exception as e:
+        return {"status": "error", "error": f"{type(e).__name__}: {e}"}

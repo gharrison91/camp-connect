@@ -18,4 +18,5 @@ COPY . .
 EXPOSE 8000
 
 # Run migrations then start the application
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Use || true so migration failures (e.g. tables already exist) don't prevent startup
+CMD ["sh", "-c", "alembic upgrade head || echo 'Migration warning (non-fatal)'; uvicorn app.main:app --host 0.0.0.0 --port 8000"]

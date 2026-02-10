@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 import { useCamperProfile } from '@/hooks/useCamperProfile'
 import { useUploadPhoto } from '@/hooks/usePhotos'
 import { useUploadProfilePhoto } from '@/hooks/useCampers'
+import { useIndexCamperFace } from '@/hooks/useFaceRecognition'
 import { useToast } from '@/components/ui/Toast'
 import { CamperEditModal } from './CamperEditModal'
 import type {
@@ -736,6 +737,8 @@ function PhotosTab({
   albumPhotoInputRef,
   isUploadingProfile,
   isUploadingAlbum,
+  onSyncFace,
+  isSyncingFace,
 }: {
   profile: CamperProfile
   onUploadProfilePhoto: (e: React.ChangeEvent<HTMLInputElement>) => void
@@ -744,6 +747,8 @@ function PhotosTab({
   albumPhotoInputRef: React.RefObject<HTMLInputElement | null>
   isUploadingProfile?: boolean
   isUploadingAlbum?: boolean
+  onSyncFace?: () => void
+  isSyncingFace?: boolean
 }) {
   return (
     <div className="space-y-6">
@@ -756,18 +761,35 @@ function PhotosTab({
               This is the camper&apos;s primary identification photo. Stored separately from the photo album.
             </p>
           </div>
-          <button
-            onClick={() => profilePhotoInputRef.current?.click()}
-            disabled={isUploadingProfile}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
-          >
-            {isUploadingProfile ? (
-              <Upload className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Camera className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2">
+            {profile.reference_photo_url && onSyncFace && (
+              <button
+                onClick={onSyncFace}
+                disabled={isSyncingFace}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-violet-50 border border-violet-200 px-3 py-1.5 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 disabled:opacity-50"
+                title="Register this face with AI so the camper is automatically detected in future photo uploads"
+              >
+                {isSyncingFace ? (
+                  <Upload className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Activity className="h-3.5 w-3.5" />
+                )}
+                {isSyncingFace ? 'Syncing...' : 'Sync Face AI'}
+              </button>
             )}
-            {isUploadingProfile ? 'Uploading...' : 'Update Profile Photo'}
-          </button>
+            <button
+              onClick={() => profilePhotoInputRef.current?.click()}
+              disabled={isUploadingProfile}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              {isUploadingProfile ? (
+                <Upload className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Camera className="h-3.5 w-3.5" />
+              )}
+              {isUploadingProfile ? 'Uploading...' : 'Update Profile Photo'}
+            </button>
+          </div>
           <input
             ref={profilePhotoInputRef}
             type="file"
@@ -865,7 +887,7 @@ function PhotoCard({ photo }: { photo: CamperPhoto }) {
           <p className="text-xs text-gray-500">{formatDateTime(photo.created_at)}</p>
           {photo.similarity != null && (
             <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-              {Math.round(photo.similarity * 100)}% match
+              {Math.round(photo.similarity)}% match
             </span>
           )}
         </div>
@@ -946,6 +968,7 @@ export function CamperDetailPage() {
   const { data: profile, isLoading, error, refetch } = useCamperProfile(id)
   const uploadProfilePhoto = useUploadProfilePhoto()
   const uploadAlbumPhoto = useUploadPhoto()
+  const indexFace = useIndexCamperFace()
   const { toast } = useToast()
 
   // Upload profile photo — goes directly to camper's reference_photo_url (NOT the photo album)
@@ -1147,6 +1170,21 @@ export function CamperDetailPage() {
             albumPhotoInputRef={albumPhotoInputRef}
             isUploadingProfile={uploadProfilePhoto.isPending}
             isUploadingAlbum={uploadAlbumPhoto.isPending}
+            onSyncFace={async () => {
+              if (!id) return
+              try {
+                const result = await indexFace.mutateAsync(id)
+                if (result.status === 'no_face_detected') {
+                  toast({ type: 'error', message: 'No face detected in profile photo. Try a clearer photo.' })
+                } else {
+                  toast({ type: 'success', message: 'Face indexed! Future photos will auto-match this camper.' })
+                }
+                refetch()
+              } catch {
+                toast({ type: 'error', message: 'Failed to index face. Make sure AWS Rekognition is configured.' })
+              }
+            }}
+            isSyncingFace={indexFace.isPending}
           />
         )}
         {activeTab === 'communications' && <CommunicationsTab profile={profile} />}

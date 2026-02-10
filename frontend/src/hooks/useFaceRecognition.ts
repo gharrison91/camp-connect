@@ -42,9 +42,10 @@ export interface CamperPhoto {
 }
 
 export interface IndexFaceResponse {
-  camper_id: string
-  face_indexed: boolean
-  message: string
+  status: 'indexed' | 'no_face_detected'
+  face_id?: string
+  camper_id?: string
+  message?: string
 }
 
 export interface ReprocessPhotoResponse {
@@ -61,7 +62,7 @@ export function usePhotoFaceTags(photoId: string) {
     queryKey: ['photo-face-tags', photoId],
     queryFn: () =>
       api
-        .get(`/face-recognition/photos/${photoId}/faces`)
+        .get(`/recognition/photos/${photoId}/faces`)
         .then((r) => r.data),
     enabled: !!photoId,
   })
@@ -72,7 +73,7 @@ export function useCamperPhotos(camperId: string) {
     queryKey: ['camper-photos', camperId],
     queryFn: () =>
       api
-        .get(`/face-recognition/campers/${camperId}/photos`)
+        .get(`/recognition/campers/${camperId}/photos`)
         .then((r) => r.data),
     enabled: !!camperId,
   })
@@ -85,7 +86,7 @@ export function useIndexCamperFace() {
   return useMutation<IndexFaceResponse, Error, string>({
     mutationFn: (camperId: string) =>
       api
-        .post(`/face-recognition/index/${camperId}`)
+        .post(`/recognition/index/${camperId}`)
         .then((r) => r.data),
     onSuccess: (_data, camperId) => {
       queryClient.invalidateQueries({ queryKey: ['camper-photos', camperId] })
@@ -98,7 +99,7 @@ export function useReprocessPhoto() {
   return useMutation<ReprocessPhotoResponse, Error, string>({
     mutationFn: (photoId: string) =>
       api
-        .post(`/face-recognition/reprocess/${photoId}`)
+        .post(`/recognition/reprocess/${photoId}`)
         .then((r) => r.data),
     onSuccess: (_data, photoId) => {
       queryClient.invalidateQueries({ queryKey: ['photo-face-tags', photoId] })
