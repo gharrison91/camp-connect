@@ -1,7 +1,7 @@
-"""Phase 10: Job Titles + Bunk Buddy Requests
+"""Phase 10: Job Titles + Bunk Buddy Requests (merge heads)
 
 Revision ID: f6a7b8c9d0e1
-Revises: b1c2d3e4f5g6
+Revises: ('b1c2d3e4f5g6', 'e5f6a7b8c9d0')
 Create Date: 2026-02-10
 """
 
@@ -9,9 +9,9 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
-# revision identifiers
+# revision identifiers — merge two heads into one
 revision = "f6a7b8c9d0e1"
-down_revision = "b1c2d3e4f5g6"
+down_revision = ("b1c2d3e4f5g6", "e5f6a7b8c9d0")
 branch_labels = None
 depends_on = None
 
