@@ -36,6 +36,12 @@ import { BunksPage } from '@/features/bunks/BunksPage'
 import { FamiliesPage } from '@/features/families/FamiliesPage'
 import { FamilyDetailPage } from '@/features/families/FamilyDetailPage'
 
+// Phase 8: Form Builder, Workflows
+import { FormsPage } from '@/features/forms/FormsPage'
+import { FormEditorPage } from '@/features/forms/FormEditorPage'
+import { WorkflowsPage } from '@/features/workflows/WorkflowsPage'
+import { WorkflowEditorPage } from '@/features/workflows/WorkflowEditorPage'
+
 // Phase 7: Schedule, Payments, Reports, Store, Portal
 import { SchedulePage } from '@/features/schedule/SchedulePage'
 import { PaymentsPage } from '@/features/payments/PaymentsPage'
@@ -102,6 +108,12 @@ function App() {
             <Route path="payments" element={<PaymentsPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="store" element={<StoreManagementPage />} />
+
+            {/* Phase 8: Form Builder, Workflows */}
+            <Route path="forms" element={<FormsPage />} />
+            <Route path="forms/:id" element={<FormEditorPage />} />
+            <Route path="workflows" element={<WorkflowsPage />} />
+            <Route path="workflows/:id" element={<WorkflowEditorPage />} />
 
             {/* Settings (nested routes) */}
             <Route path="settings" element={<SettingsLayout />}>

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -7,14 +8,71 @@ import {
   Users,
   UserCircle,
   Loader2,
+  Plus,
+  X,
+  Link2,
+  Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useContact } from '@/hooks/useContacts'
+import {
+  useContactAssociations,
+  useCreateContactAssociation,
+  useDeleteContactAssociation,
+} from '@/hooks/useWorkflows'
+import { useToast } from '@/components/ui/Toast'
+
+const RELATIONSHIP_TYPES = [
+  { value: 'parent', label: 'Parent' },
+  { value: 'child', label: 'Child' },
+  { value: 'sibling', label: 'Sibling' },
+  { value: 'spouse', label: 'Spouse' },
+  { value: 'guardian', label: 'Guardian' },
+  { value: 'grandparent', label: 'Grandparent' },
+  { value: 'other', label: 'Other' },
+]
 
 export function ContactDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const { toast } = useToast()
+  const [showAddAssoc, setShowAddAssoc] = useState(false)
+  const [assocContactId, setAssocContactId] = useState('')
+  const [assocType, setAssocType] = useState('parent')
+  const [assocNotes, setAssocNotes] = useState('')
 
   const { data: contact, isLoading, error } = useContact(id)
+  const { data: associations = [] } = useContactAssociations(id)
+  const createAssociation = useCreateContactAssociation(id)
+  const deleteAssociation = useDeleteContactAssociation(id)
+
+  const handleAddAssociation = async () => {
+    if (!assocContactId.trim()) {
+      toast({ type: 'error', message: 'Please enter a contact ID' })
+      return
+    }
+    try {
+      await createAssociation.mutateAsync({
+        related_contact_id: assocContactId.trim(),
+        relationship_type: assocType,
+        notes: assocNotes || undefined,
+      })
+      toast({ type: 'success', message: 'Association added' })
+      setShowAddAssoc(false)
+      setAssocContactId('')
+      setAssocNotes('')
+    } catch {
+      toast({ type: 'error', message: 'Failed to add association' })
+    }
+  }
+
+  const handleDeleteAssociation = async (assocId: string) => {
+    try {
+      await deleteAssociation.mutateAsync(assocId)
+      toast({ type: 'success', message: 'Association removed' })
+    } catch {
+      toast({ type: 'error', message: 'Failed to remove association' })
+    }
+  }
 
   if (isLoading) {
     return (
@@ -164,6 +222,157 @@ export function ContactDetailPage() {
               </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Contact Associations Section */}
+      <div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">Relationships</h2>
+          <button
+            onClick={() => setShowAddAssoc(!showAddAssoc)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+          >
+            {showAddAssoc ? (
+              <>
+                <X className="h-3.5 w-3.5" />
+                Cancel
+              </>
+            ) : (
+              <>
+                <Plus className="h-3.5 w-3.5" />
+                Add Relationship
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Add Association Form */}
+        {showAddAssoc && (
+          <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600">
+                  Contact ID
+                </label>
+                <input
+                  type="text"
+                  value={assocContactId}
+                  onChange={(e) => setAssocContactId(e.target.value)}
+                  placeholder="Paste contact ID..."
+                  className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600">
+                  Relationship
+                </label>
+                <select
+                  value={assocType}
+                  onChange={(e) => setAssocType(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {RELATIONSHIP_TYPES.map((rt) => (
+                    <option key={rt.value} value={rt.value}>
+                      {rt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600">
+                  Notes (optional)
+                </label>
+                <input
+                  type="text"
+                  value={assocNotes}
+                  onChange={(e) => setAssocNotes(e.target.value)}
+                  placeholder="Optional notes..."
+                  className="mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <button
+              onClick={handleAddAssociation}
+              disabled={createAssociation.isPending}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+            >
+              {createAssociation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Plus className="h-3.5 w-3.5" />
+              )}
+              Add Relationship
+            </button>
+          </div>
+        )}
+
+        {/* Associations List */}
+        <div className="mt-3 space-y-2">
+          {associations.length === 0 ? (
+            <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50">
+                  <Link2 className="h-5 w-5 text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    No relationships yet
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    Add relationships to link this contact to family members, guardians, or other contacts.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            associations.map((assoc) => (
+              <div
+                key={assoc.id}
+                className="group flex items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-gray-200"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-50 text-sm font-medium text-purple-600">
+                    {(assoc.related_contact_name ?? '??')
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </div>
+                  <div>
+                    <Link
+                      to={`/app/contacts/${assoc.related_contact_id}`}
+                      className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                    >
+                      {assoc.related_contact_name ?? 'Unknown Contact'}
+                    </Link>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/20 capitalize">
+                        {assoc.relationship_type}
+                      </span>
+                      {assoc.related_contact_email && (
+                        <span className="text-xs text-gray-400">
+                          {assoc.related_contact_email}
+                        </span>
+                      )}
+                      {assoc.notes && (
+                        <span className="text-xs text-gray-400">
+                          &middot; {assoc.notes}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDeleteAssociation(assoc.id)}
+                  className="rounded p-1.5 text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-500"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

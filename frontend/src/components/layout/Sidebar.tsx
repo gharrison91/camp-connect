@@ -21,6 +21,8 @@ import {
   X,
   UsersRound,
   BedDouble,
+  FileText,
+  Workflow,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -50,6 +52,8 @@ const navItems = [
   { label: 'Analytics', icon: BarChart3, path: '/app/analytics', permission: 'analytics.dashboards.read' },
   { label: 'Reports', icon: FileBarChart, path: '/app/reports', permission: 'reports.export.read' },
   { label: 'Store', icon: ShoppingBag, path: '/app/store', permission: 'store.manage.manage' },
+  { label: 'Forms', icon: FileText, path: '/app/forms', permission: null },
+  { label: 'Workflows', icon: Workflow, path: '/app/workflows', permission: null },
   { label: 'Settings', icon: Settings, path: '/app/settings', permission: null },
 ] as const;
 

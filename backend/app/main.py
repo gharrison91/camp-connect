@@ -57,6 +57,9 @@ from app.api.v1.payments import router as payments_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.store import router as store_router
+from app.api.v1.forms import router as forms_router
+from app.api.v1.workflows import router as workflows_router
+from app.api.v1.workflows import assoc_router as contact_assoc_router
 
 
 @asynccontextmanager
@@ -140,6 +143,11 @@ app.include_router(payments_router, prefix=settings.api_v1_prefix)
 app.include_router(notifications_router, prefix=settings.api_v1_prefix)
 app.include_router(reports_router, prefix=settings.api_v1_prefix)
 app.include_router(store_router, prefix=settings.api_v1_prefix)
+
+# Phase 8: Form Builder, Workflows, Contact Associations
+app.include_router(forms_router, prefix=settings.api_v1_prefix)
+app.include_router(workflows_router, prefix=settings.api_v1_prefix)
+app.include_router(contact_assoc_router, prefix=settings.api_v1_prefix)
 
 
 @app.exception_handler(Exception)
