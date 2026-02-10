@@ -127,15 +127,23 @@ async def list_staff(
             total -= 1
             continue
 
+            # Determine staff status
+        staff_status = "active"
+        if not user.is_active:
+            staff_status = "inactive"
+        elif ob_status and ob_status != "completed":
+            staff_status = "onboarding"
+
         items.append({
             "id": user.id,
+            "user_id": user.id,
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
             "avatar_url": user.avatar_url,
             "role_name": user.role.name if user.role else None,
             "department": None,  # Department is an extension field
-            "onboarding_status": ob_status,
+            "status": staff_status,
             "is_active": user.is_active,
             "phone": user.phone,
             "created_at": user.created_at,
@@ -214,6 +222,7 @@ async def get_staff_profile(
     # Build certifications list
     certifications = []
     onboarding_dict = None
+    emergency_contacts = []
     if onboarding:
         for cert in (onboarding.certifications or []):
             certifications.append({
@@ -221,7 +230,7 @@ async def get_staff_profile(
                 "name": cert.name,
                 "issuing_authority": cert.issuing_authority,
                 "certificate_number": cert.certificate_number,
-                "issued_date": cert.issued_date,
+                "issue_date": cert.issued_date,
                 "expiry_date": cert.expiry_date,
                 "document_url": cert.document_url,
                 "status": cert.status,
@@ -232,20 +241,34 @@ async def get_staff_profile(
             "current_step": onboarding.current_step,
             "completed_at": onboarding.completed_at,
         }
+        # Extract emergency contacts from onboarding data
+        ec_data = onboarding.emergency_contacts_data
+        if ec_data and isinstance(ec_data, list):
+            emergency_contacts = ec_data
+
+    # Determine staff status from onboarding + active flag
+    staff_status = "active"
+    if not user.is_active:
+        staff_status = "inactive"
+    elif onboarding and onboarding.status != "completed":
+        staff_status = "onboarding"
 
     return {
         "id": user.id,
+        "user_id": user.id,
         "email": user.email,
         "first_name": user.first_name,
         "last_name": user.last_name,
         "avatar_url": user.avatar_url,
         "role_name": user.role.name if user.role else None,
         "department": None,
-        "onboarding_status": onboarding.status if onboarding else None,
+        "status": staff_status,
+        "hire_date": user.created_at,
         "is_active": user.is_active,
         "phone": user.phone,
         "created_at": user.created_at,
         "certifications": certifications,
+        "emergency_contacts": emergency_contacts,
         "onboarding": onboarding_dict,
         "seasonal_access_start": user.seasonal_access_start,
         "seasonal_access_end": user.seasonal_access_end,

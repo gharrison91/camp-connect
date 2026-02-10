@@ -109,8 +109,17 @@ export interface CamperCommunication {
 export function useCamperProfile(camperId: string | undefined) {
   return useQuery<CamperProfile>({
     queryKey: ['camper-profile', camperId],
-    queryFn: () =>
-      api.get(`/campers/${camperId}/profile`).then((r) => r.data),
+    queryFn: async () => {
+      const res = await api.get(`/campers/${camperId}/profile`)
+      const data = res.data
+      // Backend returns flat structure: {id, first_name, ..., contacts, family, ...}
+      // Handle legacy wrapped format: {camper: {...}, contacts, family, ...}
+      if (data.camper && !data.first_name) {
+        const { camper, ...rest } = data
+        return { ...camper, ...rest } as CamperProfile
+      }
+      return data as CamperProfile
+    },
     enabled: !!camperId,
   })
 }

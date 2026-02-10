@@ -132,17 +132,20 @@ function App() {
 
           {/* Legacy redirects - old routes to new /app prefix */}
           <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
-          <Route path="/events" element={<Navigate to="/app/events" replace />} />
-          <Route path="/campers" element={<Navigate to="/app/campers" replace />} />
-          <Route path="/contacts" element={<Navigate to="/app/contacts" replace />} />
+          <Route path="/events/*" element={<Navigate to="/app/events" replace />} />
+          <Route path="/campers/*" element={<Navigate to="/app/campers" replace />} />
+          <Route path="/contacts/*" element={<Navigate to="/app/contacts" replace />} />
           <Route path="/registrations" element={<Navigate to="/app/registrations" replace />} />
           <Route path="/communications" element={<Navigate to="/app/communications" replace />} />
           <Route path="/health-safety" element={<Navigate to="/app/health-safety" replace />} />
           <Route path="/photos" element={<Navigate to="/app/photos" replace />} />
-          <Route path="/staff" element={<Navigate to="/app/staff" replace />} />
+          <Route path="/staff/*" element={<Navigate to="/app/staff" replace />} />
           <Route path="/analytics" element={<Navigate to="/app/analytics" replace />} />
           <Route path="/store" element={<Navigate to="/app/store" replace />} />
           <Route path="/settings/*" element={<Navigate to="/app/settings" replace />} />
+
+          {/* Catch-all: redirect unknown routes to dashboard */}
+          <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
         </Routes>
       </ToastProvider>
     </BrowserRouter>

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -16,13 +16,14 @@ class StaffListItem(BaseModel):
     """Staff member in directory listings."""
 
     id: uuid.UUID
+    user_id: uuid.UUID
     email: str
     first_name: str
     last_name: str
     avatar_url: Optional[str] = None
     role_name: Optional[str] = None
     department: Optional[str] = None
-    onboarding_status: Optional[str] = None
+    status: Optional[str] = None
     is_active: bool = True
     phone: Optional[str] = None
     created_at: datetime
@@ -33,7 +34,9 @@ class StaffListItem(BaseModel):
 class StaffProfile(StaffListItem):
     """Full staff profile with certifications and onboarding details."""
 
+    hire_date: Optional[datetime] = None
     certifications: List[dict] = Field(default_factory=list)
+    emergency_contacts: List[Any] = Field(default_factory=list)
     onboarding: Optional[dict] = None
     seasonal_access_start: Optional[date] = None
     seasonal_access_end: Optional[date] = None

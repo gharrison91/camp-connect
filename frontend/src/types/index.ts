@@ -270,7 +270,7 @@ export interface StaffCertification {
   name: string;
   issuing_authority: string | null;
   certificate_number: string | null;
-  issued_date: string | null;
+  issue_date: string | null;
   expiry_date: string | null;
   document_url: string | null;
   status: 'valid' | 'expired' | 'pending_verification';
@@ -332,6 +332,7 @@ export interface OnboardingListResponse {
 
 export interface StaffMember {
   id: string;
+  user_id: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -340,13 +341,17 @@ export interface StaffMember {
   department: string | null;
   role_name: string | null;
   is_active: boolean;
-  onboarding_status: 'invited' | 'onboarding' | 'active' | null;
+  status: 'active' | 'inactive' | 'onboarding' | null;
   created_at: string;
 }
 
 export interface StaffProfile extends StaffMember {
+  hire_date: string | null;
   certifications: StaffCertification[];
+  emergency_contacts: EmergencyContact[];
   onboarding: StaffOnboarding | null;
+  seasonal_access_start: string | null;
+  seasonal_access_end: string | null;
 }
 
 export interface StaffListResponse {

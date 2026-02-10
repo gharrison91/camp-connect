@@ -89,7 +89,7 @@ export function ContactsPage() {
                 {contacts.map((contact) => (
                   <tr
                     key={contact.id}
-                    onClick={() => navigate(`/contacts/${contact.id}`)}
+                    onClick={() => navigate(`/app/contacts/${contact.id}`)}
                     className="cursor-pointer transition-colors hover:bg-gray-50/80"
                   >
                     <td className="whitespace-nowrap px-6 py-4">

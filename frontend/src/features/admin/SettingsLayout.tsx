@@ -8,12 +8,12 @@ import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
 
 const settingsTabs = [
-  { label: 'Profile', icon: Building2, path: '/settings/profile', permission: null },
-  { label: 'Locations', icon: MapPin, path: '/settings/locations', permission: 'core.locations.read' },
-  { label: 'Roles', icon: Shield, path: '/settings/roles', permission: 'core.roles.manage' },
-  { label: 'Users', icon: Users, path: '/settings/users', permission: 'core.users.read' },
-  { label: 'General', icon: Sliders, path: '/settings/general', permission: 'core.settings.manage' },
-  { label: 'Notifications', icon: Bell, path: '/settings/notifications', permission: 'core.settings.manage' },
+  { label: 'Profile', icon: Building2, path: '/app/settings/profile', permission: null },
+  { label: 'Locations', icon: MapPin, path: '/app/settings/locations', permission: 'core.locations.read' },
+  { label: 'Roles', icon: Shield, path: '/app/settings/roles', permission: 'core.roles.manage' },
+  { label: 'Users', icon: Users, path: '/app/settings/users', permission: 'core.users.read' },
+  { label: 'General', icon: Sliders, path: '/app/settings/general', permission: 'core.settings.manage' },
+  { label: 'Notifications', icon: Bell, path: '/app/settings/notifications', permission: 'core.settings.manage' },
 ] as const
 
 export function SettingsLayout() {

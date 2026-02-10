@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
 import { useCreateEvent } from '@/hooks/useEvents'
+import { useLocations } from '@/hooks/useLocations'
 import { useToast } from '@/components/ui/Toast'
 import type { EventCreate } from '@/types'
 
@@ -10,6 +11,7 @@ interface EventCreateModalProps {
 
 export function EventCreateModal({ onClose }: EventCreateModalProps) {
   const createEvent = useCreateEvent()
+  const { data: locations = [] } = useLocations()
   const { toast } = useToast()
   const [form, setForm] = useState<EventCreate>({
     name: '',
@@ -87,6 +89,29 @@ export function EventCreateModal({ onClose }: EventCreateModalProps) {
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="Brief description of the event..."
             />
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Location
+            </label>
+            <select
+              value={form.location_id || ''}
+              onChange={(e) =>
+                updateField('location_id', e.target.value || undefined)
+              }
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">No location selected</option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}
+                  {loc.city && loc.state ? ` — ${loc.city}, ${loc.state}` : ''}
+                  {loc.is_primary ? ' (Primary)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Dates */}

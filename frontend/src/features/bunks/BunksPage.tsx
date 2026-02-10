@@ -276,7 +276,7 @@ export function BunksPage() {
           </select>
 
           {/* Configure Bunks for Event */}
-          {selectedEventId && hasPermission('core.bunks.create') && (
+          {selectedEventId && hasPermission('core.bunks.update') && (
             <button
               onClick={() => setShowBunkConfigModal(true)}
               className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 shadow-sm transition-colors hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -287,7 +287,7 @@ export function BunksPage() {
           )}
 
           {/* Manage Bunks button */}
-          {hasPermission('core.bunks.create') && (
+          {hasPermission('core.bunks.update') && (
             <button
               onClick={() => setShowManageModal(true)}
               className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
