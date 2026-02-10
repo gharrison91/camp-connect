@@ -23,6 +23,7 @@ class StaffListItem(BaseModel):
     avatar_url: Optional[str] = None
     role_name: Optional[str] = None
     department: Optional[str] = None
+    staff_category: Optional[str] = None
     status: Optional[str] = None
     is_active: bool = True
     phone: Optional[str] = None
@@ -40,8 +41,38 @@ class StaffProfile(StaffListItem):
     onboarding: Optional[dict] = None
     seasonal_access_start: Optional[date] = None
     seasonal_access_end: Optional[date] = None
+    financial_info: Optional[dict] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class StaffCategoryUpdate(BaseModel):
+    """Update a staff member's category."""
+
+    staff_category: Optional[str] = Field(
+        default=None,
+        description="Staff category: full_time, counselor, director, or null",
+    )
+
+
+class CounselorListItem(BaseModel):
+    """Counselor available for bunk assignment."""
+
+    id: uuid.UUID
+    first_name: str
+    last_name: str
+    avatar_url: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StaffFinancialUpdate(BaseModel):
+    """Update a staff member's financial information."""
+
+    financial_info: Optional[dict] = Field(
+        default=None,
+        description="Financial info: pay_rate, rate_type, start_date, end_date, notes",
+    )
 
 
 class StaffListResponse(BaseModel):

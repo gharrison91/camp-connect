@@ -223,6 +223,8 @@ export interface Photo {
   tags: string[] | null;
   category: 'camper' | 'event' | 'general';
   entity_id: string | null;
+  event_id: string | null;
+  activity_id: string | null;
   is_profile_photo: boolean;
   uploaded_by: string | null;
   created_at: string;

@@ -16,6 +16,7 @@ from app.database import get_db
 from app.schemas.bunk import (
     BunkAssignmentCreate,
     BunkAssignmentResponse,
+    BunkCounselorAssign,
     BunkCreate,
     BunkMoveRequest,
     BunkResponse,
@@ -261,6 +262,43 @@ async def delete_event_bunk_config(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Event bunk config not found",
         )
+
+
+# ---------------------------------------------------------------------------
+# Counselor assignment (static-ish but uses {bunk_id}, place before CRUD)
+# ---------------------------------------------------------------------------
+
+
+@router.put(
+    "/{bunk_id}/counselor",
+    response_model=BunkResponse,
+)
+async def assign_counselor(
+    bunk_id: uuid.UUID,
+    body: BunkCounselorAssign,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("core.bunks.update")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Assign or unassign a counselor to a bunk.
+
+    Pass `counselor_user_id` to assign, or `null` to unassign.
+    Requires **core.bunks.update** permission.
+    """
+    result = await bunk_service.assign_counselor(
+        db,
+        organization_id=current_user["organization_id"],
+        bunk_id=bunk_id,
+        counselor_user_id=body.counselor_user_id,
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Bunk not found",
+        )
+    return result
 
 
 # ---------------------------------------------------------------------------

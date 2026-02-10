@@ -25,6 +25,8 @@ import {
   Settings2,
   UserCheck,
   MapPin,
+  Shield,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEvents } from '@/hooks/useEvents'
@@ -36,16 +38,20 @@ import {
   useAssignCamper,
   useUnassignCamper,
   useMoveCamper,
+  useCounselors,
+  useAssignCounselor,
 } from '@/hooks/useBunks'
 import type { Bunk, BunkAssignment } from '@/hooks/useBunks'
 import { useToast } from '@/components/ui/Toast'
 import { CamperCard, CamperCardOverlay } from './CamperCard'
+import { CounselorCard, CounselorCardOverlay } from './CounselorCard'
 import { BunkManageModal } from './BunkManageModal'
 import { EventBunkConfigModal } from './EventBunkConfigModal'
 
 // ─── Drag metadata stored during onDragStart ────────────────
 
-interface DragData {
+interface CamperDragData {
+  type: 'camper'
   /** 'unassigned' or a bunk id */
   source: string
   /** Set when the camper is currently assigned (so we can move/unassign) */
@@ -57,6 +63,16 @@ interface DragData {
   /** The camper_id (needed for new assignments) */
   camperId: string
 }
+
+interface CounselorDragData {
+  type: 'counselor'
+  source: 'counselors'
+  counselorId: string
+  name: string
+  avatarUrl: string | null
+}
+
+type DragData = CamperDragData | CounselorDragData
 
 // ─── Droppable wrapper for bunk columns + unassigned pool ───
 
@@ -131,10 +147,28 @@ export function BunksPage() {
   const { data: unassigned = [], isLoading: unassignedLoading } =
     useUnassignedCampers(selectedEventId)
 
+  // Counselors
+  const { data: counselors = [] } = useCounselors(selectedEventId)
+
+  // Compute counselors not yet assigned to any bunk
+  const assignedCounselorIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const b of bunks) {
+      if (b.counselor_user_id) ids.add(b.counselor_user_id)
+    }
+    return ids
+  }, [bunks])
+
+  const unassignedCounselors = useMemo(
+    () => counselors.filter((c) => !assignedCounselorIds.has(c.id)),
+    [counselors, assignedCounselorIds]
+  )
+
   // Mutations
   const assignCamper = useAssignCamper(selectedEventId)
   const unassignCamper = useUnassignCamper(selectedEventId)
   const moveCamper = useMoveCamper(selectedEventId)
+  const assignCounselor = useAssignCounselor()
 
   // Modal state
   const [showManageModal, setShowManageModal] = useState(false)
@@ -164,10 +198,27 @@ export function BunksPage() {
   function handleDragStart(event: DragStartEvent) {
     const dragId = String(event.active.id)
 
+    // Check if it's a counselor (prefixed with 'counselor-')
+    if (dragId.startsWith('counselor-')) {
+      const counselorId = dragId.replace('counselor-', '')
+      const counselor = counselors.find((c) => c.id === counselorId)
+      if (counselor) {
+        setActiveDragData({
+          type: 'counselor',
+          source: 'counselors',
+          counselorId: counselor.id,
+          name: `${counselor.first_name} ${counselor.last_name}`,
+          avatarUrl: counselor.avatar_url,
+        })
+      }
+      return
+    }
+
     // Check if it's an unassigned camper
     const camper = unassigned.find((c) => c.id === dragId)
     if (camper) {
       setActiveDragData({
+        type: 'camper',
         source: 'unassigned',
         camperId: camper.id,
         name: `${camper.first_name} ${camper.last_name}`,
@@ -181,6 +232,7 @@ export function BunksPage() {
     const assignment = assignments.find((a) => a.id === dragId)
     if (assignment) {
       setActiveDragData({
+        type: 'camper',
         source: assignment.bunk_id,
         assignmentId: assignment.id,
         camperId: assignment.camper_id,
@@ -204,6 +256,23 @@ export function BunksPage() {
     if (targetId === dragData.source) return
 
     try {
+      // Handle counselor drops
+      if (dragData.type === 'counselor') {
+        // Counselors can only be dropped on bunks (not on unassigned or counselors panel)
+        if (targetId !== 'unassigned' && targetId !== 'counselors') {
+          await assignCounselor.mutateAsync({
+            bunkId: targetId,
+            counselorUserId: dragData.counselorId,
+          })
+          toast({
+            type: 'success',
+            message: `${dragData.name} assigned as counselor.`,
+          })
+        }
+        return
+      }
+
+      // Handle camper drops
       if (dragData.source === 'unassigned' && targetId !== 'unassigned') {
         // Assign unassigned camper to a bunk
         await assignCamper.mutateAsync({
@@ -239,6 +308,20 @@ export function BunksPage() {
       }
     } catch {
       toast({ type: 'error', message: 'Failed to update assignment.' })
+    }
+  }
+
+  // ── Counselor removal handler ────────────────────────────────
+
+  async function handleRemoveCounselor(bunkId: string) {
+    try {
+      await assignCounselor.mutateAsync({
+        bunkId,
+        counselorUserId: null,
+      })
+      toast({ type: 'success', message: 'Counselor removed from bunk.' })
+    } catch {
+      toast({ type: 'error', message: 'Failed to remove counselor.' })
     }
   }
 
@@ -364,11 +447,58 @@ export function BunksPage() {
                       name={`${camper.first_name} ${camper.last_name}`}
                       age={camper.age}
                       gender={camper.gender}
-                      isDragging={activeDragData?.camperId === camper.id}
+                      isDragging={
+                        activeDragData?.type === 'camper' &&
+                        activeDragData.camperId === camper.id
+                      }
                     />
                   ))}
                 </div>
               </DroppableZone>
+            </div>
+
+            {/* ── Middle panel: Counselors ── */}
+            <div className="w-[260px] shrink-0">
+              <div className="flex h-full flex-col rounded-xl border border-gray-100 bg-white shadow-sm transition-all">
+                {/* Panel header */}
+                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-indigo-500" />
+                    <h2 className="text-sm font-semibold text-gray-900">
+                      Counselors
+                    </h2>
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600">
+                    {unassignedCounselors.length}
+                  </span>
+                </div>
+
+                {/* Counselor list */}
+                <div className="flex-1 space-y-2 overflow-y-auto p-3">
+                  {unassignedCounselors.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-10">
+                      <Shield className="h-8 w-8 text-indigo-200" />
+                      <p className="mt-2 text-xs text-gray-500">
+                        {counselors.length === 0
+                          ? 'No counselors available'
+                          : 'All counselors assigned'}
+                      </p>
+                    </div>
+                  )}
+                  {unassignedCounselors.map((c) => (
+                    <CounselorCard
+                      key={c.id}
+                      id={`counselor-${c.id}`}
+                      name={`${c.first_name} ${c.last_name}`}
+                      avatarUrl={c.avatar_url}
+                      isDragging={
+                        activeDragData?.type === 'counselor' &&
+                        activeDragData.counselorId === c.id
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* ── Right panel: Bunk columns ── */}
@@ -391,7 +521,12 @@ export function BunksPage() {
                     key={bunk.id}
                     bunk={bunk}
                     assignments={assignmentsByBunk[bunk.id] || []}
-                    activeDragCamperId={activeDragData?.camperId ?? null}
+                    activeDragCamperId={
+                      activeDragData?.type === 'camper'
+                        ? activeDragData.camperId
+                        : null
+                    }
+                    onRemoveCounselor={handleRemoveCounselor}
                   />
                 ))}
               </div>
@@ -400,11 +535,16 @@ export function BunksPage() {
 
           {/* Drag overlay */}
           <DragOverlay dropAnimation={null}>
-            {activeDragData ? (
+            {activeDragData?.type === 'camper' ? (
               <CamperCardOverlay
                 name={activeDragData.name}
                 age={activeDragData.age}
                 gender={activeDragData.gender}
+              />
+            ) : activeDragData?.type === 'counselor' ? (
+              <CounselorCardOverlay
+                name={activeDragData.name}
+                avatarUrl={activeDragData.avatarUrl}
               />
             ) : null}
           </DragOverlay>
@@ -434,10 +574,12 @@ function BunkColumn({
   bunk,
   assignments,
   activeDragCamperId,
+  onRemoveCounselor,
 }: {
   bunk: Bunk
   assignments: BunkAssignment[]
   activeDragCamperId: string | null
+  onRemoveCounselor?: (bunkId: string) => void
 }) {
   const count = assignments.length
   const capacityPct =
@@ -468,9 +610,24 @@ function BunkColumn({
 
         {/* Counselor */}
         {bunk.counselor_name && (
-          <p className="mt-1 text-xs text-gray-500">
-            Counselor: {bunk.counselor_name}
-          </p>
+          <div className="mt-1 flex items-center gap-1">
+            <Shield className="h-3 w-3 text-indigo-400" />
+            <span className="text-xs font-medium text-indigo-600">
+              {bunk.counselor_name}
+            </span>
+            {onRemoveCounselor && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRemoveCounselor(bunk.id)
+                }}
+                className="ml-auto rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                title="Remove counselor"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
         )}
 
         {/* Meta badges */}

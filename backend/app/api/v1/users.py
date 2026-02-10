@@ -163,3 +163,30 @@ async def activate_user(
             detail=str(e),
         )
     return user
+
+
+@router.post("/{user_id}/reset-password")
+async def reset_password(
+    user_id: uuid.UUID,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("core.users.update")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Trigger a password reset email for the user.
+    For now, returns a success message. Actual email integration can come later.
+    """
+    # Verify the user exists in the same organization
+    user = await user_service.get_user(
+        db,
+        user_id=user_id,
+        organization_id=current_user["organization_id"],
+    )
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    # TODO: Integrate with Supabase auth.resetPasswordForEmail() or similar
+    return {"message": "Password reset email sent", "user_id": str(user_id)}

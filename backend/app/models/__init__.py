@@ -54,6 +54,9 @@ from app.models.workflow import (
     ContactAssociation,
 )
 
+# Phase 9: Staff Certification Types
+from app.models.staff_certification import CertificationType, StaffCertificationRecord
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -107,4 +110,7 @@ __all__ = [
     "WorkflowExecution",
     "WorkflowExecutionLog",
     "ContactAssociation",
+    # Phase 9
+    "CertificationType",
+    "StaffCertificationRecord",
 ]

@@ -113,6 +113,12 @@ class BunkWithAssignmentsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class BunkCounselorAssign(BaseModel):
+    """Request to assign or unassign a counselor to a bunk."""
+
+    counselor_user_id: Optional[uuid.UUID] = None
+
+
 class BunkMoveRequest(BaseModel):
     """Request to move a camper to a different bunk."""
 

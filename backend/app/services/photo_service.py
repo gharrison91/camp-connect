@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import UploadFile
-from sqlalchemy import select
+from sqlalchemy import extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from supabase import create_client
 
@@ -123,6 +123,8 @@ async def upload_photo(
     file: UploadFile,
     category: str,
     entity_id: Optional[uuid.UUID] = None,
+    event_id: Optional[uuid.UUID] = None,
+    activity_id: Optional[uuid.UUID] = None,
     caption: Optional[str] = None,
     custom_name: Optional[str] = None,
     org_name: Optional[str] = None,
@@ -190,6 +192,21 @@ async def upload_photo(
         logger.error(f"Supabase Storage upload failed: {e}")
         raise ValueError(f"Failed to upload file to storage: {e}")
 
+    # Auto-rename using convention: {YYYY-MM-DD}_{org-name}_{counter}_{original}
+    display_name = file_name
+    if not custom_name and org_name:
+        org_slug = org_name.strip().replace(" ", "-").lower()[:30]
+        # Get sequential counter for today
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        count_result = await db.execute(
+            select(func.count(Photo.id))
+            .where(Photo.organization_id == organization_id)
+            .where(Photo.created_at >= today_start)
+        )
+        counter = (count_result.scalar() or 0) + 1
+        date_str = datetime.utcnow().strftime("%Y-%m-%d")
+        display_name = f"{date_str}_{org_slug}_{counter:04d}_{file_name}"
+
     # Create database record
     photo = Photo(
         id=uuid.uuid4(),
@@ -197,7 +214,9 @@ async def upload_photo(
         uploaded_by=uploaded_by,
         category=category,
         entity_id=entity_id,
-        file_name=file_name,
+        event_id=event_id,
+        activity_id=activity_id,
+        file_name=display_name,
         file_path=storage_path,
         file_size=file_size,
         mime_type=content_type,
@@ -281,6 +300,11 @@ async def list_photos(
     organization_id: uuid.UUID,
     category: Optional[str] = None,
     entity_id: Optional[uuid.UUID] = None,
+    event_id: Optional[uuid.UUID] = None,
+    activity_id: Optional[uuid.UUID] = None,
+    camper_id: Optional[uuid.UUID] = None,
+    month: Optional[int] = None,
+    year: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """List photos for an organization with optional filters."""
     query = (
@@ -294,6 +318,28 @@ async def list_photos(
 
     if entity_id:
         query = query.where(Photo.entity_id == entity_id)
+
+    if event_id:
+        query = query.where(Photo.event_id == event_id)
+
+    if activity_id:
+        query = query.where(Photo.activity_id == activity_id)
+
+    if month:
+        query = query.where(extract("month", Photo.created_at) == month)
+
+    if year:
+        query = query.where(extract("year", Photo.created_at) == year)
+
+    if camper_id:
+        # Filter by photos that have a face tag matching this camper
+        query = query.where(
+            Photo.id.in_(
+                select(PhotoFaceTag.photo_id).where(
+                    PhotoFaceTag.camper_id == camper_id
+                )
+            )
+        )
 
     query = query.order_by(Photo.created_at.desc())
     result = await db.execute(query)
@@ -445,6 +491,8 @@ def _photo_to_dict(photo: Photo, url: str) -> Dict[str, Any]:
         "tags": photo.tags,
         "category": photo.category,
         "entity_id": photo.entity_id,
+        "event_id": photo.event_id,
+        "activity_id": photo.activity_id,
         "is_profile_photo": photo.is_profile_photo,
         "uploaded_by": photo.uploaded_by,
         "created_at": photo.created_at,

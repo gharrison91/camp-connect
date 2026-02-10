@@ -119,6 +119,18 @@ export interface ContactAssociationCreate {
   notes?: string
 }
 
+// ─── Template Types ────────────────────────────────────────
+
+export interface WorkflowTemplate {
+  key: string
+  name: string
+  description: string
+  category: string
+  trigger: Record<string, unknown>
+  steps: Record<string, unknown>[]
+  step_count: number
+}
+
 // ─── Workflow Hooks ─────────────────────────────────────────
 
 export function useWorkflows(filters?: { status?: string }) {
@@ -163,6 +175,29 @@ export function useDeleteWorkflow() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.delete(`/workflows/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflows'] })
+    },
+  })
+}
+
+// ─── Template Hooks ─────────────────────────────────────────
+
+export function useWorkflowTemplates() {
+  return useQuery<WorkflowTemplate[]>({
+    queryKey: ['workflow-templates'],
+    queryFn: () =>
+      api.get('/workflows/templates').then((r) => r.data),
+  })
+}
+
+export function useCreateFromTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation<Workflow, Error, string>({
+    mutationFn: (templateKey: string) =>
+      api
+        .post(`/workflows/from-template/${templateKey}`)
+        .then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflows'] })
     },

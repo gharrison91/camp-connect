@@ -58,6 +58,11 @@ class Contact(Base, TimestampMixin, SoftDeleteMixin):
         String(20), nullable=False, default="active"
     )  # active, guest
 
+    # Communication preference
+    communication_preference: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="email"
+    )  # email, sms, both
+
     # Family & Portal
     family_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),

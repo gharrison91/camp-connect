@@ -13,7 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_permission
 from app.database import get_db
+from sqlalchemy import select
+
+from app.models.camper import Camper
+from app.models.camper_contact import CamperContact
+from app.models.contact import Contact
+from app.models.registration import Registration
 from app.schemas.message import (
+    EventRecipientResponse,
     MessageBulkSend,
     MessageResponse,
     MessageSend,
@@ -69,6 +76,64 @@ async def send_bulk_messages(
         organization_id=current_user["organization_id"],
         data=body.model_dump(),
     )
+
+
+# ---------------------------------------------------------------------------
+# Event recipients
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/event-recipients/{event_id}",
+    response_model=List[EventRecipientResponse],
+)
+async def get_event_recipients(
+    event_id: uuid.UUID,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("comms.messages.read")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return all contacts linked to campers registered for a given event.
+    Contacts are de-duplicated (a contact linked to multiple registered
+    campers appears only once).
+    """
+    org_id = current_user["organization_id"]
+
+    # Join registrations -> camper_contacts -> contacts
+    query = (
+        select(
+            Contact.id.label("contact_id"),
+            Contact.first_name,
+            Contact.last_name,
+            Contact.email,
+            Contact.phone,
+        )
+        .select_from(Registration)
+        .join(CamperContact, CamperContact.camper_id == Registration.camper_id)
+        .join(Contact, Contact.id == CamperContact.contact_id)
+        .where(Registration.event_id == event_id)
+        .where(Registration.organization_id == org_id)
+        .where(Registration.status.in_(["pending", "confirmed"]))
+        .where(Contact.deleted_at.is_(None))
+        .distinct(Contact.id)
+        .order_by(Contact.id, Contact.last_name, Contact.first_name)
+    )
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    return [
+        {
+            "contact_id": row.contact_id,
+            "first_name": row.first_name,
+            "last_name": row.last_name,
+            "email": row.email,
+            "phone": row.phone,
+        }
+        for row in rows
+    ]
 
 
 # ---------------------------------------------------------------------------

@@ -30,10 +30,201 @@ from app.schemas.workflow import (
     WorkflowExecutionResponse,
     WorkflowListItem,
     WorkflowResponse,
+    WorkflowTemplateResponse,
     WorkflowUpdate,
 )
 
 router = APIRouter(prefix="/workflows", tags=["Workflows"])
+
+
+# ─── Pre-Built Workflow Templates ────────────────────────────
+
+WORKFLOW_TEMPLATES = [
+    {
+        "key": "welcome_email",
+        "name": "Welcome New Registration",
+        "description": "Automatically send a welcome email with event details when a new registration is received.",
+        "category": "onboarding",
+        "trigger": {"type": "event", "event_type": "registration.created"},
+        "steps": [
+            {
+                "id": "step_1",
+                "type": "send_email",
+                "config": {
+                    "subject": "Welcome to Camp!",
+                    "template": "welcome_registration",
+                    "include_event_details": True,
+                },
+            }
+        ],
+    },
+    {
+        "key": "payment_reminder",
+        "name": "Late Payment Reminder",
+        "description": "Send payment reminders for overdue invoices: first reminder after 7 days, final notice after 14 days.",
+        "category": "payments",
+        "trigger": {"type": "event", "event_type": "invoice.overdue"},
+        "steps": [
+            {
+                "id": "step_1",
+                "type": "send_email",
+                "config": {
+                    "subject": "Payment Reminder",
+                    "template": "payment_reminder",
+                },
+            },
+            {
+                "id": "step_2",
+                "type": "delay",
+                "config": {"duration": "7d"},
+            },
+            {
+                "id": "step_3",
+                "type": "send_email",
+                "config": {
+                    "subject": "Final Payment Notice",
+                    "template": "payment_final_notice",
+                },
+            },
+        ],
+    },
+    {
+        "key": "health_form_reminder",
+        "name": "Health Form Follow-up",
+        "description": "After registration is confirmed, wait 3 days then check if the health form has been submitted. If not, send a reminder.",
+        "category": "compliance",
+        "trigger": {"type": "event", "event_type": "registration.confirmed"},
+        "steps": [
+            {
+                "id": "step_1",
+                "type": "delay",
+                "config": {"duration": "3d"},
+            },
+            {
+                "id": "step_2",
+                "type": "if_else",
+                "config": {
+                    "condition": "health_form_submitted",
+                    "operator": "equals",
+                    "value": False,
+                },
+            },
+            {
+                "id": "step_3",
+                "type": "send_email",
+                "config": {
+                    "subject": "Health Form Reminder",
+                    "template": "health_form_reminder",
+                },
+            },
+        ],
+    },
+    {
+        "key": "event_reminder",
+        "name": "Pre-Event Reminder",
+        "description": "Send a preparation checklist 7 days before the event, then arrival details 1 day before.",
+        "category": "events",
+        "trigger": {"type": "schedule", "schedule": "7d_before_event"},
+        "steps": [
+            {
+                "id": "step_1",
+                "type": "send_email",
+                "config": {
+                    "subject": "Prepare for Camp!",
+                    "template": "pre_event_checklist",
+                },
+            },
+            {
+                "id": "step_2",
+                "type": "delay",
+                "config": {"duration": "6d"},
+            },
+            {
+                "id": "step_3",
+                "type": "send_email",
+                "config": {
+                    "subject": "Arrival Details - Tomorrow!",
+                    "template": "arrival_details",
+                },
+            },
+        ],
+    },
+    {
+        "key": "post_event_survey",
+        "name": "Post-Event Feedback",
+        "description": "Wait 1 day after the event ends, then send a thank you email with a survey link to collect feedback.",
+        "category": "engagement",
+        "trigger": {"type": "event", "event_type": "event.ended"},
+        "steps": [
+            {
+                "id": "step_1",
+                "type": "delay",
+                "config": {"duration": "1d"},
+            },
+            {
+                "id": "step_2",
+                "type": "send_email",
+                "config": {
+                    "subject": "Thank You! Share Your Feedback",
+                    "template": "post_event_survey",
+                    "include_survey_link": True,
+                },
+            },
+        ],
+    },
+]
+
+
+@router.get("/templates", response_model=List[WorkflowTemplateResponse])
+async def list_workflow_templates(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Return pre-built workflow templates."""
+    return [
+        WorkflowTemplateResponse(
+            key=t["key"],
+            name=t["name"],
+            description=t["description"],
+            category=t["category"],
+            trigger=t["trigger"],
+            steps=t["steps"],
+            step_count=len(t["steps"]),
+        )
+        for t in WORKFLOW_TEMPLATES
+    ]
+
+
+@router.post(
+    "/from-template/{template_key}",
+    response_model=WorkflowResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_workflow_from_template(
+    template_key: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new workflow from a pre-built template."""
+    template = next((t for t in WORKFLOW_TEMPLATES if t["key"] == template_key), None)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+
+    workflow = Workflow(
+        id=uuid.uuid4(),
+        organization_id=current_user["organization_id"],
+        name=template["name"],
+        description=template["description"],
+        status="draft",
+        trigger=template["trigger"],
+        steps=template["steps"],
+        enrollment_type="automatic",
+        re_enrollment=False,
+        created_by=current_user["id"],
+    )
+    db.add(workflow)
+    await db.commit()
+    await db.refresh(workflow)
+    return workflow
 
 
 # ─── Workflows CRUD ──────────────────────────────────────────

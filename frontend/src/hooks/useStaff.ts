@@ -2,10 +2,12 @@
  * Camp Connect - Staff Directory React Query Hooks
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
 // ─── Types ──────────────────────────────────────────────────
+
+export type StaffCategory = 'full_time' | 'counselor' | 'director' | null
 
 export interface StaffMember {
   id: string
@@ -16,6 +18,7 @@ export interface StaffMember {
   phone?: string | null
   avatar_url?: string | null
   department?: string | null
+  staff_category?: StaffCategory
   role_name?: string | null
   status: 'active' | 'onboarding' | 'inactive'
   hire_date?: string | null
@@ -27,6 +30,14 @@ export interface PaginatedStaff {
   total: number
   skip: number
   limit: number
+}
+
+export interface FinancialInfo {
+  pay_rate?: number | null
+  rate_type?: 'hourly' | 'daily' | 'weekly' | 'seasonal' | null
+  start_date?: string | null
+  end_date?: string | null
+  notes?: string | null
 }
 
 export interface StaffProfile extends StaffMember {
@@ -54,6 +65,48 @@ export interface StaffProfile extends StaffMember {
   } | null
   seasonal_access_start?: string | null
   seasonal_access_end?: string | null
+  financial_info?: FinancialInfo | null
+}
+
+export interface CertificationType {
+  id: string
+  name: string
+  description?: string | null
+  is_required: boolean
+  expiry_days?: number | null
+  created_at: string
+}
+
+export interface StaffCertificationRecord {
+  id: string
+  user_id: string
+  certification_type_id: string
+  certification_type_name?: string | null
+  status: 'pending' | 'valid' | 'expired' | 'revoked'
+  issued_date?: string | null
+  expiry_date?: string | null
+  document_url?: string | null
+  notes?: string | null
+  verified_by?: string | null
+  created_at: string
+}
+
+export interface StaffCertificationCreate {
+  certification_type_id: string
+  status?: string
+  issued_date?: string | null
+  expiry_date?: string | null
+  document_url?: string | null
+  notes?: string | null
+}
+
+export interface StaffCertificationUpdate {
+  status?: string
+  issued_date?: string | null
+  expiry_date?: string | null
+  document_url?: string | null
+  notes?: string | null
+  verified_by?: string | null
 }
 
 export interface StaffDepartment {
@@ -64,6 +117,7 @@ export interface StaffDepartment {
 interface StaffFilters {
   search?: string
   department?: string
+  staff_category?: string
   skip?: number
   limit?: number
 }
@@ -92,5 +146,115 @@ export function useStaffDepartments() {
   return useQuery<StaffDepartment[]>({
     queryKey: ['staff', 'departments'],
     queryFn: () => api.get('/staff/departments').then((r) => r.data),
+  })
+}
+
+export function useUpdateStaffCategory() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      userId,
+      staffCategory,
+    }: {
+      userId: string
+      staffCategory: StaffCategory
+    }) =>
+      api
+        .put(`/staff/${userId}/category`, {
+          staff_category: staffCategory,
+        })
+        .then((r) => r.data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['staff'] })
+      queryClient.invalidateQueries({ queryKey: ['staff', variables.userId] })
+      queryClient.invalidateQueries({ queryKey: ['counselors'] })
+    },
+  })
+}
+
+// ─── Certification Type Hooks ────────────────────────────────
+
+export function useCertificationTypes() {
+  return useQuery<CertificationType[]>({
+    queryKey: ['certification-types'],
+    queryFn: () =>
+      api.get('/staff/certification-types').then((r) => r.data),
+  })
+}
+
+// ─── Staff Certification Record Hooks ────────────────────────
+
+export function useStaffCertifications(userId: string | undefined) {
+  return useQuery<StaffCertificationRecord[]>({
+    queryKey: ['staff', userId, 'certifications'],
+    queryFn: () =>
+      api.get(`/staff/${userId}/certifications`).then((r) => r.data),
+    enabled: !!userId,
+  })
+}
+
+export function useAddStaffCertification() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      userId,
+      data,
+    }: {
+      userId: string
+      data: StaffCertificationCreate
+    }) =>
+      api
+        .post(`/staff/${userId}/certifications`, data)
+        .then((r) => r.data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['staff', variables.userId, 'certifications'],
+      })
+    },
+  })
+}
+
+export function useUpdateStaffCertification() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      certId,
+      data,
+    }: {
+      certId: string
+      userId: string
+      data: StaffCertificationUpdate
+    }) =>
+      api
+        .put(`/staff/certifications/${certId}`, data)
+        .then((r) => r.data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['staff', variables.userId, 'certifications'],
+      })
+    },
+  })
+}
+
+// ─── Staff Financial Hooks ───────────────────────────────────
+
+export function useUpdateStaffFinancial() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      userId,
+      financialInfo,
+    }: {
+      userId: string
+      financialInfo: FinancialInfo
+    }) =>
+      api
+        .put(`/staff/${userId}/financial`, {
+          financial_info: financialInfo,
+        })
+        .then((r) => r.data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['staff', variables.userId] })
+    },
   })
 }

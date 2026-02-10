@@ -12,16 +12,26 @@ interface StaffFiltersProps {
   onSearchChange: (value: string) => void
   department: string
   onDepartmentChange: (value: string) => void
+  category?: string
+  onCategoryChange?: (value: string) => void
   viewMode: 'grid' | 'list'
   onViewModeChange: (mode: 'grid' | 'list') => void
   departments: StaffDepartment[]
 }
+
+const STAFF_CATEGORIES = [
+  { value: 'full_time', label: 'Full-time Staff' },
+  { value: 'counselor', label: 'Counselor' },
+  { value: 'director', label: 'Director' },
+]
 
 export function StaffFilters({
   search,
   onSearchChange,
   department,
   onDepartmentChange,
+  category,
+  onCategoryChange,
   viewMode,
   onViewModeChange,
   departments,
@@ -53,6 +63,22 @@ export function StaffFilters({
           </option>
         ))}
       </select>
+
+      {/* Category Dropdown */}
+      {onCategoryChange && (
+        <select
+          value={category ?? ''}
+          onChange={(e) => onCategoryChange(e.target.value)}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="">All Categories</option>
+          {STAFF_CATEGORIES.map((cat) => (
+            <option key={cat.value} value={cat.value}>
+              {cat.label}
+            </option>
+          ))}
+        </select>
+      )}
 
       {/* View Toggle */}
       <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white p-0.5">

@@ -50,6 +50,20 @@ class Photo(Base, TimestampMixin, SoftDeleteMixin):
         index=True,
     )
 
+    # Event / Activity linkage
+    event_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("events.id"),
+        nullable=True,
+        index=True,
+    )
+    activity_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("activities.id"),
+        nullable=True,
+        index=True,
+    )
+
     # File info
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -66,6 +80,8 @@ class Photo(Base, TimestampMixin, SoftDeleteMixin):
     # Relationships
     organization = relationship("Organization", backref="photos")
     uploader = relationship("User", backref="uploaded_photos")
+    event = relationship("Event", backref="photos", lazy="selectin")
+    activity = relationship("Activity", backref="photos", lazy="selectin")
 
     def __repr__(self) -> str:
         return f"<Photo(id={self.id}, file_name='{self.file_name}', category='{self.category}')>"

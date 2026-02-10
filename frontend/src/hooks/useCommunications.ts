@@ -51,6 +51,27 @@ export interface TemplateUpdate extends Partial<TemplateCreate> {
   is_active?: boolean
 }
 
+export interface EventRecipient {
+  contact_id: string
+  first_name: string
+  last_name: string
+  email: string | null
+  phone: string | null
+}
+
+// ─── Event recipient hooks ───────────────────────────────────
+
+export function useEventRecipients(eventId: string | undefined) {
+  return useQuery<EventRecipient[]>({
+    queryKey: ['event-recipients', eventId],
+    queryFn: () =>
+      api
+        .get(`/communications/event-recipients/${eventId}`)
+        .then((r) => r.data),
+    enabled: !!eventId,
+  })
+}
+
 // ─── Message hooks ───────────────────────────────────────────
 
 export function useMessages(filters?: MessageFilters) {

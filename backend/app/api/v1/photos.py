@@ -28,6 +28,8 @@ async def upload_photo(
     file: UploadFile = File(...),
     category: str = Form(default="general"),
     entity_id: Optional[str] = Form(default=None),
+    event_id: Optional[str] = Form(default=None),
+    activity_id: Optional[str] = Form(default=None),
     caption: Optional[str] = Form(default=None),
     custom_name: Optional[str] = Form(default=None),
     current_user: Dict[str, Any] = Depends(
@@ -41,6 +43,8 @@ async def upload_photo(
     - **file**: The image file (JPEG, PNG, GIF, WebP, SVG, HEIC)
     - **category**: One of: camper, event, general
     - **entity_id**: Optional UUID of the associated camper or event
+    - **event_id**: Optional UUID of the associated event
+    - **activity_id**: Optional UUID of the associated activity
     - **caption**: Optional caption for the photo
     - **custom_name**: Optional custom filename override (auto-renamed with date + camp name if not provided)
     """
@@ -54,6 +58,26 @@ async def upload_photo(
                 detail="entity_id must be a valid UUID",
             )
 
+    parsed_event_id = None
+    if event_id:
+        try:
+            parsed_event_id = uuid.UUID(event_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="event_id must be a valid UUID",
+            )
+
+    parsed_activity_id = None
+    if activity_id:
+        try:
+            parsed_activity_id = uuid.UUID(activity_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="activity_id must be a valid UUID",
+            )
+
     try:
         return await photo_service.upload_photo(
             db,
@@ -62,6 +86,8 @@ async def upload_photo(
             file=file,
             category=category,
             entity_id=parsed_entity_id,
+            event_id=parsed_event_id,
+            activity_id=parsed_activity_id,
             caption=caption,
             custom_name=custom_name,
         )
@@ -79,6 +105,11 @@ async def upload_photo(
 async def list_photos(
     category: Optional[str] = Query(default=None, description="Filter by category"),
     entity_id: Optional[uuid.UUID] = Query(default=None, description="Filter by entity"),
+    event_id: Optional[uuid.UUID] = Query(default=None, description="Filter by event"),
+    activity_id: Optional[uuid.UUID] = Query(default=None, description="Filter by activity"),
+    camper_id: Optional[uuid.UUID] = Query(default=None, description="Filter by camper (face-tagged)"),
+    month: Optional[int] = Query(default=None, ge=1, le=12, description="Filter by month (1-12)"),
+    year: Optional[int] = Query(default=None, ge=2020, le=2030, description="Filter by year"),
     current_user: Dict[str, Any] = Depends(
         require_permission("photos.media.view")
     ),
@@ -90,6 +121,11 @@ async def list_photos(
         organization_id=current_user["organization_id"],
         category=category,
         entity_id=entity_id,
+        event_id=event_id,
+        activity_id=activity_id,
+        camper_id=camper_id,
+        month=month,
+        year=year,
     )
 
 

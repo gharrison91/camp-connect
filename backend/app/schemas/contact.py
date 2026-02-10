@@ -24,6 +24,9 @@ class ContactCreate(BaseModel):
     relationship_type: str = Field(default="parent", max_length=50)
     notification_preferences: Optional[dict] = None
     account_status: str = Field(default="active", pattern="^(active|guest)$")
+    communication_preference: str = Field(
+        default="email", pattern="^(email|sms|both)$"
+    )
 
 
 class ContactResponse(BaseModel):
@@ -40,6 +43,7 @@ class ContactResponse(BaseModel):
     relationship_type: str
     notification_preferences: Optional[dict] = None
     account_status: str
+    communication_preference: str = "email"
     camper_count: int = 0
     created_at: datetime
 
@@ -60,4 +64,7 @@ class ContactUpdate(BaseModel):
     notification_preferences: Optional[dict] = None
     account_status: Optional[str] = Field(
         default=None, pattern="^(active|guest)$"
+    )
+    communication_preference: Optional[str] = Field(
+        default=None, pattern="^(email|sms|both)$"
     )

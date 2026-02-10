@@ -30,6 +30,7 @@ import { useUploadProfilePhoto } from '@/hooks/useCampers'
 import { useIndexCamperFace } from '@/hooks/useFaceRecognition'
 import { useToast } from '@/components/ui/Toast'
 import { CamperEditModal } from './CamperEditModal'
+import { ComposeMessageModal } from '@/features/communications/CommunicationsPage'
 import type {
   CamperProfile,
   CamperHealthForm,
@@ -962,6 +963,8 @@ export function CamperDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showComposeModal, setShowComposeModal] = useState(false)
+  const [composeChannel, setComposeChannel] = useState<'sms' | 'email'>('email')
   const profilePhotoInputRef = useRef<HTMLInputElement>(null)
   const albumPhotoInputRef = useRef<HTMLInputElement>(null)
 
@@ -1121,14 +1124,40 @@ export function CamperDetailPage() {
           </div>
         </div>
 
-        {/* Edit Button */}
-        <button
-          onClick={() => setShowEditModal(true)}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
-        >
-          <Edit className="h-4 w-4" />
-          Edit Camper
-        </button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          {profile.contacts.length > 0 && (
+            <>
+              <button
+                onClick={() => {
+                  setComposeChannel('email')
+                  setShowComposeModal(true)
+                }}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+              >
+                <Mail className="h-4 w-4 text-blue-500" />
+                Send Email
+              </button>
+              <button
+                onClick={() => {
+                  setComposeChannel('sms')
+                  setShowComposeModal(true)
+                }}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+              >
+                <Phone className="h-4 w-4 text-violet-500" />
+                Send Text
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+          >
+            <Edit className="h-4 w-4" />
+            Edit Camper
+          </button>
+        </div>
       </div>
 
       {/* Tab Navigation */}
@@ -1200,6 +1229,21 @@ export function CamperDetailPage() {
           }}
         />
       )}
+
+      {/* Compose Message Modal */}
+      {showComposeModal && profile && (() => {
+        const primaryContact = profile.contacts.find((c) => c.is_primary) || profile.contacts[0]
+        const prefillTo = composeChannel === 'email'
+          ? (primaryContact?.email || '')
+          : (primaryContact?.phone || '')
+        return (
+          <ComposeMessageModal
+            onClose={() => setShowComposeModal(false)}
+            prefillTo={prefillTo}
+            prefillChannel={composeChannel}
+          />
+        )
+      })()}
     </div>
   )
 }

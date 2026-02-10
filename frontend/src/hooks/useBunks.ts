@@ -43,6 +43,13 @@ export interface UnassignedCamper {
   gender: string | null
 }
 
+export interface Counselor {
+  id: string
+  first_name: string
+  last_name: string
+  avatar_url: string | null
+}
+
 export interface BunkCreate {
   name: string
   capacity: number
@@ -180,6 +187,40 @@ export function useMoveCamper(eventId: string | undefined) {
         .then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bunk-assignments', eventId] })
+    },
+  })
+}
+
+// ─── Counselor Queries & Mutations ──────────────────────────
+
+export function useCounselors(eventId: string | undefined) {
+  return useQuery<Counselor[]>({
+    queryKey: ['counselors', eventId],
+    queryFn: () =>
+      api
+        .get('/staff/counselors', { params: { event_id: eventId } })
+        .then((r) => r.data),
+    enabled: !!eventId,
+  })
+}
+
+export function useAssignCounselor() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      bunkId,
+      counselorUserId,
+    }: {
+      bunkId: string
+      counselorUserId: string | null
+    }) =>
+      api
+        .put(`/bunks/${bunkId}/counselor`, {
+          counselor_user_id: counselorUserId,
+        })
+        .then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bunks'] })
     },
   })
 }

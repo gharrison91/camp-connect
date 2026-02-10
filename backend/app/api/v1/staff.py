@@ -19,7 +19,14 @@ from app.database import get_db
 from app.models.role import Role
 from app.models.staff_onboarding import StaffCertification, StaffOnboarding
 from app.models.user import User
-from app.schemas.staff import StaffListResponse, StaffProfile
+from app.models.event import Event
+from app.schemas.staff import (
+    CounselorListItem,
+    StaffCategoryUpdate,
+    StaffFinancialUpdate,
+    StaffListResponse,
+    StaffProfile,
+)
 
 router = APIRouter(prefix="/staff", tags=["Staff Directory"])
 
@@ -42,6 +49,10 @@ async def list_staff(
         default=None,
         alias="status",
         description="Filter by onboarding status",
+    ),
+    staff_category: Optional[str] = Query(
+        default=None,
+        description="Filter by staff category (full_time, counselor, director)",
     ),
     skip: int = Query(default=0, ge=0, description="Pagination offset"),
     limit: int = Query(default=50, ge=1, le=100, description="Page size"),
@@ -79,6 +90,10 @@ async def list_staff(
     if role_id:
         query = query.where(User.role_id == role_id)
 
+    # Staff category filter
+    if staff_category:
+        query = query.where(User.staff_category == staff_category)
+
     # Count total before pagination
     count_query = (
         select(sqlfunc.count())
@@ -95,6 +110,8 @@ async def list_staff(
         )
     if role_id:
         count_query = count_query.where(User.role_id == role_id)
+    if staff_category:
+        count_query = count_query.where(User.staff_category == staff_category)
 
     count_result = await db.execute(count_query)
     total = count_result.scalar() or 0
@@ -143,6 +160,7 @@ async def list_staff(
             "avatar_url": user.avatar_url,
             "role_name": user.role.name if user.role else None,
             "department": None,  # Department is an extension field
+            "staff_category": user.staff_category,
             "status": staff_status,
             "is_active": user.is_active,
             "phone": user.phone,
@@ -170,6 +188,121 @@ async def list_departments(
     # Departments are not yet a first-class field on User,
     # so return an empty list placeholder for future extension.
     return []
+
+
+@router.get(
+    "/counselors",
+    response_model=List[CounselorListItem],
+)
+async def list_counselors(
+    event_id: Optional[uuid.UUID] = Query(
+        default=None, description="Event ID to filter by event date range"
+    ),
+    current_user: Dict[str, Any] = Depends(
+        require_permission("staff.employees.read")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List staff members marked as counselors who are active.
+
+    If event_id is provided, further filters to counselors whose
+    seasonal access overlaps the event date range.
+    Requires **staff.employees.read** permission.
+    """
+    org_id = current_user["organization_id"]
+
+    query = (
+        select(User)
+        .where(User.organization_id == org_id)
+        .where(User.deleted_at.is_(None))
+        .where(User.is_active.is_(True))
+        .where(User.staff_category == "counselor")
+    )
+
+    # If event_id provided, filter by event date overlap with seasonal access
+    if event_id:
+        event_result = await db.execute(
+            select(Event)
+            .where(Event.id == event_id)
+            .where(Event.organization_id == org_id)
+        )
+        event = event_result.scalar_one_or_none()
+        if event is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Event not found",
+            )
+        # Only filter by seasonal access if the user has dates set
+        # Users with no seasonal dates are considered always available
+        query = query.where(
+            (User.seasonal_access_start.is_(None))
+            | (User.seasonal_access_start <= event.end_date)
+        )
+        query = query.where(
+            (User.seasonal_access_end.is_(None))
+            | (User.seasonal_access_end >= event.start_date)
+        )
+
+    query = query.order_by(User.last_name, User.first_name)
+    result = await db.execute(query)
+    users = result.scalars().all()
+
+    return [
+        {
+            "id": u.id,
+            "first_name": u.first_name,
+            "last_name": u.last_name,
+            "avatar_url": u.avatar_url,
+        }
+        for u in users
+    ]
+
+
+@router.put(
+    "/{user_id}/category",
+)
+async def update_staff_category(
+    user_id: uuid.UUID,
+    body: StaffCategoryUpdate,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("staff.employees.update")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Update a staff member's category.
+
+    Requires **staff.employees.update** permission.
+    Valid categories: full_time, counselor, director, or null.
+    """
+    org_id = current_user["organization_id"]
+
+    result = await db.execute(
+        select(User)
+        .where(User.id == user_id)
+        .where(User.organization_id == org_id)
+        .where(User.deleted_at.is_(None))
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Staff member not found",
+        )
+
+    # Validate category value
+    valid_categories = {"full_time", "counselor", "director", None}
+    if body.staff_category not in valid_categories:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid staff category. Must be one of: full_time, counselor, director, or null",
+        )
+
+    user.staff_category = body.staff_category
+    await db.commit()
+
+    return {"id": user.id, "staff_category": user.staff_category}
 
 
 @router.get(
@@ -262,6 +395,7 @@ async def get_staff_profile(
         "avatar_url": user.avatar_url,
         "role_name": user.role.name if user.role else None,
         "department": None,
+        "staff_category": user.staff_category,
         "status": staff_status,
         "hire_date": user.created_at,
         "is_active": user.is_active,
@@ -272,4 +406,43 @@ async def get_staff_profile(
         "onboarding": onboarding_dict,
         "seasonal_access_start": user.seasonal_access_start,
         "seasonal_access_end": user.seasonal_access_end,
+        "financial_info": user.financial_info,
     }
+
+
+@router.put(
+    "/{user_id}/financial",
+)
+async def update_staff_financial(
+    user_id: uuid.UUID,
+    body: StaffFinancialUpdate,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("staff.employees.update")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Update a staff member's financial information.
+
+    Requires **staff.employees.update** permission.
+    Stores pay rate, employment dates, and notes as JSONB.
+    """
+    org_id = current_user["organization_id"]
+
+    result = await db.execute(
+        select(User)
+        .where(User.id == user_id)
+        .where(User.organization_id == org_id)
+        .where(User.deleted_at.is_(None))
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Staff member not found",
+        )
+
+    user.financial_info = body.financial_info
+    await db.commit()
+
+    return {"id": user.id, "financial_info": user.financial_info}

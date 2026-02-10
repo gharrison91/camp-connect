@@ -20,6 +20,7 @@ export function StaffDirectoryPage() {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [departmentFilter, setDepartmentFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [page, setPage] = useState(0)
   const pageSize = 20
@@ -27,6 +28,7 @@ export function StaffDirectoryPage() {
   const { data, isLoading, error } = useStaffList({
     search: searchQuery || undefined,
     department: departmentFilter || undefined,
+    staff_category: categoryFilter || undefined,
     skip: page * pageSize,
     limit: pageSize,
   })
@@ -44,6 +46,11 @@ export function StaffDirectoryPage() {
 
   function handleDepartmentChange(value: string) {
     setDepartmentFilter(value)
+    setPage(0)
+  }
+
+  function handleCategoryChange(value: string) {
+    setCategoryFilter(value)
     setPage(0)
   }
 
@@ -79,6 +86,8 @@ export function StaffDirectoryPage() {
         onSearchChange={handleSearchChange}
         department={departmentFilter}
         onDepartmentChange={handleDepartmentChange}
+        category={categoryFilter}
+        onCategoryChange={handleCategoryChange}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         departments={departments ?? []}
@@ -225,7 +234,7 @@ export function StaffDirectoryPage() {
             No staff members found
           </p>
           <p className="mt-1 text-sm text-gray-500">
-            {searchQuery || departmentFilter
+            {searchQuery || departmentFilter || categoryFilter
               ? 'Try adjusting your search or filter criteria.'
               : 'Staff members will appear here once added.'}
           </p>

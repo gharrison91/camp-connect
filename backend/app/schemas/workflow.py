@@ -92,6 +92,18 @@ class WorkflowExecutionLogResponse(BaseModel):
     duration_ms: Optional[int] = None
 
 
+# ─── Workflow Template ──────────────────────────────────────
+
+class WorkflowTemplateResponse(BaseModel):
+    key: str
+    name: str
+    description: str
+    category: str
+    trigger: Dict[str, Any]
+    steps: List[Dict[str, Any]]
+    step_count: int
+
+
 # ─── Contact Association ────────────────────────────────────
 
 class ContactAssociationCreate(BaseModel):

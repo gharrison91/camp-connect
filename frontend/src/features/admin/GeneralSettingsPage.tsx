@@ -1,12 +1,27 @@
 /**
  * General Settings page — tax rate, deposit config, enabled modules.
+ * Modules not purchased are grayed out with a lock icon.
  */
 
 import { useState, useEffect } from 'react'
-import { Loader2, Save } from 'lucide-react'
+import { Loader2, Save, Lock } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
+import { useToast } from '@/components/ui/Toast'
 
-const ALL_MODULES = [
+// Default all modules to purchased since there is no SaaS admin portal yet.
+const DEFAULT_PURCHASED: string[] = [
+  'core', 'health', 'financial', 'comms', 'photos', 'staff', 'ai', 'analytics', 'store',
+]
+
+interface ModuleDef {
+  key: string
+  label: string
+  description: string
+  locked?: boolean
+}
+
+const ALL_MODULES: ModuleDef[] = [
   { key: 'core', label: 'Core Platform', description: 'Registration, events, campers, admin', locked: true },
   { key: 'health', label: 'Health & Safety', description: 'Medical forms, medications, incidents' },
   { key: 'financial', label: 'Financial', description: 'Payments, invoicing, accounting' },
@@ -19,10 +34,9 @@ const ALL_MODULES = [
 ]
 
 export function GeneralSettingsPage() {
+  const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const [settings, setSettings] = useState({
     tax_rate: 0,
@@ -31,6 +45,7 @@ export function GeneralSettingsPage() {
     deposit_required: false,
   })
   const [enabledModules, setEnabledModules] = useState<string[]>(['core'])
+  const [purchasedModules, setPurchasedModules] = useState<string[]>(DEFAULT_PURCHASED)
 
   useEffect(() => {
     loadSettings()
@@ -47,8 +62,11 @@ export function GeneralSettingsPage() {
         deposit_amount: data.settings?.deposit_amount || 0,
         deposit_required: data.settings?.deposit_required || false,
       })
-    } catch (err) {
-      setError('Failed to load settings')
+      if (data.settings?.purchased_modules) {
+        setPurchasedModules(data.settings.purchased_modules)
+      }
+    } catch {
+      toast({ type: 'error', message: 'Failed to load settings' })
     } finally {
       setLoading(false)
     }
@@ -57,25 +75,24 @@ export function GeneralSettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    setError(null)
-    setSuccess(false)
 
     try {
       await api.put('/settings', {
         ...settings,
         enabled_modules: enabledModules,
       })
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save')
+      toast({ type: 'success', message: 'Settings saved!' })
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { data?: { detail?: string } } }
+      toast({ type: 'error', message: apiErr.response?.data?.detail || 'Failed to save' })
     } finally {
       setSaving(false)
     }
   }
 
   const toggleModule = (key: string) => {
-    if (key === 'core') return // Core is always enabled
+    if (key === 'core') return
+    if (!purchasedModules.includes(key)) return
     setEnabledModules((prev) =>
       prev.includes(key) ? prev.filter((m) => m !== key) : [...prev, key]
     )
@@ -92,17 +109,6 @@ export function GeneralSettingsPage() {
   return (
     <div className="max-w-2xl">
       <form onSubmit={handleSubmit} className="space-y-8">
-        {error && (
-          <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 border border-red-200">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700 border border-emerald-200">
-            Settings saved!
-          </div>
-        )}
-
         {/* Tax Configuration */}
         <div>
           <h3 className="text-sm font-semibold text-slate-900">Tax Configuration</h3>
@@ -164,35 +170,73 @@ export function GeneralSettingsPage() {
           <h3 className="text-sm font-semibold text-slate-900">Enabled Modules</h3>
           <p className="mt-1 text-xs text-slate-500">Choose which platform modules your organization uses.</p>
           <div className="mt-3 space-y-2">
-            {ALL_MODULES.map((mod) => (
-              <label
-                key={mod.key}
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 transition-colors ${
-                  enabledModules.includes(mod.key)
-                    ? 'border-emerald-200 bg-emerald-50/50'
-                    : 'border-slate-200 bg-white'
-                } ${mod.locked ? 'cursor-default opacity-75' : 'hover:bg-slate-50'}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={enabledModules.includes(mod.key)}
-                  onChange={() => toggleModule(mod.key)}
-                  disabled={mod.locked}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600"
-                />
-                <div>
-                  <span className="text-sm font-medium text-slate-900">
-                    {mod.label}
-                    {mod.locked && (
-                      <span className="ml-2 text-[10px] font-semibold uppercase text-slate-400">
-                        Always on
-                      </span>
+            {ALL_MODULES.map((mod) => {
+              const isPurchased = purchasedModules.includes(mod.key)
+              const isEnabled = enabledModules.includes(mod.key)
+              const isLocked = mod.locked === true
+
+              return (
+                <label
+                  key={mod.key}
+                  className={cn(
+                    'flex items-start gap-3 rounded-lg border px-4 py-3 transition-colors',
+                    !isPurchased
+                      ? 'cursor-default border-slate-100 bg-slate-50 opacity-60'
+                      : isEnabled
+                        ? 'cursor-pointer border-emerald-200 bg-emerald-50/50'
+                        : 'cursor-pointer border-slate-200 bg-white hover:bg-slate-50',
+                    isLocked && 'cursor-default'
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isEnabled}
+                    onChange={() => toggleModule(mod.key)}
+                    disabled={isLocked || !isPurchased}
+                    className={cn(
+                      'mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600',
+                      !isPurchased && 'opacity-40'
                     )}
-                  </span>
-                  <p className="text-xs text-slate-500">{mod.description}</p>
-                </div>
-              </label>
-            ))}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        'text-sm font-medium',
+                        isPurchased ? 'text-slate-900' : 'text-slate-400'
+                      )}>
+                        {mod.label}
+                      </span>
+                      {isLocked && (
+                        <span className="text-[10px] font-semibold uppercase text-slate-400">
+                          Always on
+                        </span>
+                      )}
+                      {!isPurchased && (
+                        <span className="inline-flex items-center gap-1 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-500">
+                          <Lock className="h-3 w-3" />
+                          Upgrade to unlock
+                        </span>
+                      )}
+                    </div>
+                    <p className={cn(
+                      'text-xs',
+                      isPurchased ? 'text-slate-500' : 'text-slate-400'
+                    )}>
+                      {mod.description}
+                    </p>
+                    {!isPurchased && (
+                      <a
+                        href="mailto:sales@campconnect.com"
+                        className="mt-1 inline-block text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Contact sales
+                      </a>
+                    )}
+                  </div>
+                </label>
+              )
+            })}
           </div>
         </div>
 

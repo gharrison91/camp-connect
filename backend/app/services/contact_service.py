@@ -149,6 +149,7 @@ def _contact_to_dict(contact: Contact) -> Dict[str, Any]:
         "relationship_type": contact.relationship_type,
         "notification_preferences": contact.notification_preferences,
         "account_status": contact.account_status,
+        "communication_preference": contact.communication_preference,
         "camper_count": len(contact.camper_contacts) if contact.camper_contacts else 0,
         "created_at": contact.created_at,
     }

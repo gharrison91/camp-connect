@@ -112,6 +112,43 @@ async def update_bunk(
     return _bunk_to_dict(bunk)
 
 
+async def assign_counselor(
+    db: AsyncSession,
+    *,
+    organization_id: uuid.UUID,
+    bunk_id: uuid.UUID,
+    counselor_user_id: Optional[uuid.UUID] = None,
+) -> Optional[Dict[str, Any]]:
+    """Assign or unassign a counselor (user) to a bunk."""
+    result = await db.execute(
+        select(Bunk)
+        .options(selectinload(Bunk.counselor))
+        .where(Bunk.id == bunk_id)
+        .where(Bunk.organization_id == organization_id)
+        .where(Bunk.deleted_at.is_(None))
+    )
+    bunk = result.scalar_one_or_none()
+    if bunk is None:
+        return None
+
+    # If assigning, verify the user exists and belongs to the org
+    if counselor_user_id is not None:
+        user_result = await db.execute(
+            select(User)
+            .where(User.id == counselor_user_id)
+            .where(User.organization_id == organization_id)
+            .where(User.deleted_at.is_(None))
+        )
+        user = user_result.scalar_one_or_none()
+        if user is None:
+            raise ValueError("Counselor not found in this organization")
+
+    bunk.counselor_user_id = counselor_user_id
+    await db.commit()
+    await db.refresh(bunk, ["counselor"])
+    return _bunk_to_dict(bunk)
+
+
 async def delete_bunk(
     db: AsyncSession,
     *,

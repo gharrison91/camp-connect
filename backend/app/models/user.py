@@ -10,7 +10,7 @@ from datetime import date
 from typing import Optional
 
 from sqlalchemy import Boolean, Date, ForeignKey, String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
@@ -56,12 +56,18 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
 
     # Staff fields
     department: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    staff_category: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True, default=None
+    )  # full_time, counselor, director
     onboarding_status: Mapped[Optional[str]] = mapped_column(
         String(20), nullable=True, default=None
     )  # invited, onboarding, active
 
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Financial info (JSONB for pay rate, employment dates, notes)
+    financial_info: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 
     # Seasonal access
     seasonal_access_start: Mapped[Optional[date]] = mapped_column(Date, nullable=True)

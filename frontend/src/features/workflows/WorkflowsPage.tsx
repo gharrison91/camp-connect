@@ -26,6 +26,8 @@ import {
   useWorkflows,
   useCreateWorkflow,
   useDeleteWorkflow,
+  useWorkflowTemplates,
+  useCreateFromTemplate,
 } from '@/hooks/useWorkflows'
 import { useToast } from '@/components/ui/Toast'
 
@@ -76,6 +78,8 @@ export function WorkflowsPage() {
 
   const createWorkflow = useCreateWorkflow()
   const deleteWorkflow = useDeleteWorkflow()
+  const { data: templates = [] } = useWorkflowTemplates()
+  const createFromTemplate = useCreateFromTemplate()
 
   const filteredWorkflows = workflows.filter((w) =>
     w.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -104,6 +108,24 @@ export function WorkflowsPage() {
     } catch {
       toast({ type: 'error', message: 'Failed to delete workflow' })
     }
+  }
+
+  const handleUseTemplate = async (templateKey: string) => {
+    try {
+      const result = await createFromTemplate.mutateAsync(templateKey)
+      navigate(`/app/workflows/${result.id}`)
+      toast({ type: 'success', message: 'Workflow created from template' })
+    } catch {
+      toast({ type: 'error', message: 'Failed to create from template' })
+    }
+  }
+
+  const categoryColors: Record<string, string> = {
+    onboarding: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+    payments: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+    compliance: 'bg-red-50 text-red-700 ring-red-600/20',
+    events: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+    engagement: 'bg-purple-50 text-purple-700 ring-purple-600/20',
   }
 
   // Summary stats
@@ -169,6 +191,30 @@ export function WorkflowsPage() {
           </div>
         </div>
       </div>
+
+      {/* Templates */}
+      {templates.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-gray-900">Templates</h2>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {templates.map((tpl) => (
+              <div key={tpl.key} className="flex w-64 shrink-0 flex-col justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset', categoryColors[tpl.category] || 'bg-gray-50 text-gray-600 ring-gray-500/20')}>{tpl.category}</span>
+                    <span className="text-xs text-gray-400">{tpl.step_count} step{tpl.step_count !== 1 ? 's' : ''}</span>
+                  </div>
+                  <h3 className="mt-2 text-sm font-semibold text-gray-900">{tpl.name}</h3>
+                  <p className="mt-1 text-xs text-gray-500 line-clamp-2">{tpl.description}</p>
+                </div>
+                <button onClick={() => handleUseTemplate(tpl.key)} disabled={createFromTemplate.isPending} className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-50 disabled:opacity-50">
+                  <Zap className="h-3 w-3" />Use Template
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

@@ -144,6 +144,18 @@ class MessageTemplateResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class EventRecipientResponse(BaseModel):
+    """A contact associated with a camper registered in an event."""
+
+    contact_id: uuid.UUID
+    first_name: str
+    last_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class MessageTemplateUpdate(BaseModel):
     """Request to update an existing message template."""
 

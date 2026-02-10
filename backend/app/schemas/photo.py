@@ -23,6 +23,8 @@ class PhotoUploadResponse(BaseModel):
     tags: Optional[List[str]] = None
     category: str
     entity_id: Optional[uuid.UUID] = None
+    event_id: Optional[uuid.UUID] = None
+    activity_id: Optional[uuid.UUID] = None
     is_profile_photo: bool = False
     uploaded_by: Optional[uuid.UUID] = None
     created_at: datetime
@@ -49,6 +51,8 @@ class PhotoListResponse(BaseModel):
     tags: Optional[List[str]] = None
     category: str
     entity_id: Optional[uuid.UUID] = None
+    event_id: Optional[uuid.UUID] = None
+    activity_id: Optional[uuid.UUID] = None
     is_profile_photo: bool = False
     uploaded_by: Optional[uuid.UUID] = None
     created_at: datetime

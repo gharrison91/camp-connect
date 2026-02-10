@@ -21,6 +21,7 @@ import {
   useDeleteContactAssociation,
 } from '@/hooks/useWorkflows'
 import { useToast } from '@/components/ui/Toast'
+import { ComposeMessageModal } from '@/features/communications/CommunicationsPage'
 
 const RELATIONSHIP_TYPES = [
   { value: 'parent', label: 'Parent' },
@@ -39,6 +40,8 @@ export function ContactDetailPage() {
   const [assocContactId, setAssocContactId] = useState('')
   const [assocType, setAssocType] = useState('parent')
   const [assocNotes, setAssocNotes] = useState('')
+  const [showComposeModal, setShowComposeModal] = useState(false)
+  const [composeChannel, setComposeChannel] = useState<'sms' | 'email'>('email')
 
   const { data: contact, isLoading, error } = useContact(id)
   const { data: associations = [] } = useContactAssociations(id)
@@ -133,6 +136,27 @@ export function ContactDetailPage() {
             >
               {contact.account_status}
             </span>
+          </div>
+          {/* Send Email/Text Buttons */}
+          <div className="ml-auto flex items-center gap-2">
+            {contact.email && (
+              <button
+                onClick={() => { setComposeChannel('email'); setShowComposeModal(true) }}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+              >
+                <Mail className="h-4 w-4 text-blue-500" />
+                Send Email
+              </button>
+            )}
+            {contact.phone && (
+              <button
+                onClick={() => { setComposeChannel('sms'); setShowComposeModal(true) }}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+              >
+                <Phone className="h-4 w-4 text-violet-500" />
+                Send Text
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -375,6 +399,15 @@ export function ContactDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Compose Message Modal */}
+      {showComposeModal && contact && (
+        <ComposeMessageModal
+          onClose={() => setShowComposeModal(false)}
+          prefillTo={composeChannel === 'email' ? (contact.email || '') : (contact.phone || '')}
+          prefillChannel={composeChannel}
+        />
+      )}
     </div>
   )
 }

@@ -17,16 +17,21 @@ import {
   Loader2,
   User,
   Calendar,
+  Tags,
+  DollarSign,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useStaffProfile } from '@/hooks/useStaff'
+import { useStaffProfile, useUpdateStaffCategory } from '@/hooks/useStaff'
+import type { StaffCategory } from '@/hooks/useStaff'
+import { useToast } from '@/components/ui/Toast'
 import { useOnboardingDetail } from '@/hooks/useOnboarding'
 
-type TabKey = 'overview' | 'certifications' | 'onboarding'
+type TabKey = 'overview' | 'certifications' | 'financial' | 'onboarding'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'certifications', label: 'Certifications' },
+  { key: 'financial', label: 'Financial' },
   { key: 'onboarding', label: 'Onboarding Status' },
 ]
 
@@ -42,12 +47,25 @@ function statusBadge(status: string) {
   }
 }
 
+const CATEGORY_OPTIONS: { value: StaffCategory; label: string }[] = [
+  { value: null, label: 'Not Set' },
+  { value: 'full_time', label: 'Full-time Staff' },
+  { value: 'counselor', label: 'Counselor' },
+  { value: 'director', label: 'Director' },
+]
+
+function categoryLabel(cat: StaffCategory): string {
+  return CATEGORY_OPTIONS.find((o) => o.value === cat)?.label ?? 'Not Set'
+}
+
 export function StaffProfilePage() {
   const { id } = useParams<{ id: string }>()
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
 
   const { data: profile, isLoading, error } = useStaffProfile(id)
   const { data: onboarding, isLoading: onboardingLoading } = useOnboardingDetail(id)
+  const updateCategory = useUpdateStaffCategory()
+  const { toast } = useToast()
 
   if (isLoading) {
     return (
@@ -191,6 +209,37 @@ export function StaffProfilePage() {
 
           <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Tags className="h-4 w-4" />
+              <span>Staff Category</span>
+            </div>
+            <select
+              value={profile.staff_category ?? ''}
+              onChange={async (e) => {
+                const val = e.target.value || null
+                try {
+                  await updateCategory.mutateAsync({
+                    userId: profile.user_id,
+                    staffCategory: val as StaffCategory,
+                  })
+                  toast({
+                    type: 'success',
+                    message: `Category updated to ${categoryLabel(val as StaffCategory)}.`,
+                  })
+                } catch {
+                  toast({ type: 'error', message: 'Failed to update category.' })
+                }
+              }}
+              className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Not Set</option>
+              <option value="full_time">Full-time Staff</option>
+              <option value="counselor">Counselor</option>
+              <option value="director">Director</option>
+            </select>
+          </div>
+
+          <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
               <Calendar className="h-4 w-4" />
               <span>Hire Date</span>
             </div>
@@ -287,6 +336,67 @@ export function StaffProfilePage() {
               <Award className="h-10 w-10 text-gray-300" />
               <p className="mt-3 text-sm text-gray-500">
                 No certifications on file.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'financial' && (
+        <div className="space-y-4">
+          {profile.financial_info ? (
+            <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign className="h-5 w-5 text-emerald-500" />
+                <h3 className="text-sm font-semibold text-gray-900">Compensation</h3>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <p className="text-xs text-gray-500">Pay Rate</p>
+                  <p className="mt-1 text-sm font-medium text-gray-900">
+                    {profile.financial_info.pay_rate
+                      ? `$${Number(profile.financial_info.pay_rate).toFixed(2)}`
+                      : '--'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Rate Type</p>
+                  <p className="mt-1 text-sm font-medium text-gray-900 capitalize">
+                    {profile.financial_info.rate_type ?? '--'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Start Date</p>
+                  <p className="mt-1 text-sm font-medium text-gray-900">
+                    {profile.financial_info.start_date
+                      ? new Date(profile.financial_info.start_date).toLocaleDateString()
+                      : '--'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">End Date</p>
+                  <p className="mt-1 text-sm font-medium text-gray-900">
+                    {profile.financial_info.end_date
+                      ? new Date(profile.financial_info.end_date).toLocaleDateString()
+                      : '--'}
+                  </p>
+                </div>
+              </div>
+              {profile.financial_info.notes && (
+                <div className="mt-4 rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">Notes</p>
+                  <p className="mt-1 text-sm text-gray-700">{profile.financial_info.notes}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-12">
+              <DollarSign className="h-10 w-10 text-gray-300" />
+              <p className="mt-3 text-sm text-gray-500">
+                No financial information on file.
+              </p>
+              <p className="mt-1 text-xs text-gray-400">
+                Financial details can be set during the onboarding process.
               </p>
             </div>
           )}
