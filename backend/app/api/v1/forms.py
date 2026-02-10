@@ -119,7 +119,7 @@ async def create_form_template(
         fields=body.fields,
         settings=body.settings,
         require_signature=body.require_signature,
-        created_by=current_user["user_id"],
+        created_by=current_user["id"],
     )
     db.add(template)
     await db.commit()
@@ -209,7 +209,7 @@ async def duplicate_form_template(
         fields=original.fields,
         settings=original.settings,
         require_signature=original.require_signature,
-        created_by=current_user["user_id"],
+        created_by=current_user["id"],
     )
     db.add(duplicate)
     await db.commit()
@@ -348,7 +348,7 @@ async def create_form_submission(
         id=uuid.uuid4(),
         organization_id=current_user["organization_id"],
         template_id=body.template_id,
-        submitted_by_user_id=current_user["user_id"],
+        submitted_by_user_id=current_user["id"],
         answers=body.answers,
         signature_data=body.signature_data,
         related_entity_type=body.related_entity_type,

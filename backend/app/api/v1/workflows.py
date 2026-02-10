@@ -110,7 +110,7 @@ async def create_workflow(
         steps=body.steps,
         enrollment_type=body.enrollment_type,
         re_enrollment=body.re_enrollment,
-        created_by=current_user["user_id"],
+        created_by=current_user["id"],
     )
     db.add(workflow)
     await db.commit()
