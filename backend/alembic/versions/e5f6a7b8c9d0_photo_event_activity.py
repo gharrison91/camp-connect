@@ -1,7 +1,7 @@
 """Add event_id and activity_id to photos
 
 Revision ID: e5f6a7b8c9d0
-Revises: b2c3d4e5f6a7
+Revises: d4e5f6a7b8c9
 Create Date: 2026-02-09
 
 """
@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "e5f6a7b8c9d0"
-down_revision: Union[str, None] = "b2c3d4e5f6a7"
+down_revision: Union[str, None] = "d4e5f6a7b8c9"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
