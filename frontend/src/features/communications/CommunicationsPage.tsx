@@ -13,16 +13,21 @@ import {
   XCircle,
   AlertCircle,
   X,
+  Users,
+  CalendarDays,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useEvents } from '@/hooks/useEvents'
 import {
   useMessages,
   useMessageTemplates,
   useSendMessage,
+  useSendBulkMessages,
   useCreateMessageTemplate,
   type MessageFilters,
 } from '@/hooks/useCommunications'
+import { useToast } from '@/components/ui/Toast'
 import type { Message } from '@/types'
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
@@ -87,6 +92,168 @@ export function CommunicationsPage() {
   )
 }
 
+// ─── Event Quick Send ────────────────────────────────────────
+
+function EventQuickSend() {
+  const { data: events = [] } = useEvents()
+  const [selectedEventId, setSelectedEventId] = useState('')
+  const [quickChannel, setQuickChannel] = useState<'sms' | 'email'>('email')
+  const [quickSubject, setQuickSubject] = useState('')
+  const [quickBody, setQuickBody] = useState('')
+  const [quickSent, setQuickSent] = useState(false)
+  const sendBulk = useSendBulkMessages()
+  const { toast } = useToast()
+  const { hasPermission } = usePermissions()
+
+  const selectedEvent = events.find((e) => e.id === selectedEventId)
+
+  const handleQuickSend = async () => {
+    if (!selectedEventId || !quickBody) return
+    if (quickChannel === 'email' && !quickSubject) return
+
+    try {
+      await sendBulk.mutateAsync({
+        channel: quickChannel,
+        subject: quickChannel === 'email' ? quickSubject : undefined,
+        body: quickBody,
+        recipient_ids: [selectedEventId],
+      })
+      setQuickSent(true)
+      setQuickSubject('')
+      setQuickBody('')
+      toast({ type: 'success', message: `Message sent to all ${selectedEvent?.name || 'event'} registrants!` })
+      setTimeout(() => setQuickSent(false), 3000)
+    } catch {
+      toast({ type: 'error', message: 'Failed to send bulk message.' })
+    }
+  }
+
+  if (!hasPermission('comms.messages.send')) return null
+
+  return (
+    <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
+      <div className="border-b border-blue-100 px-6 py-4">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="h-5 w-5 text-blue-600" />
+          <h3 className="text-sm font-semibold text-gray-900">Quick Send to Event</h3>
+        </div>
+        <p className="mt-0.5 text-xs text-gray-500">
+          Send a message to all registered contacts for an event
+        </p>
+      </div>
+      <div className="space-y-4 p-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700">
+              Select Event
+            </label>
+            <select
+              value={selectedEventId}
+              onChange={(e) => setSelectedEventId(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Choose event...</option>
+              {events.map((evt) => (
+                <option key={evt.id} value={evt.id}>
+                  {evt.name} ({evt.enrolled_count} registered)
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700">
+              Channel
+            </label>
+            <div className="flex items-center gap-1 rounded-lg bg-white p-1 border border-gray-200">
+              <button
+                onClick={() => setQuickChannel('email')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                  quickChannel === 'email'
+                    ? 'bg-blue-50 text-blue-700 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                )}
+              >
+                <Mail className="h-3.5 w-3.5" />
+                Email
+              </button>
+              <button
+                onClick={() => setQuickChannel('sms')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                  quickChannel === 'sms'
+                    ? 'bg-blue-50 text-blue-700 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                )}
+              >
+                <Phone className="h-3.5 w-3.5" />
+                SMS
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {selectedEventId && (
+          <>
+            {quickChannel === 'email' && (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Subject</label>
+                <input
+                  type="text"
+                  value={quickSubject}
+                  onChange={(e) => setQuickSubject(e.target.value)}
+                  placeholder="Email subject line..."
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            )}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Message</label>
+              <textarea
+                value={quickBody}
+                onChange={(e) => setQuickBody(e.target.value)}
+                rows={4}
+                placeholder="Type your message to all event registrants..."
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            {quickSent && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                Message sent to all registrants!
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <Users className="h-3.5 w-3.5" />
+                {selectedEvent?.enrolled_count || 0} recipients
+              </div>
+              <button
+                onClick={handleQuickSend}
+                disabled={
+                  sendBulk.isPending ||
+                  !selectedEventId ||
+                  !quickBody ||
+                  (quickChannel === 'email' && !quickSubject)
+                }
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+              >
+                {sendBulk.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Send to All Registrants
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Compose Tab ─────────────────────────────────────────────
 
 function ComposeTab() {
@@ -128,7 +295,10 @@ function ComposeTab() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl space-y-6">
+      {/* Event Quick Send */}
+      <EventQuickSend />
+
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         {/* Channel Toggle */}
         <div className="border-b border-gray-100 px-6 py-4">

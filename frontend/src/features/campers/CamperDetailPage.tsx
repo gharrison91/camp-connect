@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -21,9 +21,14 @@ import {
   Star,
   Edit,
   ChevronRight,
+  Upload,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCamperProfile } from '@/hooks/useCamperProfile'
+import { useUploadPhoto } from '@/hooks/usePhotos'
+import { useUpdateCamper } from '@/hooks/useCampers'
+import { useToast } from '@/components/ui/Toast'
+import { CamperEditModal } from './CamperEditModal'
 import type {
   CamperProfile,
   CamperHealthForm,
@@ -723,17 +728,42 @@ function EventsTab({ profile }: { profile: CamperProfile }) {
   )
 }
 
-function PhotosTab({ profile }: { profile: CamperProfile }) {
+function PhotosTab({
+  profile,
+  onUploadPhoto,
+  photoInputRef,
+  isUploading,
+}: {
+  profile: CamperProfile
+  onUploadPhoto: (e: React.ChangeEvent<HTMLInputElement>) => void
+  photoInputRef: React.RefObject<HTMLInputElement | null>
+  isUploading?: boolean
+}) {
   return (
     <div className="space-y-6">
       {/* Reference Photo */}
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-semibold text-gray-900">Reference Photo</h3>
-          <button className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50">
-            <Camera className="h-3.5 w-3.5" />
-            Update Photo
+          <button
+            onClick={() => photoInputRef.current?.click()}
+            disabled={isUploading}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+          >
+            {isUploading ? (
+              <Upload className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Camera className="h-3.5 w-3.5" />
+            )}
+            {isUploading ? 'Uploading...' : 'Update Photo'}
           </button>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onUploadPhoto}
+            className="hidden"
+          />
         </div>
         {profile.reference_photo_url ? (
           <div className="flex justify-center">
@@ -867,8 +897,39 @@ function CommunicationsTab({ profile }: { profile: CamperProfile }) {
 export function CamperDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [showEditModal, setShowEditModal] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
 
-  const { data: profile, isLoading, error } = useCamperProfile(id)
+  const { data: profile, isLoading, error, refetch } = useCamperProfile(id)
+  const uploadPhoto = useUploadPhoto()
+  const updateCamper = useUpdateCamper()
+  const { toast } = useToast()
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !id) return
+
+    try {
+      const result = await uploadPhoto.mutateAsync({
+        file,
+        category: 'camper',
+        entity_id: id,
+      })
+      // Update camper's reference_photo_url with the new photo URL
+      if (result?.url) {
+        await updateCamper.mutateAsync({
+          id,
+          data: { reference_photo_url: result.url } as any,
+        })
+      }
+      refetch()
+      toast({ type: 'success', message: 'Photo updated successfully!' })
+    } catch {
+      toast({ type: 'error', message: 'Failed to upload photo.' })
+    }
+    // Reset input
+    if (photoInputRef.current) photoInputRef.current.value = ''
+  }
 
   // Loading state
   if (isLoading) {
@@ -987,7 +1048,10 @@ export function CamperDetailPage() {
         </div>
 
         {/* Edit Button */}
-        <button className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50">
+        <button
+          onClick={() => setShowEditModal(true)}
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+        >
           <Edit className="h-4 w-4" />
           Edit Camper
         </button>
@@ -1023,9 +1087,27 @@ export function CamperDetailPage() {
         {activeTab === 'health' && <HealthTab profile={profile} />}
         {activeTab === 'family' && <FamilyContactsTab profile={profile} />}
         {activeTab === 'events' && <EventsTab profile={profile} />}
-        {activeTab === 'photos' && <PhotosTab profile={profile} />}
+        {activeTab === 'photos' && (
+          <PhotosTab
+            profile={profile}
+            onUploadPhoto={handlePhotoUpload}
+            photoInputRef={photoInputRef}
+            isUploading={uploadPhoto.isPending}
+          />
+        )}
         {activeTab === 'communications' && <CommunicationsTab profile={profile} />}
       </div>
+
+      {/* Edit Camper Modal */}
+      {showEditModal && profile && (
+        <CamperEditModal
+          camper={profile as any}
+          onClose={() => {
+            setShowEditModal(false)
+            refetch()
+          }}
+        />
+      )}
     </div>
   )
 }

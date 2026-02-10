@@ -265,6 +265,20 @@ async def assign_camper(
     if existing is not None:
         raise ValueError("Camper is already assigned to a bunk for this event")
 
+    # Auto-derive start/end dates from event if not explicitly provided
+    start_date = data.get("start_date")
+    end_date = data.get("end_date")
+    if not start_date or not end_date:
+        event_result = await db.execute(
+            select(Event).where(Event.id == event_id)
+        )
+        event = event_result.scalar_one_or_none()
+        if event:
+            if not start_date:
+                start_date = event.start_date
+            if not end_date:
+                end_date = event.end_date
+
     # Create assignment
     assignment = BunkAssignment(
         id=uuid.uuid4(),
@@ -272,8 +286,8 @@ async def assign_camper(
         camper_id=camper_id,
         event_id=event_id,
         bed_number=data.get("bed_number"),
-        start_date=data["start_date"],
-        end_date=data["end_date"],
+        start_date=start_date,
+        end_date=end_date,
     )
     db.add(assignment)
     await db.commit()

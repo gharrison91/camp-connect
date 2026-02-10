@@ -73,8 +73,8 @@ class BunkAssignmentCreate(BaseModel):
     camper_id: uuid.UUID
     event_id: uuid.UUID
     bed_number: Optional[int] = Field(default=None, ge=1)
-    start_date: date
-    end_date: date
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
 
 class BunkAssignmentResponse(BaseModel):
@@ -85,8 +85,8 @@ class BunkAssignmentResponse(BaseModel):
     camper_id: uuid.UUID
     event_id: uuid.UUID
     bed_number: Optional[int] = None
-    start_date: date
-    end_date: date
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
     camper_name: Optional[str] = None
     camper_age: Optional[int] = None
     camper_gender: Optional[str] = None
