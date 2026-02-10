@@ -1,8 +1,7 @@
 """
 Camp Connect - AI Insights Service
-Two-phase Claude integration: (1) generate SQL from natural language,
-(2) summarise results in a human-friendly response.
-Read-only queries only; all queries scoped to the user's organization.
+Bullet-proof Claude integration: introspects the LIVE database schema,
+generates SQL, executes read-only queries, and summarises results.
 """
 
 from __future__ import annotations
@@ -11,7 +10,7 @@ import json
 import re
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,151 +18,160 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 
 # ---------------------------------------------------------------------------
-# Database schema reference (given to Claude so it can write correct SQL)
+# Schema cache — refreshed at most every 10 minutes
 # ---------------------------------------------------------------------------
 
-DATABASE_SCHEMA = """
--- Multi-tenant camp management platform. Every table is scoped by organization_id.
+_schema_cache: Optional[str] = None
+_schema_cache_ts: float = 0.0
+_SCHEMA_TTL = 600  # seconds
 
--- Organizations (top-level tenant)
-organizations (id UUID PK, name, slug, logo_url, domain, subscription_tier, settings JSONB, enabled_modules JSONB, created_at, updated_at)
 
--- Users / Staff
-users (id UUID PK, organization_id FK, supabase_user_id, role_id FK, email, first_name, last_name, phone, avatar_url, department, job_title_id FK, staff_category, onboarding_status, is_active, seasonal_access_start, seasonal_access_end, created_at, updated_at, is_deleted, deleted_at)
+async def _introspect_schema(db: AsyncSession) -> str:
+    """
+    Query information_schema to build an accurate, up-to-date description
+    of every public table, its columns, types, nullability, and foreign keys.
+    This is what Claude will use to write SQL — it can never reference a
+    column that doesn't actually exist.
+    """
+    global _schema_cache, _schema_cache_ts
 
--- Roles & Permissions
-roles (id UUID PK, organization_id FK, name, description, is_system, created_at)
-role_permissions (id UUID PK, role_id FK, permission, created_at)
+    now = time.time()
+    if _schema_cache and (now - _schema_cache_ts) < _SCHEMA_TTL:
+        return _schema_cache
 
--- Job Titles
-job_titles (id UUID PK, organization_id FK, name, description, is_system, created_at)
+    # 1. Columns
+    col_rows = await db.execute(text("""
+        SELECT table_name, column_name, data_type, is_nullable,
+               column_default
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name NOT IN ('alembic_version', 'schema_migrations')
+        ORDER BY table_name, ordinal_position
+    """))
+    columns = col_rows.fetchall()
 
--- Locations
-locations (id UUID PK, organization_id FK, name, address, city, state, zip_code, phone, is_primary, created_at)
+    # 2. Primary keys
+    pk_rows = await db.execute(text("""
+        SELECT kcu.table_name, kcu.column_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name
+          AND tc.table_schema = kcu.table_schema
+        WHERE tc.constraint_type = 'PRIMARY KEY'
+          AND tc.table_schema = 'public'
+    """))
+    pks = {}
+    for row in pk_rows.fetchall():
+        pks.setdefault(row[0], set()).add(row[1])
 
--- Families
-families (id UUID PK, organization_id FK, family_name, created_at)
+    # 3. Foreign keys
+    fk_rows = await db.execute(text("""
+        SELECT
+            kcu.table_name AS from_table,
+            kcu.column_name AS from_column,
+            ccu.table_name AS to_table,
+            ccu.column_name AS to_column
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name
+          AND tc.table_schema = kcu.table_schema
+        JOIN information_schema.constraint_column_usage ccu
+          ON tc.constraint_name = ccu.constraint_name
+          AND tc.table_schema = ccu.table_schema
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND tc.table_schema = 'public'
+    """))
+    fks = {}
+    for row in fk_rows.fetchall():
+        fks.setdefault(row[0], {})[row[1]] = f"{row[2]}.{row[3]}"
 
--- Contacts (parents / guardians)
-contacts (id UUID PK, organization_id FK, first_name, last_name, email, phone, address, city, state, zip_code, relationship_type, communication_preference, account_status, family_id FK, portal_access BOOL, created_at, updated_at, is_deleted, deleted_at)
+    # Build human-readable schema text
+    lines = [
+        "-- PostgreSQL schema for Camp Connect (multi-tenant camp management).",
+        "-- Every table uses UUID primary keys. Most tables are scoped by organization_id.",
+        "-- Tables with is_deleted or deleted_at support soft-delete.",
+        "",
+    ]
 
--- Campers
-campers (id UUID PK, organization_id FK, first_name, last_name, date_of_birth DATE, gender, school, grade, city, state, allergies JSONB, dietary_restrictions JSONB, custom_fields JSONB, family_id FK, created_at, updated_at, is_deleted, deleted_at)
+    current_table = None
+    table_cols: List[str] = []
 
--- Camper-Contact links
-camper_contacts (id UUID PK, camper_id FK, contact_id FK, relationship_type, is_primary BOOL, is_emergency BOOL, is_authorized_pickup BOOL)
+    def _flush_table():
+        nonlocal table_cols
+        if current_table and table_cols:
+            lines.append(f"TABLE {current_table} (")
+            for c in table_cols:
+                lines.append(f"  {c}")
+            lines.append(")")
+            lines.append("")
+            table_cols = []
 
--- Contact-to-Contact associations
-contact_associations (id UUID PK, organization_id FK, contact_id FK, related_contact_id FK, relationship_type, notes)
+    for col_row in columns:
+        tname, cname, dtype, nullable, default = col_row
 
--- Events (camp sessions / programmes)
-events (id UUID PK, organization_id FK, location_id FK, name, description, start_date DATE, end_date DATE, capacity INT, enrolled_count INT, waitlist_count INT, min_age INT, max_age INT, gender_restriction, price NUMERIC, deposit_amount NUMERIC, status, registration_open_date, registration_close_date, created_at, updated_at, is_deleted, deleted_at)
+        if tname != current_table:
+            _flush_table()
+            current_table = tname
 
--- Registrations
-registrations (id UUID PK, organization_id FK, camper_id FK, event_id FK, registered_by FK, status, payment_status, activity_requests JSONB, special_requests, registered_at, created_at, is_deleted, deleted_at)
+        # Build column description
+        parts = [cname]
 
--- Invoices
-invoices (id UUID PK, organization_id FK, family_id FK, contact_id FK, registration_ids JSONB, line_items JSONB, subtotal NUMERIC, tax NUMERIC, total NUMERIC, status, due_date DATE, paid_at, stripe_invoice_id, notes, created_at, is_deleted, deleted_at)
+        # Simplify type names
+        type_map = {
+            "uuid": "UUID",
+            "character varying": "VARCHAR",
+            "text": "TEXT",
+            "boolean": "BOOL",
+            "integer": "INT",
+            "bigint": "BIGINT",
+            "smallint": "SMALLINT",
+            "numeric": "NUMERIC",
+            "double precision": "FLOAT",
+            "real": "FLOAT",
+            "date": "DATE",
+            "time without time zone": "TIME",
+            "time with time zone": "TIMETZ",
+            "timestamp without time zone": "TIMESTAMP",
+            "timestamp with time zone": "TIMESTAMPTZ",
+            "jsonb": "JSONB",
+            "json": "JSON",
+            "ARRAY": "ARRAY",
+        }
+        display_type = type_map.get(dtype, dtype.upper())
+        parts.append(display_type)
 
--- Payments
-payments (id UUID PK, organization_id FK, invoice_id FK, registration_id FK, contact_id FK, amount NUMERIC, currency, payment_method, status, paid_at, refund_amount NUMERIC, created_at)
+        # PK?
+        if cname in pks.get(tname, set()):
+            parts.append("PK")
 
--- Activities
-activities (id UUID PK, organization_id FK, name, description, category, location, capacity INT, min_age INT, max_age INT, duration_minutes INT, staff_required INT, is_active BOOL, created_at)
+        # FK?
+        fk_target = fks.get(tname, {}).get(cname)
+        if fk_target:
+            parts.append(f"FK->{fk_target}")
 
--- Schedules
-schedules (id UUID PK, organization_id FK, event_id FK, activity_id FK, date DATE, start_time TIME, end_time TIME, location, max_capacity INT, notes, is_cancelled BOOL, created_at)
+        # Nullable?
+        if nullable == "NO" and cname not in pks.get(tname, set()):
+            parts.append("NOT NULL")
 
--- Schedule Assignments
-schedule_assignments (id UUID PK, organization_id FK, schedule_id FK, camper_id FK, bunk_id FK, assigned_by FK, created_at)
+        table_cols.append(" ".join(parts))
 
--- Bunks
-bunks (id UUID PK, organization_id FK, name, capacity INT, gender_restriction, min_age INT, max_age INT, location, counselor_user_id FK, created_at)
+    _flush_table()  # flush last table
 
--- Bunk Assignments
-bunk_assignments (id UUID PK, bunk_id FK, camper_id FK, event_id FK, bed_number, start_date DATE, end_date DATE, created_at)
+    schema_text = "\n".join(lines)
 
--- Bunk Buddy Requests
-bunk_buddy_requests (id UUID PK, organization_id FK, event_id FK, requester_camper_id FK, requested_camper_id FK, status, submitted_by_contact_id FK, admin_notes, reviewed_by FK, reviewed_at, created_at)
+    # Cache it
+    _schema_cache = schema_text
+    _schema_cache_ts = now
+    print(f"[AI] Schema introspected: {len(columns)} columns across {len(set(c[0] for c in columns))} tables ({len(schema_text)} chars)")
 
--- Event Bunk Configs
-event_bunk_configs (id UUID PK, organization_id FK, event_id FK, bunk_id FK, is_active BOOL, event_capacity INT, counselor_user_ids JSONB, notes, created_at)
+    return schema_text
 
--- Photos
-photos (id UUID PK, organization_id FK, uploaded_by FK, category, entity_id, event_id FK, activity_id FK, file_name, file_path, file_size INT, mime_type, caption, tags JSONB, is_profile_photo BOOL, created_at, is_deleted, deleted_at)
-
--- Photo Face Tags
-photo_face_tags (id UUID PK, organization_id FK, photo_id FK, camper_id FK, face_id, confidence FLOAT, similarity FLOAT, created_at)
-
--- Messages (email / SMS)
-messages (id UUID PK, organization_id FK, channel, direction, status, from_address, to_address, subject, body, template_id, recipient_type, recipient_id, sent_at, delivered_at, created_at, is_deleted, deleted_at)
-
--- Message Templates
-message_templates (id UUID PK, organization_id FK, name, channel, subject, body, html_body, category, is_system BOOL, is_active BOOL, created_at)
-
--- Notification Configs
-notification_configs (id UUID PK, organization_id FK, trigger_type, channel, is_active BOOL, template_id FK, config JSONB, created_at)
-
--- Health Form Templates
-health_form_templates (id UUID PK, organization_id FK, name, description, category, fields JSONB, is_system BOOL, is_active BOOL, required_for_registration BOOL, created_at)
-
--- Health Forms (instances)
-health_forms (id UUID PK, organization_id FK, template_id FK, camper_id FK, event_id FK, status, submitted_at, reviewed_by FK, reviewed_at, due_date DATE, created_at, is_deleted, deleted_at)
-
--- Health Form Submissions
-health_form_submissions (id UUID PK, organization_id FK, form_id FK, submitted_by FK, data JSONB, signature, signed_at, created_at)
-
--- Staff Onboarding
-staff_onboardings (id UUID PK, organization_id FK, user_id FK, status, current_step, personal_info_completed BOOL, emergency_contacts_completed BOOL, certifications_completed BOOL, completed_at, created_at)
-
--- Staff Certifications (from onboarding)
-staff_certifications (id UUID PK, onboarding_id FK, organization_id FK, name, issuing_authority, certificate_number, issued_date DATE, expiry_date DATE, status, created_at)
-
--- Staff Certification Records (ongoing tracking)
-staff_certification_records (id UUID PK, organization_id FK, user_id FK, certification_type_id FK, status, issued_date DATE, expiry_date DATE, document_url, notes, verified_by FK, created_at)
-
--- Certification Types (catalogue)
-certification_types (id UUID PK, organization_id FK, name, description, is_required BOOL, expiry_days INT, created_at)
-
--- Waitlist
-waitlist (id UUID PK, organization_id FK, event_id FK, camper_id FK, contact_id FK, position INT, status, notified_at, created_at)
-
--- Form Templates (custom forms)
-form_templates (id UUID PK, organization_id FK, name, description, category, status, fields JSONB, settings JSONB, require_signature BOOL, version INT, created_by FK, created_at, deleted_at)
-
--- Form Submissions
-form_submissions (id UUID PK, organization_id FK, template_id FK, submitted_by_user_id FK, submitted_by_contact_id FK, answers JSONB, status, submitted_at, created_at)
-
--- Saved Lists
-saved_lists (id UUID PK, organization_id FK, name, description, list_type, entity_type, filter_criteria JSONB, member_count INT, created_by, created_at, is_deleted, deleted_at)
-
--- Saved List Members
-saved_list_members (id UUID PK, list_id FK, entity_type, entity_id, added_at, added_by)
-
--- Store Items
-store_items (id UUID PK, organization_id FK, name, description, category, price NUMERIC, quantity_in_stock INT, image_url, is_active BOOL, created_at)
-
--- Store Transactions
-store_transactions (id UUID PK, organization_id FK, camper_id FK, item_id FK, quantity INT, unit_price NUMERIC, total NUMERIC, transaction_date, recorded_by FK, created_at)
-
--- Spending Accounts
-spending_accounts (id UUID PK, organization_id FK, camper_id FK, balance NUMERIC, daily_limit NUMERIC, created_at)
-
--- Workflows
-workflows (id UUID PK, organization_id FK, name, description, status, trigger JSONB, steps JSONB, enrollment_type, total_enrolled INT, total_completed INT, created_by FK, created_at, deleted_at)
-
--- Workflow Executions
-workflow_executions (id UUID PK, organization_id FK, workflow_id FK, entity_type, entity_id, status, current_step_id, context JSONB, started_at, completed_at)
-
--- Audit Log
-audit_log (id UUID PK, organization_id, user_id, action, resource_type, resource_id, details JSONB, ip_address, created_at)
-"""
 
 # ---------------------------------------------------------------------------
 # SQL safety validation
 # ---------------------------------------------------------------------------
 
-def validate_sql(sql: str) -> tuple[bool, str]:
+def validate_sql(sql: str) -> Tuple[bool, str]:
     """
     Validate that the generated SQL is safe to execute.
     Returns (is_valid, error_message).
@@ -178,15 +186,12 @@ def validate_sql(sql: str) -> tuple[bool, str]:
     if not (upper.startswith("SELECT") or upper.startswith("WITH")):
         return False, "Only SELECT queries are allowed"
 
-    # Check for dangerous statement-level keywords at the START of a
-    # statement (not inside column names like "is_deleted").
-    # We look for these keywords appearing as standalone statements.
+    # Check for dangerous statement-level keywords
     dangerous_starters = [
         "INSERT", "UPDATE", "DROP", "ALTER", "TRUNCATE", "CREATE",
         "GRANT", "REVOKE", "EXECUTE", "COPY", "VACUUM", "REINDEX",
     ]
     for kw in dangerous_starters:
-        # Match keyword at beginning of string or after a semicolon/newline
         if re.search(rf"(?:^|;)\s*{kw}\b", upper):
             return False, f"Forbidden keyword detected: {kw}"
 
@@ -197,86 +202,8 @@ def validate_sql(sql: str) -> tuple[bool, str]:
     return True, ""
 
 
-def ensure_org_filter(sql: str, organization_id: str) -> str:
-    """
-    Best-effort check that organization_id is referenced.
-    We inject it as a parameter, so the SQL must use :org_id.
-    """
-    if ":org_id" not in sql:
-        return ""  # Signal to caller that SQL is missing org scope
-    return sql
-
-
 # ---------------------------------------------------------------------------
-# Suggested prompts
-# ---------------------------------------------------------------------------
-
-SUGGESTED_PROMPTS = [
-    {
-        "title": "Campers per event",
-        "prompt": "How many campers are registered for each event?",
-        "icon": "users",
-    },
-    {
-        "title": "Total revenue",
-        "prompt": "What is the total revenue from all payments?",
-        "icon": "dollar-sign",
-    },
-    {
-        "title": "Outstanding balances",
-        "prompt": "Which families have outstanding invoice balances?",
-        "icon": "alert-circle",
-    },
-    {
-        "title": "Age breakdown",
-        "prompt": "What is the age distribution of all campers?",
-        "icon": "bar-chart",
-    },
-    {
-        "title": "Registration status",
-        "prompt": "Show me a breakdown of registration statuses across all events.",
-        "icon": "clipboard",
-    },
-    {
-        "title": "Staff overview",
-        "prompt": "How many active staff members are there by department?",
-        "icon": "briefcase",
-    },
-    {
-        "title": "Bunk occupancy",
-        "prompt": "What is the current bunk occupancy rate for each event?",
-        "icon": "home",
-    },
-    {
-        "title": "Recent activity",
-        "prompt": "What registrations were created in the last 7 days?",
-        "icon": "clock",
-    },
-    {
-        "title": "Health form status",
-        "prompt": "How many health forms are pending vs submitted vs reviewed?",
-        "icon": "heart",
-    },
-    {
-        "title": "Popular activities",
-        "prompt": "Which activities have the most schedule assignments?",
-        "icon": "star",
-    },
-    {
-        "title": "Buddy requests",
-        "prompt": "Show me all pending bunk buddy requests with mutual matches.",
-        "icon": "heart",
-    },
-    {
-        "title": "Waitlist summary",
-        "prompt": "How many campers are on the waitlist for each event?",
-        "icon": "list",
-    },
-]
-
-
-# ---------------------------------------------------------------------------
-# SQL cleanup helper
+# SQL cleanup
 # ---------------------------------------------------------------------------
 
 def _clean_sql(raw: str) -> str:
@@ -286,21 +213,36 @@ def _clean_sql(raw: str) -> str:
     """
     sql = raw.strip()
 
-    # Strip markdown code fences (```sql ... ``` or ``` ... ```)
+    # Strip markdown code fences
     if sql.startswith("```"):
-        # Find the end fence
         first_newline = sql.find("\n")
         if first_newline != -1:
-            sql = sql[first_newline + 1:]  # Remove first line (```sql)
-        # Remove trailing fence
+            sql = sql[first_newline + 1:]
         if sql.rstrip().endswith("```"):
-            sql = sql.rstrip()
-            sql = sql[:-3]
+            sql = sql.rstrip()[:-3]
 
-    # Strip trailing semicolons and whitespace
     sql = sql.strip().rstrip(";").strip()
-
     return sql
+
+
+# ---------------------------------------------------------------------------
+# Suggested prompts
+# ---------------------------------------------------------------------------
+
+SUGGESTED_PROMPTS = [
+    {"title": "Campers per event", "prompt": "How many campers are registered for each event?", "icon": "users"},
+    {"title": "Total revenue", "prompt": "What is the total revenue from all payments?", "icon": "dollar-sign"},
+    {"title": "Outstanding balances", "prompt": "Which families have outstanding invoice balances?", "icon": "alert-circle"},
+    {"title": "Age breakdown", "prompt": "What is the age distribution of all campers?", "icon": "bar-chart"},
+    {"title": "Registration status", "prompt": "Show me a breakdown of registration statuses across all events.", "icon": "clipboard"},
+    {"title": "Staff overview", "prompt": "How many active staff members are there by department?", "icon": "briefcase"},
+    {"title": "Bunk occupancy", "prompt": "What is the current bunk occupancy rate for each event?", "icon": "home"},
+    {"title": "Recent activity", "prompt": "What registrations were created in the last 7 days?", "icon": "clock"},
+    {"title": "Health form status", "prompt": "How many health forms are pending vs submitted vs reviewed?", "icon": "heart"},
+    {"title": "Popular activities", "prompt": "Which activities have the most schedule assignments?", "icon": "star"},
+    {"title": "Buddy requests", "prompt": "Show me all pending bunk buddy requests with mutual matches.", "icon": "heart"},
+    {"title": "Waitlist summary", "prompt": "How many campers are on the waitlist for each event?", "icon": "list"},
+]
 
 
 # ---------------------------------------------------------------------------
@@ -316,8 +258,10 @@ async def chat(
     """
     Main AI chat endpoint.
 
+    Phase 0 — Introspect the live database schema.
     Phase 1 — Ask Claude to generate a SQL query from the user's question.
     Phase 2 — Execute the query (read-only, scoped to org, row-limited).
+    Phase 2b — If query fails, retry once with the error message.
     Phase 3 — Ask Claude to summarise the results in natural language.
     """
     import anthropic
@@ -333,189 +277,139 @@ async def chat(
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     org_id_str = str(organization_id)
 
-    # Build conversation for Phase 1 (SQL generation)
-    system_prompt_sql = f"""You are an expert SQL analyst for Camp Connect, a camp management platform.
-Your job is to convert the user's natural language question into a PostgreSQL SELECT query.
+    # Phase 0: Get the live schema
+    try:
+        live_schema = await _introspect_schema(db)
+    except Exception as e:
+        print(f"[AI] Schema introspection failed: {e}")
+        return {
+            "response": "Sorry, I couldn't read the database schema. Please try again in a moment.",
+            "sql": None,
+            "data": None,
+            "error": "schema_introspection_failed",
+        }
 
-IMPORTANT RULES:
-1. ONLY generate SELECT queries. Never generate INSERT, UPDATE, DELETE, or any data-modifying statements.
-2. EVERY query MUST filter by organization_id = :org_id to ensure data isolation.
-3. Use proper JOINs — the schema uses UUID foreign keys throughout.
-4. Always handle soft-deleted records by adding "is_deleted = false" or "deleted_at IS NULL" where the column exists.
-5. Limit results to 500 rows maximum (add LIMIT 500 if not already limited).
-6. Use meaningful column aliases so results are human-readable.
-7. For date calculations use CURRENT_DATE.
-8. For age calculations from date_of_birth: EXTRACT(YEAR FROM AGE(date_of_birth)).
-9. Use COALESCE for nullable fields when needed.
-10. Return ONLY the SQL query, no explanation, no markdown code fences, no comments.
-11. If the question cannot be answered with the available schema, respond with exactly: NO_SQL_NEEDED
-12. If the question asks to modify data, respond with exactly: REFUSED
+    # Build system prompt with live schema
+    system_prompt_sql = f"""You are an expert PostgreSQL analyst for Camp Connect, a camp management platform.
+Convert the user's natural language question into a single PostgreSQL SELECT query.
 
-Here is the database schema:
-{DATABASE_SCHEMA}
+CRITICAL RULES — follow these exactly:
+1. Return ONLY the SQL query. No explanation, no markdown fences, no comments, no preamble.
+2. ONLY SELECT queries. Never INSERT, UPDATE, DELETE, DROP, or any mutation.
+3. EVERY query MUST include: WHERE <table>.organization_id = :org_id
+   (use the parameter placeholder :org_id — never hardcode a UUID).
+4. For tables with is_deleted column: add AND is_deleted = false
+   For tables with deleted_at column: add AND deleted_at IS NULL
+5. Add LIMIT 500 at the end of every query.
+6. Use readable column aliases (e.g., AS total_revenue, AS camper_count).
+7. For age from date_of_birth: EXTRACT(YEAR FROM AGE(date_of_birth))
+8. For current date: CURRENT_DATE
+9. Use COALESCE for nullable numeric fields in aggregates.
+10. If the question cannot be answered with SQL, respond with exactly: NO_SQL_NEEDED
+11. If the question asks to change data, respond with exactly: REFUSED
 
-The user's organization_id parameter is :org_id — always use this placeholder, never hardcode a UUID."""
+IMPORTANT: Only use table names and column names that appear in the schema below.
+Do NOT guess or invent column names. If a column doesn't exist, use NO_SQL_NEEDED.
+
+DATABASE SCHEMA (live from the actual database):
+{live_schema}
+
+Parameter: :org_id (the user's organization UUID — always use this placeholder)"""
 
     # Prepare user messages for Claude
-    claude_messages = []
-    for msg in messages:
-        claude_messages.append({
-            "role": msg["role"],
-            "content": msg["content"],
-        })
+    claude_messages = [{"role": m["role"], "content": m["content"]} for m in messages]
 
     # Phase 1: Generate SQL
-    try:
-        sql_response = client.messages.create(
-            model=settings.ai_model,
-            max_tokens=2048,
-            system=system_prompt_sql,
-            messages=claude_messages,
-        )
-        raw_sql = sql_response.content[0].text.strip()
-        stop_reason = sql_response.stop_reason
-        print(f"[AI] Phase 1 stop_reason={stop_reason}, output length={len(raw_sql)}")
-        if stop_reason == "max_tokens":
-            print(f"[AI] WARNING: SQL generation hit max_tokens! Output may be truncated.")
-    except Exception as e:
-        print(f"[AI] Phase 1 error: {type(e).__name__}: {e}")
+    raw_sql, sql, stop_reason = await _generate_sql(client, system_prompt_sql, claude_messages)
+
+    if raw_sql is None:
         return {
-            "response": f"Sorry, I encountered an error generating the query: {str(e)}",
+            "response": "Sorry, I encountered an error generating the query. Please try again.",
             "sql": None,
             "data": None,
             "error": "sql_generation_failed",
         }
 
     # Handle non-SQL responses
-    if raw_sql == "REFUSED":
-        return {
-            "response": "I can only answer questions about your data. I cannot modify, delete, or update any records. Please ask a read-only question about your camp data.",
-            "sql": None,
-            "data": None,
-            "error": None,
-        }
+    if raw_sql in ("REFUSED", "NO_SQL_NEEDED"):
+        return await _handle_non_sql(client, raw_sql, claude_messages, user_name)
 
-    if raw_sql == "NO_SQL_NEEDED":
-        # Phase 3 without data — just answer conversationally
-        try:
-            conversational = client.messages.create(
-                model=settings.ai_model,
-                max_tokens=settings.ai_max_tokens,
-                system=f"""You are a helpful AI assistant for Camp Connect, a camp management platform.
-The user asked a question that doesn't require database queries.
-Answer helpfully and concisely. You are speaking to {user_name}.""",
-                messages=claude_messages,
-            )
-            return {
-                "response": conversational.content[0].text,
-                "sql": None,
-                "data": None,
-                "error": None,
-            }
-        except Exception as e:
-            return {
-                "response": f"Sorry, I encountered an error: {str(e)}",
-                "sql": None,
-                "data": None,
-                "error": "conversational_failed",
-            }
-
-    # Clean up SQL — minimal processing to avoid breaking valid queries
-    sql = _clean_sql(raw_sql)
-
-    print(f"[AI] Raw SQL from Claude:\n{raw_sql[:500]}")
-    print(f"[AI] Cleaned SQL:\n{sql[:500]}")
-
-    # Validate the SQL
+    # Validate
     is_valid, error_msg = validate_sql(sql)
     if not is_valid:
         return {
-            "response": f"I generated a query but it didn't pass safety validation: {error_msg}. Please try rephrasing your question.",
+            "response": f"I generated a query but it didn't pass safety validation: {error_msg}. Please try rephrasing.",
             "sql": sql,
             "data": None,
             "error": "validation_failed",
         }
 
-    # Ensure organization_id filter is present
     if ":org_id" not in sql:
         return {
-            "response": "I generated a query but it was missing the required organization filter. Please try rephrasing your question.",
+            "response": "I generated a query but it was missing the required organization filter. Please try rephrasing.",
             "sql": sql,
             "data": None,
             "error": "missing_org_filter",
         }
 
-    # Phase 2: Execute the SQL query
-    # Wrap in a subquery with LIMIT to safely cap results
-    # This avoids the double-LIMIT problem entirely
-    if re.search(r"\bLIMIT\b", sql, re.IGNORECASE):
-        exec_sql = sql
-    else:
-        exec_sql = sql + "\nLIMIT 500"
+    # Phase 2: Execute the SQL
+    exec_sql = sql if re.search(r"\bLIMIT\b", sql, re.IGNORECASE) else sql + "\nLIMIT 500"
 
-    print(f"[AI] Executing SQL:\n{exec_sql[:500]}")
+    data, columns, exec_error = await _execute_query(db, exec_sql, org_id_str)
 
-    try:
-        result = await db.execute(
-            text(exec_sql),
-            {"org_id": org_id_str},
-        )
-        rows = result.fetchall()
-        columns = list(result.keys())
+    # Phase 2b: If query failed, retry once — tell Claude the error and ask it to fix
+    if exec_error:
+        print(f"[AI] First query failed: {exec_error[:200]}")
+        print(f"[AI] Retrying with error context...")
 
-        # Convert to list of dicts
-        data = []
-        for row in rows[:500]:
-            row_dict = {}
-            for i, col in enumerate(columns):
-                val = row[i]
-                # Convert UUIDs and dates to strings for JSON serialisation
-                if isinstance(val, uuid.UUID):
-                    val = str(val)
-                elif hasattr(val, "isoformat"):
-                    val = val.isoformat()
-                elif isinstance(val, bytes):
-                    val = val.decode("utf-8", errors="replace")
-                row_dict[col] = val
-            data.append(row_dict)
+        retry_messages = claude_messages + [
+            {"role": "assistant", "content": sql},
+            {"role": "user", "content": f"That query failed with this PostgreSQL error:\n{exec_error[:300]}\n\nPlease fix the query. Return ONLY the corrected SQL, nothing else."},
+        ]
 
-    except Exception as e:
-        error_str = str(e)
-        # Try to give a helpful error
+        raw_sql2, sql2, _ = await _generate_sql(client, system_prompt_sql, retry_messages)
+
+        if sql2 and ":org_id" in sql2:
+            is_valid2, _ = validate_sql(sql2)
+            if is_valid2:
+                exec_sql2 = sql2 if re.search(r"\bLIMIT\b", sql2, re.IGNORECASE) else sql2 + "\nLIMIT 500"
+                data, columns, exec_error2 = await _execute_query(db, exec_sql2, org_id_str)
+                if not exec_error2:
+                    sql = sql2
+                    exec_error = None
+                    print(f"[AI] Retry succeeded!")
+                else:
+                    print(f"[AI] Retry also failed: {exec_error2[:200]}")
+
+    if exec_error:
         return {
-            "response": f"I tried to query your data but encountered a database error. This usually means I referenced a column incorrectly. Please try rephrasing your question.\n\nTechnical detail: {error_str[:200]}",
+            "response": f"I tried to query your data but encountered a database error. Please try rephrasing your question.\n\nTechnical detail: {exec_error[:300]}",
             "sql": sql,
             "data": None,
             "error": "query_execution_failed",
         }
 
-    # Phase 3: Summarise results with Claude
-    data_summary = json.dumps(data[:100], default=str)  # Limit context size
+    # Phase 3: Summarise results
     row_count = len(data)
+    data_summary = json.dumps(data[:100], default=str)
 
     system_prompt_summary = f"""You are a helpful AI insights assistant for Camp Connect, a camp management platform.
-You just ran a database query and got results. Summarise the results in a clear, human-friendly way.
+You just looked up information and got results. Summarise them clearly.
 
 RULES:
-1. Be concise but thorough. Use bullet points, tables, or numbered lists when appropriate.
+1. Be concise but thorough. Use bullet points, tables, or numbered lists as appropriate.
 2. Format numbers nicely (commas for thousands, 2 decimal places for currency).
-3. Highlight key insights or notable patterns in the data.
-4. If the data is empty, say so clearly and suggest why it might be empty.
-5. Don't mention SQL, databases, or queries — speak as if you simply "looked up" the information.
-6. Use markdown formatting for readability.
+3. Highlight key insights or notable patterns.
+4. If the data is empty, say so clearly and suggest why.
+5. Don't mention SQL, databases, or queries — you simply "looked up" the information.
+6. Use markdown formatting.
 7. You are speaking to {user_name}.
-8. Total rows returned: {row_count}. Data shown below may be truncated to first 100 rows."""
+8. Total rows: {row_count}. Data below may be truncated to first 100 rows."""
 
     summary_messages = [
         *claude_messages,
-        {
-            "role": "assistant",
-            "content": f"Let me look that up for you.",
-        },
-        {
-            "role": "user",
-            "content": f"Here are the query results ({row_count} rows):\n\n{data_summary}",
-        },
+        {"role": "assistant", "content": "Let me look that up for you."},
+        {"role": "user", "content": f"Here are the results ({row_count} rows):\n\n{data_summary}"},
     ]
 
     try:
@@ -526,17 +420,125 @@ RULES:
             messages=summary_messages,
         )
         response_text = summary_response.content[0].text
-    except Exception as e:
-        # Fallback: just return the raw data
+    except Exception:
         response_text = f"Here are the results ({row_count} rows). I wasn't able to generate a summary."
 
     return {
         "response": response_text,
         "sql": sql,
-        "data": data[:200],  # Cap at 200 rows for the response payload
+        "data": data[:200],
         "row_count": row_count,
         "error": None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+async def _generate_sql(
+    client: Any,
+    system_prompt: str,
+    messages: List[Dict[str, str]],
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Call Claude to generate SQL. Returns (raw_output, cleaned_sql, stop_reason)."""
+    try:
+        resp = client.messages.create(
+            model=settings.ai_model,
+            max_tokens=2048,
+            system=system_prompt,
+            messages=messages,
+        )
+        raw = resp.content[0].text.strip()
+        stop_reason = resp.stop_reason
+        print(f"[AI] SQL gen: stop_reason={stop_reason}, len={len(raw)}")
+
+        if stop_reason == "max_tokens":
+            print(f"[AI] WARNING: output truncated by max_tokens!")
+            return None, None, stop_reason
+
+        cleaned = _clean_sql(raw)
+        print(f"[AI] Cleaned SQL ({len(cleaned)} chars):\n{cleaned[:400]}")
+        return raw, cleaned, stop_reason
+
+    except Exception as e:
+        print(f"[AI] SQL generation error: {type(e).__name__}: {e}")
+        return None, None, None
+
+
+async def _execute_query(
+    db: AsyncSession,
+    sql: str,
+    org_id_str: str,
+) -> Tuple[List[Dict[str, Any]], List[str], Optional[str]]:
+    """Execute a read-only SQL query. Returns (data, columns, error_str_or_None)."""
+    try:
+        result = await db.execute(text(sql), {"org_id": org_id_str})
+        rows = result.fetchall()
+        columns = list(result.keys())
+
+        data = []
+        for row in rows[:500]:
+            row_dict = {}
+            for i, col in enumerate(columns):
+                val = row[i]
+                if isinstance(val, uuid.UUID):
+                    val = str(val)
+                elif hasattr(val, "isoformat"):
+                    val = val.isoformat()
+                elif isinstance(val, bytes):
+                    val = val.decode("utf-8", errors="replace")
+                elif isinstance(val, dict) or isinstance(val, list):
+                    pass  # Keep JSONB as-is
+                row_dict[col] = val
+            data.append(row_dict)
+
+        return data, columns, None
+
+    except Exception as e:
+        # Rollback the failed transaction so the session is still usable
+        await db.rollback()
+        return [], [], str(e)
+
+
+async def _handle_non_sql(
+    client: Any,
+    response_type: str,
+    claude_messages: List[Dict[str, str]],
+    user_name: str,
+) -> Dict[str, Any]:
+    """Handle REFUSED or NO_SQL_NEEDED responses."""
+    if response_type == "REFUSED":
+        return {
+            "response": "I can only answer questions about your data. I cannot modify, delete, or update any records. Please ask a read-only question.",
+            "sql": None,
+            "data": None,
+            "error": None,
+        }
+
+    # NO_SQL_NEEDED — answer conversationally
+    try:
+        conversational = client.messages.create(
+            model=settings.ai_model,
+            max_tokens=settings.ai_max_tokens,
+            system=f"""You are a helpful AI assistant for Camp Connect, a camp management platform.
+The user asked a question that doesn't require database queries.
+Answer helpfully and concisely. You are speaking to {user_name}.""",
+            messages=claude_messages,
+        )
+        return {
+            "response": conversational.content[0].text,
+            "sql": None,
+            "data": None,
+            "error": None,
+        }
+    except Exception as e:
+        return {
+            "response": f"Sorry, I encountered an error: {str(e)}",
+            "sql": None,
+            "data": None,
+            "error": "conversational_failed",
+        }
 
 
 def get_suggested_prompts() -> List[Dict[str, str]]:
