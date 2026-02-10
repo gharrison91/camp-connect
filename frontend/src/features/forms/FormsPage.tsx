@@ -1,10 +1,11 @@
 /**
  * Camp Connect - Form Builder List Page
- * Lists all form templates with filtering and creation.
+ * Lists all form templates with category sub-tabs, filtering, creation,
+ * and safe delete confirmation (type DELETE to confirm).
  */
 
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus,
   Search,
@@ -17,6 +18,8 @@ import {
   Eye,
   Edit,
   ClipboardList,
+  AlertTriangle,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -26,6 +29,7 @@ import {
   useDeleteFormTemplate,
 } from '@/hooks/useForms'
 import { useToast } from '@/components/ui/Toast'
+import { useOrgSettings } from '@/hooks/useOrganization'
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   draft: {
@@ -42,22 +46,146 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   },
 }
 
-const categoryLabels: Record<string, string> = {
-  registration: 'Registration',
-  health: 'Health & Safety',
-  consent: 'Consent',
-  feedback: 'Feedback',
-  application: 'Application',
-  other: 'Other',
+// Default form categories (used if org has none configured)
+const DEFAULT_CATEGORIES = [
+  { key: 'registration', label: 'Registration' },
+  { key: 'health', label: 'Health & Safety' },
+  { key: 'consent', label: 'Consent' },
+  { key: 'hr', label: 'HR' },
+  { key: 'payroll', label: 'Payroll' },
+  { key: 'onboarding', label: 'Onboarding' },
+  { key: 'feedback', label: 'Feedback' },
+  { key: 'application', label: 'Application' },
+  { key: 'other', label: 'Other' },
+]
+
+// --- Delete Confirmation Modal ---
+
+function DeleteConfirmModal({
+  formName,
+  isOpen,
+  isDeleting,
+  onConfirm,
+  onCancel,
+}: {
+  formName: string
+  isOpen: boolean
+  isDeleting: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const [confirmText, setConfirmText] = useState('')
+
+  useEffect(() => {
+    if (isOpen) setConfirmText('')
+  }, [isOpen])
+
+  if (!isOpen) return null
+
+  const canConfirm = confirmText === 'DELETE'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onCancel}
+      />
+      <div className="relative mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <button
+          onClick={onCancel}
+          className="absolute right-4 top-4 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-100">
+            <AlertTriangle className="h-6 w-6 text-red-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-gray-900">Delete Form</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              This will permanently delete{' '}
+              <span className="font-semibold text-gray-900">{formName}</span>{' '}
+              and all of its submissions. This action cannot be undone.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5">
+          <label className="block text-sm font-medium text-gray-700">
+            Type <span className="font-mono font-bold text-red-600">DELETE</span> to confirm
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="Type DELETE here"
+            autoFocus
+            className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-mono text-gray-900 placeholder:text-gray-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+          />
+        </div>
+
+        <div className="mt-5 flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={!canConfirm || isDeleting}
+            className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isDeleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+            {isDeleting ? 'Deleting...' : 'Delete Form'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
+
+// --- Main Component ---
 
 export function FormsPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
+
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+
+  // Category from URL params or default to 'all'
+  const categoryFilter = searchParams.get('category') || 'all'
+  const setCategoryFilter = (cat: string) => {
+    if (cat === 'all') {
+      searchParams.delete('category')
+    } else {
+      searchParams.set('category', cat)
+    }
+    setSearchParams(searchParams, { replace: true })
+  }
+
+  // Fetch org settings for custom form categories
+  const { data: orgSettings } = useOrgSettings()
+  const rawCategories = (orgSettings?.settings as Record<string, unknown>)?.form_categories
+  const formCategories: { key: string; label: string }[] =
+    Array.isArray(rawCategories) && rawCategories.length > 0
+      ? (rawCategories as { key: string; label: string }[])
+      : DEFAULT_CATEGORIES
 
   const {
     data: templates = [],
@@ -81,7 +209,7 @@ export function FormsPage() {
       const result = await createTemplate.mutateAsync({
         name: 'Untitled Form',
         description: '',
-        category: 'other',
+        category: categoryFilter !== 'all' ? categoryFilter : 'other',
         status: 'draft',
         fields: [],
       })
@@ -101,15 +229,22 @@ export function FormsPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
     try {
-      await deleteTemplate.mutateAsync(id)
+      await deleteTemplate.mutateAsync(deleteTarget.id)
       toast({ type: 'success', message: 'Form deleted' })
+      setDeleteTarget(null)
       setOpenMenuId(null)
     } catch {
       toast({ type: 'error', message: 'Failed to delete form' })
     }
   }
+
+  // Build category label lookup
+  const categoryLabels: Record<string, string> = Object.fromEntries(
+    formCategories.map((c) => [c.key, c.label])
+  )
 
   return (
     <div className="space-y-6">
@@ -133,6 +268,35 @@ export function FormsPage() {
         </button>
       </div>
 
+      {/* Category Sub-Tabs */}
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-gray-200 pb-px">
+        <button
+          onClick={() => setCategoryFilter('all')}
+          className={cn(
+            'shrink-0 rounded-t-lg px-4 py-2 text-sm font-medium transition-colors',
+            categoryFilter === 'all'
+              ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50/50'
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+          )}
+        >
+          All
+        </button>
+        {formCategories.map((cat) => (
+          <button
+            key={cat.key}
+            onClick={() => setCategoryFilter(cat.key)}
+            className={cn(
+              'shrink-0 whitespace-nowrap rounded-t-lg px-4 py-2 text-sm font-medium transition-colors',
+              categoryFilter === cat.key
+                ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50/50'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            )}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
@@ -154,19 +318,6 @@ export function FormsPage() {
           <option value="draft">Draft</option>
           <option value="published">Published</option>
           <option value="archived">Archived</option>
-        </select>
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="all">All Categories</option>
-          <option value="registration">Registration</option>
-          <option value="health">Health & Safety</option>
-          <option value="consent">Consent</option>
-          <option value="feedback">Feedback</option>
-          <option value="application">Application</option>
-          <option value="other">Other</option>
         </select>
       </div>
 
@@ -247,7 +398,13 @@ export function FormsPage() {
                               Duplicate
                             </button>
                             <button
-                              onClick={() => handleDelete(template.id)}
+                              onClick={() => {
+                                setDeleteTarget({
+                                  id: template.id,
+                                  name: template.name,
+                                })
+                                setOpenMenuId(null)
+                              }}
                               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -314,6 +471,15 @@ export function FormsPage() {
           </p>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        formName={deleteTarget?.name ?? ''}
+        isOpen={deleteTarget !== null}
+        isDeleting={deleteTemplate.isPending}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }

@@ -156,11 +156,14 @@ export function useDuplicateFormTemplate() {
 export function useFormSubmissions(filters?: {
   template_id?: string
   status?: string
+  contact_id?: string
+  camper_id?: string
 }) {
   return useQuery<{ items: FormSubmission[]; total: number }>({
     queryKey: ['form-submissions', filters],
     queryFn: () =>
       api.get('/forms/submissions', { params: filters }).then((r) => r.data),
+    enabled: filters === undefined || Object.values(filters).some((v) => v !== undefined),
   })
 }
 

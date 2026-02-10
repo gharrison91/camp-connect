@@ -94,6 +94,8 @@ export interface CamperPhoto {
   file_name: string
   caption: string | null
   similarity: number | null
+  event_id: string | null
+  event_name: string | null
   created_at: string
 }
 

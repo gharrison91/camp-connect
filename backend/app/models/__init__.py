@@ -54,8 +54,9 @@ from app.models.workflow import (
     ContactAssociation,
 )
 
-# Phase 9: Staff Certification Types
+# Phase 9: Staff Certification Types, Saved Lists
 from app.models.staff_certification import CertificationType, StaffCertificationRecord
+from app.models.saved_list import SavedList, SavedListMember
 
 __all__ = [
     "Base",
@@ -113,4 +114,6 @@ __all__ = [
     # Phase 9
     "CertificationType",
     "StaffCertificationRecord",
+    "SavedList",
+    "SavedListMember",
 ]

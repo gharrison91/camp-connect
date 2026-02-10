@@ -9,13 +9,16 @@ import {
   Trash2,
   ScanFace,
   Filter,
+  CheckSquare,
+  Square,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePhotos, useUploadPhoto, useDeletePhoto } from '@/hooks/usePhotos'
 import { useEvents } from '@/hooks/useEvents'
 import { useActivities } from '@/hooks/useActivities'
 import { useCampers } from '@/hooks/useCampers'
-import { usePhotoFaceTags, useReprocessPhoto } from '@/hooks/useFaceRecognition'
+import { usePhotoFaceTags, useReprocessPhoto, useBulkReprocessPhotos } from '@/hooks/useFaceRecognition'
+import { useToast } from '@/components/ui/Toast'
 import { usePermissions } from '@/hooks/usePermissions'
 import { FaceTagOverlay } from './components/FaceTagOverlay'
 import type { Photo, FaceTag } from '@/types'
@@ -44,11 +47,45 @@ const MONTHS = [
 const YEARS = [2024, 2025, 2026]
 
 export function PhotosPage() {
+  const { toast } = useToast()
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
   const { hasPermission } = usePermissions()
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const bulkReprocess = useBulkReprocessPhotos()
+  const [bulkProgress, setBulkProgress] = useState<{ show: boolean; result?: { total: number; processed: number; matches_found: number; errors: number } }>({ show: false })
+
+  const toggleSelect = (photoId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(photoId)) next.delete(photoId)
+      else next.add(photoId)
+      return next
+    })
+  }
+
+  const selectAll = () => {
+    setSelectedIds(new Set(filteredPhotos.map((p) => p.id)))
+  }
+
+  const deselectAll = () => {
+    setSelectedIds(new Set())
+  }
+
+  const handleBulkAnalyze = async (photoIds: string[] | null) => {
+    setBulkProgress({ show: true })
+    try {
+      const result = await bulkReprocess.mutateAsync(photoIds)
+      setBulkProgress({ show: true, result })
+      toast({ type: 'success', message: `Analyzed ${result.processed} photos, found ${result.matches_found} face matches` })
+    } catch {
+      toast({ type: 'error', message: 'Bulk analysis failed' })
+      setBulkProgress({ show: false })
+    }
+  }
 
   const [eventFilter, setEventFilter] = useState<string>('')
   const [activityFilter, setActivityFilter] = useState<string>('')
@@ -101,11 +138,33 @@ export function PhotosPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Photos</h1>
           <p className="mt-1 text-sm text-gray-500">Upload and manage camp photos for campers and events</p>
         </div>
-        {hasPermission('photos.media.upload') && (
-          <button onClick={() => setShowUploadModal(true)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700">
-            <Upload className="h-4 w-4" />Upload Photos
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setSelectMode(!selectMode); setSelectedIds(new Set()) }}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors',
+              selectMode
+                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+            )}
+          >
+            {selectMode ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+            {selectMode ? 'Cancel Select' : 'Multi-Select'}
           </button>
-        )}
+          <button
+            onClick={() => handleBulkAnalyze(null)}
+            disabled={bulkReprocess.isPending}
+            className="inline-flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2.5 text-sm font-medium text-violet-700 transition-colors hover:bg-violet-100 disabled:opacity-50"
+          >
+            {bulkReprocess.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanFace className="h-4 w-4" />}
+            Analyze All
+          </button>
+          {hasPermission('photos.media.upload') && (
+            <button onClick={() => setShowUploadModal(true)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700">
+              <Upload className="h-4 w-4" />Upload Photos
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -167,17 +226,79 @@ export function PhotosPage() {
       {error && (<div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">Failed to load photos. Please try again.</div>)}
 
       {!isLoading && !error && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {filteredPhotos.map((photo) => (
-            <div key={photo.id} onClick={() => setSelectedPhoto(photo)} className="group cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:border-gray-200 hover:shadow-md">
-              <div className="relative aspect-square bg-gray-100">
-                {photo.url ? (<img src={photo.url} alt={photo.caption || photo.file_name} className="h-full w-full object-cover transition-transform group-hover:scale-105" />) : (<div className="flex h-full items-center justify-center"><ImageIcon className="h-10 w-10 text-gray-300" /></div>)}
-                <div className="absolute right-2 top-2"><span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', categoryConfig[photo.category]?.color || 'bg-gray-100 text-gray-700')}>{categoryConfig[photo.category]?.label || photo.category}</span></div>
-              </div>
-              <div className="p-3"><p className="truncate text-sm font-medium text-gray-900">{photo.caption || photo.file_name}</p><p className="mt-0.5 text-xs text-gray-500">{new Date(photo.created_at).toLocaleDateString()}</p></div>
+        <>
+          {/* Select mode action bar */}
+          {selectMode && (
+            <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5">
+              <span className="text-sm font-medium text-blue-700">
+                {selectedIds.size} photo{selectedIds.size !== 1 ? 's' : ''} selected
+              </span>
+              <button onClick={selectAll} className="text-xs font-medium text-blue-600 hover:text-blue-800">Select All</button>
+              <button onClick={deselectAll} className="text-xs font-medium text-blue-600 hover:text-blue-800">Deselect All</button>
+              <div className="flex-1" />
+              <button
+                onClick={() => handleBulkAnalyze(Array.from(selectedIds))}
+                disabled={selectedIds.size === 0 || bulkReprocess.isPending}
+                className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              >
+                {bulkReprocess.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanFace className="h-4 w-4" />}
+                Analyze Selected ({selectedIds.size})
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* Bulk progress result */}
+          {bulkProgress.show && bulkProgress.result && (
+            <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <div className="text-sm text-emerald-700">
+                <strong>{bulkProgress.result.processed}</strong> photos analyzed,{' '}
+                <strong>{bulkProgress.result.matches_found}</strong> face matches found
+                {bulkProgress.result.errors > 0 && (
+                  <span className="ml-2 text-amber-600">({bulkProgress.result.errors} errors)</span>
+                )}
+              </div>
+              <button onClick={() => setBulkProgress({ show: false })} className="rounded p-1 text-emerald-600 hover:bg-emerald-100">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {filteredPhotos.map((photo) => {
+              const isSelected = selectedIds.has(photo.id)
+              return (
+                <div
+                  key={photo.id}
+                  onClick={() => selectMode ? toggleSelect(photo.id) : setSelectedPhoto(photo)}
+                  className={cn(
+                    'group cursor-pointer overflow-hidden rounded-xl border bg-white shadow-sm transition-all hover:shadow-md',
+                    selectMode && isSelected
+                      ? 'border-blue-500 ring-2 ring-blue-200'
+                      : 'border-gray-100 hover:border-gray-200'
+                  )}
+                >
+                  <div className="relative aspect-square bg-gray-100">
+                    {photo.url ? (<img src={photo.url} alt={photo.caption || photo.file_name} className="h-full w-full object-cover transition-transform group-hover:scale-105" />) : (<div className="flex h-full items-center justify-center"><ImageIcon className="h-10 w-10 text-gray-300" /></div>)}
+                    <div className="absolute right-2 top-2"><span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', categoryConfig[photo.category]?.color || 'bg-gray-100 text-gray-700')}>{categoryConfig[photo.category]?.label || photo.category}</span></div>
+                    {selectMode && (
+                      <div className="absolute left-2 top-2">
+                        <div className={cn(
+                          'flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors',
+                          isSelected
+                            ? 'border-blue-500 bg-blue-500 text-white'
+                            : 'border-white/80 bg-black/20 text-transparent'
+                        )}>
+                          {isSelected && <CheckSquare className="h-4 w-4" />}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3"><p className="truncate text-sm font-medium text-gray-900">{photo.caption || photo.file_name}</p><p className="mt-0.5 text-xs text-gray-500">{new Date(photo.created_at).toLocaleDateString()}</p></div>
+                </div>
+              )
+            })}
+          </div>
+        </>
       )}
 
       {!isLoading && !error && filteredPhotos.length === 0 && (

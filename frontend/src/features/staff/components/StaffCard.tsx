@@ -90,6 +90,18 @@ export function StaffCard({ staff, onClick }: StaffCardProps) {
       <p className="mt-2 text-xs text-gray-500">
         {staff.department ?? 'No department'}
       </p>
+
+      {/* Onboarding Progress Indicator */}
+      {staff.status === 'onboarding' && (
+        <div className="mt-3 w-full">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 flex-1 rounded-full bg-amber-100">
+              <div className="h-1.5 rounded-full bg-amber-400" style={{ width: '40%' }} />
+            </div>
+            <span className="text-[10px] font-medium text-amber-600">Onboarding</span>
+          </div>
+        </div>
+      )}
     </button>
   )
 }

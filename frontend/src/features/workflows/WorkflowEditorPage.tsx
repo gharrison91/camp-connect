@@ -40,6 +40,7 @@ import type {
   WorkflowUpdate,
 } from '@/hooks/useWorkflows'
 import { useToast } from '@/components/ui/Toast'
+import { useFormTemplates } from '@/hooks/useForms'
 
 // ─── Step Type Definitions ───────────────────────────────────
 
@@ -147,6 +148,7 @@ function StepConfigPanel({
   onClose: () => void
 }) {
   const stepType = STEP_TYPES.find((st) => st.type === step.type)
+  const { data: publishedForms = [] } = useFormTemplates({ status: 'published' })
 
   return (
     <div className="border-l border-gray-200 bg-white p-4">
@@ -403,16 +405,21 @@ function StepConfigPanel({
         {/* Send Form config */}
         {step.type === 'send_form' && (
           <div>
-            <label className="block text-xs font-medium text-gray-600">Form Template ID</label>
-            <input
-              type="text"
+            <label className="block text-xs font-medium text-gray-600">Form Template</label>
+            <select
               value={(step.config.template_id as string) || ''}
               onChange={(e) =>
                 onUpdate({ config: { ...step.config, template_id: e.target.value } })
               }
-              placeholder="Enter form template ID"
               className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-            />
+            >
+              <option value="">Select a form...</option>
+              {publishedForms.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name} ({f.category})
+                </option>
+              ))}
+            </select>
             <p className="mt-1 text-xs text-gray-400">
               The form will be sent to the enrolled contact.
             </p>
@@ -432,6 +439,7 @@ export function WorkflowEditorPage() {
   const { data: workflow, isLoading, error } = useWorkflow(id)
   const updateWorkflow = useUpdateWorkflow()
   const { data: executions = [] } = useWorkflowExecutions(id)
+  const { data: publishedForms = [] } = useFormTemplates({ status: 'published' })
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -670,14 +678,22 @@ export function WorkflowEditorPage() {
             {/* Form ID for form_submitted trigger */}
             {trigger.type === 'form_submitted' && (
               <div className="mt-4">
-                <label className="block text-xs font-medium text-gray-600">Form Template ID</label>
-                <input
-                  type="text"
+                <label className="block text-xs font-medium text-gray-600">Form Template</label>
+                <select
                   value={trigger.form_template_id || ''}
                   onChange={(e) => setTrigger({ ...trigger, form_template_id: e.target.value })}
-                  placeholder="Form template ID"
                   className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-                />
+                >
+                  <option value="">Select a form...</option>
+                  {publishedForms.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name} ({f.category})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-400">
+                  Workflow triggers when this form is submitted.
+                </p>
               </div>
             )}
 
@@ -746,6 +762,11 @@ export function WorkflowEditorPage() {
                     {trigger.type === 'event' && trigger.event_type && (
                       <p className="text-xs text-amber-600">{trigger.event_type}</p>
                     )}
+                    {trigger.type === 'form_submitted' && trigger.form_template_id && (
+                      <p className="text-xs text-amber-600">
+                        {publishedForms.find((f) => f.id === trigger.form_template_id)?.name || 'Selected form'}
+                      </p>
+                    )}
                   </div>
                 </div>
                 {steps.length > 0 && (
@@ -792,7 +813,9 @@ export function WorkflowEditorPage() {
                                 ? `Wait ${(step.config.amount as number) || '?'} ${(step.config.unit as string) || 'hours'}`
                                 : step.type === 'add_tag'
                                   ? (step.config.tag as string) || 'Configure tag...'
-                                  : stepType?.description}
+                                  : step.type === 'send_form' && (step.config.template_id as string)
+                                    ? publishedForms.find((f) => f.id === step.config.template_id)?.name || 'Selected form'
+                                    : stepType?.description}
                           </p>
                         </div>
                         <button
@@ -877,63 +900,140 @@ export function WorkflowEditorPage() {
         </div>
       )}
 
-      {/* Executions Tab */}
+      {/* Executions / Enrollments Tab */}
       {activeTab === 'executions' && (
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-4xl">
+          <div className="mx-auto max-w-5xl">
+            {/* Stats Cards */}
+            {executions.length > 0 && (
+              <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium text-gray-500">Total Enrolled</p>
+                  <p className="mt-1 text-2xl font-semibold text-gray-900">{executions.length}</p>
+                </div>
+                <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium text-gray-500">Running</p>
+                  <p className="mt-1 text-2xl font-semibold text-blue-600">
+                    {executions.filter((e) => e.status === 'running').length}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium text-gray-500">Completed</p>
+                  <p className="mt-1 text-2xl font-semibold text-emerald-600">
+                    {executions.filter((e) => e.status === 'completed').length}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium text-gray-500">Failed</p>
+                  <p className="mt-1 text-2xl font-semibold text-red-600">
+                    {executions.filter((e) => e.status === 'failed').length}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {executions.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-16">
                 <Play className="h-10 w-10 text-gray-300" />
-                <p className="mt-3 text-sm font-medium text-gray-900">No executions yet</p>
+                <p className="mt-3 text-sm font-medium text-gray-900">No enrollments yet</p>
                 <p className="mt-1 text-sm text-gray-500">
-                  Activate this workflow and enroll contacts to see executions here.
+                  Activate this workflow and enroll contacts to see enrollments here.
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {executions.map((exec) => (
-                  <div
-                    key={exec.id}
-                    className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {exec.status === 'completed' ? (
-                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                        ) : exec.status === 'failed' ? (
-                          <AlertCircle className="h-5 w-5 text-red-500" />
-                        ) : (
-                          <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-                        )}
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {exec.entity_type}: {exec.entity_id.slice(0, 8)}...
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Started {new Date(exec.started_at).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={cn(
-                          'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset capitalize',
-                          exec.status === 'completed'
-                            ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
-                            : exec.status === 'failed'
-                              ? 'bg-red-50 text-red-700 ring-red-600/20'
-                              : 'bg-blue-50 text-blue-700 ring-blue-600/20'
-                        )}
-                      >
-                        {exec.status}
-                      </span>
-                    </div>
-                    {exec.error_message && (
-                      <p className="mt-2 text-xs text-red-600 bg-red-50 rounded p-2">
-                        {exec.error_message}
-                      </p>
-                    )}
-                  </div>
-                ))}
+              <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        <th className="px-6 py-3">Entity</th>
+                        <th className="px-6 py-3">Type</th>
+                        <th className="px-6 py-3">Status</th>
+                        <th className="hidden px-6 py-3 sm:table-cell">Current Step</th>
+                        <th className="hidden px-6 py-3 md:table-cell">Started</th>
+                        <th className="hidden px-6 py-3 lg:table-cell">Completed</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {executions.map((exec) => (
+                        <tr key={exec.id} className="transition-colors hover:bg-gray-50/80">
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {exec.entity_name ?? exec.entity_id.slice(0, 8) + '...'}
+                              </p>
+                              {exec.entity_email && (
+                                <p className="text-xs text-gray-500">{exec.entity_email}</p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <span className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-500/20 capitalize">
+                              {exec.entity_type}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <div className="flex items-center gap-1.5">
+                              {exec.status === 'completed' ? (
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                              ) : exec.status === 'failed' ? (
+                                <AlertCircle className="h-4 w-4 text-red-500" />
+                              ) : exec.status === 'paused' ? (
+                                <Clock className="h-4 w-4 text-amber-500" />
+                              ) : (
+                                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                              )}
+                              <span
+                                className={cn(
+                                  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset capitalize',
+                                  exec.status === 'completed'
+                                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                                    : exec.status === 'failed'
+                                      ? 'bg-red-50 text-red-700 ring-red-600/20'
+                                      : exec.status === 'paused'
+                                        ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                                        : 'bg-blue-50 text-blue-700 ring-blue-600/20'
+                                )}
+                              >
+                                {exec.status}
+                              </span>
+                            </div>
+                            {exec.error_message && (
+                              <p className="mt-1 max-w-xs truncate text-xs text-red-500" title={exec.error_message}>
+                                {exec.error_message}
+                              </p>
+                            )}
+                          </td>
+                          <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 sm:table-cell">
+                            {exec.current_step_id
+                              ? steps.find((s) => s.id === exec.current_step_id)
+                                ? STEP_TYPES.find((st) => st.type === steps.find((s) => s.id === exec.current_step_id)?.type)?.label ?? exec.current_step_id
+                                : exec.current_step_id
+                              : exec.status === 'completed'
+                                ? '✓ Done'
+                                : '--'}
+                          </td>
+                          <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 md:table-cell">
+                            {new Date(exec.started_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </td>
+                          <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 lg:table-cell">
+                            {exec.completed_at
+                              ? new Date(exec.completed_at).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })
+                              : '--'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

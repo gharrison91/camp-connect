@@ -61,8 +61,9 @@ from app.api.v1.forms import router as forms_router
 from app.api.v1.workflows import router as workflows_router
 from app.api.v1.workflows import assoc_router as contact_assoc_router
 
-# Phase 9: Staff Certifications
+# Phase 9: Staff Certifications, Saved Lists
 from app.api.v1.staff_certifications import router as staff_certifications_router
+from app.api.v1.lists import router as lists_router
 
 
 @asynccontextmanager
@@ -152,8 +153,9 @@ app.include_router(forms_router, prefix=settings.api_v1_prefix)
 app.include_router(workflows_router, prefix=settings.api_v1_prefix)
 app.include_router(contact_assoc_router, prefix=settings.api_v1_prefix)
 
-# Phase 9: Staff Certifications
+# Phase 9: Staff Certifications, Saved Lists
 app.include_router(staff_certifications_router, prefix=settings.api_v1_prefix)
+app.include_router(lists_router, prefix=settings.api_v1_prefix)
 
 
 @app.exception_handler(Exception)

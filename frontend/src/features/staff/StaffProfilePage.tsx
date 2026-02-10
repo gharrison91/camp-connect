@@ -404,7 +404,7 @@ export function StaffProfilePage() {
       )}
 
       {activeTab === 'onboarding' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {onboardingLoading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
@@ -414,74 +414,166 @@ export function StaffProfilePage() {
           {!onboardingLoading && !onboarding && (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-12">
               <Clock className="h-10 w-10 text-gray-300" />
-              <p className="mt-3 text-sm text-gray-500">
-                No onboarding record found for this staff member.
+              <p className="mt-3 text-sm font-medium text-gray-900">
+                No onboarding record found
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                This staff member doesn&apos;t have an onboarding record yet.
               </p>
             </div>
           )}
 
-          {!onboardingLoading && onboarding && (
-            <>
-              {/* Onboarding Status Badge */}
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-700">Status:</span>
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ring-1 ring-inset',
-                    onboarding.status === 'completed'
-                      ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
-                      : onboarding.status === 'in_progress'
-                        ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
-                        : 'bg-blue-50 text-blue-700 ring-blue-600/20'
-                  )}
-                >
-                  {onboarding.status === 'in_progress' ? 'In Progress' : onboarding.status}
-                </span>
-              </div>
+          {!onboardingLoading && onboarding && (() => {
+            const steps = [
+              {
+                label: 'Personal Information',
+                description: 'Name, address, date of birth, and contact details',
+                done: onboarding.personal_info_completed,
+                icon: User,
+              },
+              {
+                label: 'Emergency Contacts',
+                description: 'At least one emergency contact with phone number',
+                done: onboarding.emergency_contacts_completed,
+                icon: Phone,
+              },
+              {
+                label: 'Certifications',
+                description: 'CPR, First Aid, and other required certifications',
+                done: onboarding.certifications_completed,
+                icon: Award,
+              },
+              {
+                label: 'Policy Acknowledgments',
+                description: 'Review and accept organization policies',
+                done: onboarding.policy_acknowledgments_completed,
+                icon: Shield,
+              },
+              {
+                label: 'Payroll Setup',
+                description: 'Pay rate, bank details, and tax information',
+                done: onboarding.payroll_info_completed,
+                icon: DollarSign,
+              },
+            ]
+            const completedCount = steps.filter((s) => s.done).length
+            const totalSteps = steps.length
+            const progressPercent = Math.round((completedCount / totalSteps) * 100)
 
-              {/* Step Checklist */}
-              <div className="space-y-2">
-                {[
-                  { label: 'Personal Info', done: onboarding.personal_info_completed },
-                  { label: 'Emergency Contacts', done: onboarding.emergency_contacts_completed },
-                  { label: 'Certifications', done: onboarding.certifications_completed },
-                  { label: 'Policy Acknowledgments', done: onboarding.policy_acknowledgments_completed },
-                  { label: 'Payroll Setup', done: onboarding.payroll_info_completed },
-                ].map((step) => (
-                  <div
-                    key={step.label}
-                    className={cn(
-                      'flex items-center gap-3 rounded-lg border p-3',
-                      step.done
-                        ? 'border-emerald-100 bg-emerald-50/50'
-                        : 'border-gray-100 bg-white'
-                    )}
-                  >
-                    {step.done ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                    ) : (
-                      <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
-                    )}
+            return (
+              <>
+                {/* Progress Header */}
+                <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-base font-semibold text-gray-900">Onboarding Progress</h3>
+                      <p className="mt-0.5 text-sm text-gray-500">
+                        {completedCount} of {totalSteps} steps completed
+                      </p>
+                    </div>
                     <span
                       className={cn(
-                        'text-sm',
-                        step.done ? 'font-medium text-emerald-800' : 'text-gray-600'
+                        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset',
+                        onboarding.status === 'completed'
+                          ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                          : onboarding.status === 'in_progress'
+                            ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                            : 'bg-blue-50 text-blue-700 ring-blue-600/20'
                       )}
                     >
-                      {step.label}
+                      {onboarding.status === 'completed' && <CheckCircle2 className="h-3.5 w-3.5" />}
+                      {onboarding.status === 'in_progress' && <Clock className="h-3.5 w-3.5" />}
+                      {onboarding.status === 'completed'
+                        ? 'Completed'
+                        : onboarding.status === 'in_progress'
+                          ? 'In Progress'
+                          : onboarding.status}
                     </span>
                   </div>
-                ))}
-              </div>
+                  {/* Progress Bar */}
+                  <div>
+                    <div className="h-3 w-full rounded-full bg-gray-100">
+                      <div
+                        className={cn(
+                          'h-3 rounded-full transition-all duration-500',
+                          progressPercent === 100 ? 'bg-emerald-500' : 'bg-blue-500'
+                        )}
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                    <p className="mt-1.5 text-right text-xs font-medium text-gray-500">
+                      {progressPercent}%
+                    </p>
+                  </div>
+                </div>
 
-              {onboarding.completed_at && (
-                <p className="text-xs text-gray-500">
-                  Completed on{' '}
-                  {new Date(onboarding.completed_at).toLocaleDateString()}
-                </p>
-              )}
-            </>
-          )}
+                {/* Step Cards */}
+                <div className="space-y-3">
+                  {steps.map((step, index) => {
+                    const StepIcon = step.icon
+                    return (
+                      <div
+                        key={step.label}
+                        className={cn(
+                          'rounded-xl border p-5 transition-colors',
+                          step.done
+                            ? 'border-emerald-100 bg-emerald-50/30'
+                            : 'border-gray-100 bg-white shadow-sm'
+                        )}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0">
+                            {step.done ? (
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                              </div>
+                            ) : (
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-sm font-semibold text-gray-400">
+                                {index + 1}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <StepIcon className={cn('h-4 w-4', step.done ? 'text-emerald-600' : 'text-gray-400')} />
+                              <h4 className={cn(
+                                'text-sm font-medium',
+                                step.done ? 'text-emerald-800' : 'text-gray-900'
+                              )}>
+                                {step.label}
+                              </h4>
+                            </div>
+                            <p className={cn(
+                              'mt-1 text-xs',
+                              step.done ? 'text-emerald-600' : 'text-gray-500'
+                            )}>
+                              {step.done ? 'Completed' : step.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {onboarding.completed_at && (
+                  <div className="rounded-lg bg-emerald-50 p-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <p className="text-sm font-medium text-emerald-800">
+                        Onboarding completed on{' '}
+                        {new Date(onboarding.completed_at).toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </div>
       )}
     </div>

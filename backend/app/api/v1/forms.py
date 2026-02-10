@@ -224,6 +224,8 @@ async def duplicate_form_template(
 async def list_form_submissions(
     template_id: Optional[uuid.UUID] = Query(None),
     status_filter: Optional[str] = Query(None, alias="status"),
+    contact_id: Optional[uuid.UUID] = Query(None),
+    camper_id: Optional[uuid.UUID] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -245,6 +247,17 @@ async def list_form_submissions(
     if status_filter:
         query = query.where(FormSubmission.status == status_filter)
         count_query = count_query.where(FormSubmission.status == status_filter)
+    if contact_id:
+        query = query.where(FormSubmission.submitted_by_contact_id == contact_id)
+        count_query = count_query.where(FormSubmission.submitted_by_contact_id == contact_id)
+    if camper_id:
+        from sqlalchemy import or_
+        camper_filter = or_(
+            (FormSubmission.related_entity_type == "camper") & (FormSubmission.related_entity_id == str(camper_id)),
+            FormSubmission.submitted_by_contact_id == camper_id,
+        )
+        query = query.where(camper_filter)
+        count_query = count_query.where(camper_filter)
 
     total = (await db.execute(count_query)).scalar() or 0
     result = await db.execute(

@@ -317,7 +317,9 @@ async def _fetch_photos(
     """Fetch photos where the camper is face-tagged."""
     result = await db.execute(
         select(PhotoFaceTag)
-        .options(selectinload(PhotoFaceTag.photo))
+        .options(
+            selectinload(PhotoFaceTag.photo).selectinload(Photo.event),
+        )
         .where(PhotoFaceTag.camper_id == camper_id)
         .where(PhotoFaceTag.organization_id == organization_id)
         .order_by(PhotoFaceTag.created_at.desc())
@@ -328,12 +330,15 @@ async def _fetch_photos(
     for tag in face_tags:
         photo = tag.photo
         if photo and not photo.deleted_at:
+            event = photo.event
             items.append({
                 "id": photo.id,
                 "url": _get_photo_url(photo.file_path, photo.category),
                 "file_name": photo.file_name,
                 "caption": photo.caption,
                 "similarity": tag.similarity,
+                "event_id": photo.event_id,
+                "event_name": event.name if event and not event.deleted_at else None,
                 "created_at": photo.created_at,
             })
 

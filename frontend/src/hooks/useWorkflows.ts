@@ -80,6 +80,8 @@ export interface WorkflowExecution {
   workflow_name: string | null
   entity_type: string
   entity_id: string
+  entity_name: string | null
+  entity_email: string | null
   status: string
   current_step_id: string | null
   started_at: string

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -21,13 +21,19 @@ import {
   Star,
   Edit,
   ChevronRight,
+  ChevronDown,
   Upload,
+  FileText,
+  Download,
+  X,
+  ArrowRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCamperProfile } from '@/hooks/useCamperProfile'
 import { useUploadPhoto } from '@/hooks/usePhotos'
 import { useUploadProfilePhoto } from '@/hooks/useCampers'
 import { useIndexCamperFace } from '@/hooks/useFaceRecognition'
+import { useFormSubmissions } from '@/hooks/useForms'
 import { useToast } from '@/components/ui/Toast'
 import { CamperEditModal } from './CamperEditModal'
 import { ComposeMessageModal } from '@/features/communications/CommunicationsPage'
@@ -39,7 +45,7 @@ import type {
 } from '@/hooks/useCamperProfile'
 
 // ─── Tabs ──────────────────────────────────────────────────────
-type Tab = 'overview' | 'health' | 'family' | 'events' | 'photos' | 'communications'
+type Tab = 'overview' | 'health' | 'family' | 'events' | 'photos' | 'forms' | 'communications'
 
 const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: 'overview', label: 'Overview', icon: User },
@@ -47,6 +53,7 @@ const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: 'family', label: 'Family & Contacts', icon: Users },
   { key: 'events', label: 'Events', icon: Calendar },
   { key: 'photos', label: 'Photos', icon: Camera },
+  { key: 'forms', label: 'Forms', icon: FileText },
   { key: 'communications', label: 'Communications', icon: MessageSquare },
 ]
 
@@ -730,6 +737,204 @@ function EventsTab({ profile }: { profile: CamperProfile }) {
   )
 }
 
+// ─── Photo Lightbox Component ──────────────────────────────────
+function PhotoLightbox({
+  photos,
+  currentIndex,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  photos: CamperPhoto[]
+  currentIndex: number
+  onClose: () => void
+  onPrev: () => void
+  onNext: () => void
+}) {
+  const photo = photos[currentIndex]
+  if (!photo) return null
+
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(photo.url)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = photo.file_name || `photo-${photo.id}.jpg`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch {
+      // Fallback: open in new tab
+      window.open(photo.url, '_blank')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={onClose}>
+      <div className="relative flex h-full w-full flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
+        {/* Top bar */}
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 py-4 bg-gradient-to-b from-black/60 to-transparent z-10">
+          <div className="text-sm text-white/80">
+            {currentIndex + 1} / {photos.length}
+            {photo.caption && <span className="ml-3 text-white">{photo.caption}</span>}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleDownload}
+              className="rounded-lg bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+              title="Download photo"
+            >
+              <Download className="h-5 w-5" />
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-lg bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+              title="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Image */}
+        <img
+          src={photo.url}
+          alt={photo.caption ?? photo.file_name}
+          className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+        />
+
+        {/* Nav buttons */}
+        {photos.length > 1 && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); onPrev() }}
+              className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onNext() }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+            >
+              <ArrowRight className="h-6 w-6" />
+            </button>
+          </>
+        )}
+
+        {/* Bottom info */}
+        <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center px-6 py-4 bg-gradient-to-t from-black/60 to-transparent">
+          <div className="flex items-center gap-4 text-sm text-white/80">
+            <span>{formatDateTime(photo.created_at)}</span>
+            {photo.similarity != null && (
+              <span className="inline-flex items-center rounded-full bg-blue-500/30 px-2.5 py-0.5 text-xs font-medium text-blue-200">
+                {Math.round(photo.similarity)}% match
+              </span>
+            )}
+            {photo.event_name && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/30 px-2.5 py-0.5 text-xs font-medium text-emerald-200">
+                <Calendar className="h-3 w-3" />
+                {photo.event_name}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Event Photo Group Component ──────────────────────────────
+function EventPhotoGroup({
+  eventName,
+  photos,
+  allPhotos,
+  onOpenLightbox,
+}: {
+  eventName: string
+  photos: CamperPhoto[]
+  allPhotos: CamperPhoto[]
+  onOpenLightbox: (index: number) => void
+}) {
+  const [collapsed, setCollapsed] = useState(false)
+
+  const handleDownloadAll = async () => {
+    for (const photo of photos) {
+      try {
+        const response = await fetch(photo.url)
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = photo.file_name || `photo-${photo.id}.jpg`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+        // Small delay between downloads to prevent browser blocking
+        await new Promise((resolve) => setTimeout(resolve, 300))
+      } catch {
+        // Skip failed downloads
+      }
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-gray-50/50"
+      >
+        <div className="flex items-center gap-3">
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 text-gray-400 transition-transform',
+              collapsed && '-rotate-90'
+            )}
+          />
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-blue-500" />
+            <h4 className="text-sm font-semibold text-gray-900">{eventName}</h4>
+          </div>
+          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+            {photos.length} photo{photos.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            handleDownloadAll()
+          }}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-100"
+          title={`Download all ${photos.length} photos`}
+        >
+          <Download className="h-3.5 w-3.5" />
+          Download All
+        </button>
+      </button>
+
+      {!collapsed && (
+        <div className="border-t border-gray-100 p-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {photos.map((photo) => {
+              const globalIndex = allPhotos.findIndex((p) => p.id === photo.id)
+              return (
+                <PhotoCard
+                  key={photo.id}
+                  photo={photo}
+                  onClick={() => onOpenLightbox(globalIndex)}
+                />
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function PhotosTab({
   profile,
   onUploadProfilePhoto,
@@ -751,6 +956,45 @@ function PhotosTab({
   onSyncFace?: () => void
   isSyncingFace?: boolean
 }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
+  // Group photos by event
+  const photosByEvent = profile.photos.reduce<Record<string, CamperPhoto[]>>((acc, photo) => {
+    const key = photo.event_name ?? '__ungrouped__'
+    if (!acc[key]) acc[key] = []
+    acc[key].push(photo)
+    return acc
+  }, {})
+
+  const eventNames = Object.keys(photosByEvent).filter((k) => k !== '__ungrouped__').sort()
+  const ungroupedPhotos = photosByEvent['__ungrouped__'] ?? []
+
+  const openLightbox = (index: number) => setLightboxIndex(index)
+  const closeLightbox = () => setLightboxIndex(null)
+  const prevPhoto = () => {
+    if (lightboxIndex === null) return
+    setLightboxIndex(lightboxIndex > 0 ? lightboxIndex - 1 : profile.photos.length - 1)
+  }
+  const nextPhoto = () => {
+    if (lightboxIndex === null) return
+    setLightboxIndex(lightboxIndex < profile.photos.length - 1 ? lightboxIndex + 1 : 0)
+  }
+
+  // Keyboard navigation for lightbox
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (lightboxIndex === null) return
+    if (e.key === 'Escape') closeLightbox()
+    if (e.key === 'ArrowLeft') prevPhoto()
+    if (e.key === 'ArrowRight') nextPhoto()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightboxIndex])
+
+  useEffect(() => {
+    if (lightboxIndex === null) return
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [lightboxIndex, handleKeyDown])
+
   return (
     <div className="space-y-6">
       {/* Reference / Profile Photo */}
@@ -847,7 +1091,7 @@ function PhotosTab({
         </div>
       </div>
 
-      {/* Photo Grid */}
+      {/* Photo Grid — grouped by event */}
       {profile.photos.length === 0 ? (
         <EmptyState
           icon={Camera}
@@ -855,30 +1099,109 @@ function PhotosTab({
           description="No photos found for this camper. Upload photos above or they will appear here when detected via face recognition."
         />
       ) : (
-        <div>
-          <h3 className="text-base font-semibold text-gray-900 mb-4">
+        <div className="space-y-4">
+          <h3 className="text-base font-semibold text-gray-900">
             Detected in Photos ({profile.photos.length})
           </h3>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {profile.photos.map((photo) => (
-              <PhotoCard key={photo.id} photo={photo} />
-            ))}
-          </div>
+
+          {/* Event-grouped sections */}
+          {eventNames.map((eventName) => (
+            <EventPhotoGroup
+              key={eventName}
+              eventName={eventName}
+              photos={photosByEvent[eventName]}
+              allPhotos={profile.photos}
+              onOpenLightbox={openLightbox}
+            />
+          ))}
+
+          {/* Ungrouped photos */}
+          {ungroupedPhotos.length > 0 && (
+            <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
+              <div className="flex items-center justify-between px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <Camera className="h-4 w-4 text-gray-400" />
+                  <h4 className="text-sm font-semibold text-gray-900">
+                    {eventNames.length > 0 ? 'Other Photos' : 'All Photos'}
+                  </h4>
+                  <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                    {ungroupedPhotos.length} photo{ungroupedPhotos.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+              <div className="border-t border-gray-100 p-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {ungroupedPhotos.map((photo) => {
+                    const globalIndex = profile.photos.findIndex((p) => p.id === photo.id)
+                    return (
+                      <PhotoCard
+                        key={photo.id}
+                        photo={photo}
+                        onClick={() => openLightbox(globalIndex)}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxIndex !== null && (
+        <PhotoLightbox
+          photos={profile.photos}
+          currentIndex={lightboxIndex}
+          onClose={closeLightbox}
+          onPrev={prevPhoto}
+          onNext={nextPhoto}
+        />
       )}
     </div>
   )
 }
 
-function PhotoCard({ photo }: { photo: CamperPhoto }) {
+function PhotoCard({ photo, onClick }: { photo: CamperPhoto; onClick?: () => void }) {
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const response = await fetch(photo.url)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = photo.file_name || `photo-${photo.id}.jpg`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch {
+      window.open(photo.url, '_blank')
+    }
+  }
+
   return (
-    <div className="group overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md">
+    <div
+      onClick={onClick}
+      className="group relative cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md"
+    >
       <div className="aspect-square overflow-hidden bg-gray-100">
         <img
           src={photo.url}
           alt={photo.caption ?? photo.file_name}
           className="h-full w-full object-cover transition-transform group-hover:scale-105"
         />
+        {/* Hover overlay */}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
+          <button
+            onClick={handleDownload}
+            className="rounded-full bg-white/90 p-2 text-gray-700 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 hover:bg-white"
+            title="Download"
+          >
+            <Download className="h-4 w-4" />
+          </button>
+        </div>
       </div>
       <div className="p-3">
         {photo.caption && (
@@ -892,6 +1215,75 @@ function PhotoCard({ photo }: { photo: CamperPhoto }) {
             </span>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function FormsTab({ camperId }: { camperId: string }) {
+  const { data, isLoading } = useFormSubmissions({ camper_id: camperId })
+  const submissions = data?.items ?? []
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Clock className="h-5 w-5 animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
+  if (submissions.length === 0) {
+    return (
+      <EmptyState
+        icon={FileText}
+        title="No form submissions"
+        description="No forms have been submitted for this camper yet."
+      />
+    )
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-6 py-3">Form</th>
+              <th className="px-6 py-3">Status</th>
+              <th className="hidden px-6 py-3 sm:table-cell">Submitted</th>
+              <th className="hidden px-6 py-3 md:table-cell">Submitted By</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {submissions.map((sub) => (
+              <tr key={sub.id} className="transition-colors hover:bg-gray-50/80">
+                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                  {sub.template_name ?? 'Unknown Form'}
+                </td>
+                <td className="whitespace-nowrap px-6 py-4">
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset capitalize',
+                      sub.status === 'completed'
+                        ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                        : sub.status === 'draft'
+                          ? 'bg-gray-50 text-gray-600 ring-gray-500/20'
+                          : 'bg-blue-50 text-blue-700 ring-blue-600/20'
+                    )}
+                  >
+                    {sub.status}
+                  </span>
+                </td>
+                <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 sm:table-cell">
+                  {sub.submitted_at ? formatDateTime(sub.submitted_at) : '--'}
+                </td>
+                <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 md:table-cell">
+                  {sub.submitted_by_name ?? sub.submitted_by_email ?? '--'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
@@ -1216,6 +1608,7 @@ export function CamperDetailPage() {
             isSyncingFace={indexFace.isPending}
           />
         )}
+        {activeTab === 'forms' && id && <FormsTab camperId={id} />}
         {activeTab === 'communications' && <CommunicationsTab profile={profile} />}
       </div>
 

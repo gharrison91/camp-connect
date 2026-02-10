@@ -12,6 +12,8 @@ import {
   X,
   Link2,
   Trash2,
+  FileText,
+  Clock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useContact } from '@/hooks/useContacts'
@@ -20,6 +22,7 @@ import {
   useCreateContactAssociation,
   useDeleteContactAssociation,
 } from '@/hooks/useWorkflows'
+import { useFormSubmissions } from '@/hooks/useForms'
 import { useToast } from '@/components/ui/Toast'
 import { ComposeMessageModal } from '@/features/communications/CommunicationsPage'
 
@@ -400,6 +403,9 @@ export function ContactDetailPage() {
         </div>
       </div>
 
+      {/* Form Submissions Section */}
+      {id && <ContactFormSubmissions contactId={id} />}
+
       {/* Compose Message Modal */}
       {showComposeModal && contact && (
         <ComposeMessageModal
@@ -407,6 +413,86 @@ export function ContactDetailPage() {
           prefillTo={composeChannel === 'email' ? (contact.email || '') : (contact.phone || '')}
           prefillChannel={composeChannel}
         />
+      )}
+    </div>
+  )
+}
+
+// ─── Contact Form Submissions ───────────────────────────────
+function ContactFormSubmissions({ contactId }: { contactId: string }) {
+  const { data, isLoading } = useFormSubmissions({ contact_id: contactId })
+  const submissions = data?.items ?? []
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900">Form Submissions</h2>
+      </div>
+
+      {isLoading ? (
+        <div className="mt-3 flex items-center justify-center rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+          <Clock className="h-5 w-5 animate-spin text-gray-400" />
+        </div>
+      ) : submissions.length === 0 ? (
+        <div className="mt-3 rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50">
+              <FileText className="h-5 w-5 text-gray-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">No form submissions yet</p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Forms submitted by this contact will appear here.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-6 py-3">Form</th>
+                  <th className="px-6 py-3">Status</th>
+                  <th className="hidden px-6 py-3 sm:table-cell">Submitted</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {submissions.map((sub) => (
+                  <tr key={sub.id} className="transition-colors hover:bg-gray-50/80">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                      {sub.template_name ?? 'Unknown Form'}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset capitalize',
+                          sub.status === 'completed'
+                            ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                            : sub.status === 'draft'
+                              ? 'bg-gray-50 text-gray-600 ring-gray-500/20'
+                              : 'bg-blue-50 text-blue-700 ring-blue-600/20'
+                        )}
+                      >
+                        {sub.status}
+                      </span>
+                    </td>
+                    <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 sm:table-cell">
+                      {sub.submitted_at
+                        ? new Date(sub.submitted_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
+                        : '--'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   )

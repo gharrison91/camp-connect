@@ -72,6 +72,8 @@ class WorkflowExecutionResponse(BaseModel):
     workflow_name: Optional[str] = None
     entity_type: str
     entity_id: uuid.UUID
+    entity_name: Optional[str] = None
+    entity_email: Optional[str] = None
     status: str
     current_step_id: Optional[str] = None
     started_at: datetime

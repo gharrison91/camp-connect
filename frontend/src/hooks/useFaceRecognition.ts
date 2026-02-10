@@ -107,3 +107,25 @@ export function useReprocessPhoto() {
     },
   })
 }
+
+export interface BulkReprocessResponse {
+  total: number
+  processed: number
+  matches_found: number
+  errors: number
+}
+
+export function useBulkReprocessPhotos() {
+  const queryClient = useQueryClient()
+  return useMutation<BulkReprocessResponse, Error, string[] | null>({
+    mutationFn: (photoIds: string[] | null) =>
+      api
+        .post('/recognition/reprocess-bulk', { photo_ids: photoIds })
+        .then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['photo-face-tags'] })
+      queryClient.invalidateQueries({ queryKey: ['camper-photos'] })
+      queryClient.invalidateQueries({ queryKey: ['photos'] })
+    },
+  })
+}

@@ -22,6 +22,7 @@ from app.models.workflow import (
     WorkflowExecutionLog,
 )
 from app.models.contact import Contact
+from app.models.camper import Camper
 from app.schemas.workflow import (
     ContactAssociationCreate,
     ContactAssociationResponse,
@@ -379,21 +380,46 @@ async def list_workflow_executions(
     result = await db.execute(query)
     executions = result.scalars().all()
 
-    return [
-        WorkflowExecutionResponse(
-            id=e.id,
-            workflow_id=e.workflow_id,
-            entity_type=e.entity_type,
-            entity_id=e.entity_id,
-            status=e.status,
-            current_step_id=e.current_step_id,
-            started_at=e.started_at,
-            next_step_at=e.next_step_at,
-            completed_at=e.completed_at,
-            error_message=e.error_message,
+    # Resolve entity names
+    items = []
+    for e in executions:
+        entity_name = None
+        entity_email = None
+        if e.entity_type == "contact":
+            contact_result = await db.execute(
+                select(Contact.first_name, Contact.last_name, Contact.email)
+                .where(Contact.id == e.entity_id)
+            )
+            row = contact_result.one_or_none()
+            if row:
+                entity_name = f"{row[0]} {row[1]}"
+                entity_email = row[2]
+        elif e.entity_type == "camper":
+            camper_result = await db.execute(
+                select(Camper.first_name, Camper.last_name)
+                .where(Camper.id == e.entity_id)
+            )
+            row = camper_result.one_or_none()
+            if row:
+                entity_name = f"{row[0]} {row[1]}"
+
+        items.append(
+            WorkflowExecutionResponse(
+                id=e.id,
+                workflow_id=e.workflow_id,
+                entity_type=e.entity_type,
+                entity_id=e.entity_id,
+                entity_name=entity_name,
+                entity_email=entity_email,
+                status=e.status,
+                current_step_id=e.current_step_id,
+                started_at=e.started_at,
+                next_step_at=e.next_step_at,
+                completed_at=e.completed_at,
+                error_message=e.error_message,
+            )
         )
-        for e in executions
-    ]
+    return items
 
 
 @router.get(

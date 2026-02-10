@@ -1,10 +1,10 @@
 /**
- * General Settings page — tax rate, deposit config, enabled modules.
+ * General Settings page — tax rate, deposit config, form categories, enabled modules.
  * Modules not purchased are grayed out with a lock icon.
  */
 
 import { useState, useEffect } from 'react'
-import { Loader2, Save, Lock } from 'lucide-react'
+import { Loader2, Save, Lock, Plus, X, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { useToast } from '@/components/ui/Toast'
@@ -33,6 +33,18 @@ const ALL_MODULES: ModuleDef[] = [
   { key: 'store', label: 'Camp Store', description: 'Gift cards, QR payments, inventory' },
 ]
 
+const DEFAULT_FORM_CATEGORIES = [
+  { key: 'registration', label: 'Registration' },
+  { key: 'health', label: 'Health & Safety' },
+  { key: 'consent', label: 'Consent' },
+  { key: 'hr', label: 'HR' },
+  { key: 'payroll', label: 'Payroll' },
+  { key: 'onboarding', label: 'Onboarding' },
+  { key: 'feedback', label: 'Feedback' },
+  { key: 'application', label: 'Application' },
+  { key: 'other', label: 'Other' },
+]
+
 export function GeneralSettingsPage() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
@@ -46,6 +58,11 @@ export function GeneralSettingsPage() {
   })
   const [enabledModules, setEnabledModules] = useState<string[]>(['core'])
   const [purchasedModules, setPurchasedModules] = useState<string[]>(DEFAULT_PURCHASED)
+
+  // Form categories state
+  const [formCategories, setFormCategories] = useState<{ key: string; label: string }[]>(DEFAULT_FORM_CATEGORIES)
+  const [newCategoryKey, setNewCategoryKey] = useState('')
+  const [newCategoryLabel, setNewCategoryLabel] = useState('')
 
   useEffect(() => {
     loadSettings()
@@ -65,6 +82,9 @@ export function GeneralSettingsPage() {
       if (data.settings?.purchased_modules) {
         setPurchasedModules(data.settings.purchased_modules)
       }
+      if (data.settings?.form_categories?.length) {
+        setFormCategories(data.settings.form_categories)
+      }
     } catch {
       toast({ type: 'error', message: 'Failed to load settings' })
     } finally {
@@ -80,6 +100,7 @@ export function GeneralSettingsPage() {
       await api.put('/settings', {
         ...settings,
         enabled_modules: enabledModules,
+        form_categories: formCategories,
       })
       toast({ type: 'success', message: 'Settings saved!' })
     } catch (err: unknown) {
@@ -96,6 +117,23 @@ export function GeneralSettingsPage() {
     setEnabledModules((prev) =>
       prev.includes(key) ? prev.filter((m) => m !== key) : [...prev, key]
     )
+  }
+
+  const addCategory = () => {
+    const key = newCategoryKey.trim().toLowerCase().replace(/\s+/g, '_')
+    const label = newCategoryLabel.trim()
+    if (!key || !label) return
+    if (formCategories.some((c) => c.key === key)) {
+      toast({ type: 'error', message: 'Category key already exists' })
+      return
+    }
+    setFormCategories((prev) => [...prev, { key, label }])
+    setNewCategoryKey('')
+    setNewCategoryLabel('')
+  }
+
+  const removeCategory = (key: string) => {
+    setFormCategories((prev) => prev.filter((c) => c.key !== key))
   }
 
   if (loading) {
@@ -162,6 +200,75 @@ export function GeneralSettingsPage() {
                 />
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Form Categories */}
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Form Categories</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Customize the categories available when creating forms. These appear as tabs on the Forms page.
+          </p>
+          <div className="mt-3 space-y-2">
+            {formCategories.map((cat) => (
+              <div
+                key={cat.key}
+                className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2"
+              >
+                <GripVertical className="h-4 w-4 shrink-0 text-slate-300" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-slate-900">{cat.label}</span>
+                  <span className="ml-2 text-xs text-slate-400">({cat.key})</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeCategory(cat.key)}
+                  className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+
+            {/* Add new category */}
+            <div className="flex items-end gap-2 pt-2">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-slate-600">Label</label>
+                <input
+                  type="text"
+                  value={newCategoryLabel}
+                  onChange={(e) => {
+                    setNewCategoryLabel(e.target.value)
+                    // Auto-generate key from label
+                    const autoKey = e.target.value.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+                    if (!newCategoryKey || newCategoryKey === newCategoryLabel.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')) {
+                      setNewCategoryKey(autoKey)
+                    }
+                  }}
+                  placeholder="e.g. Safety Drills"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <div className="w-40">
+                <label className="block text-xs font-medium text-slate-600">Key</label>
+                <input
+                  type="text"
+                  value={newCategoryKey}
+                  onChange={(e) => setNewCategoryKey(e.target.value.replace(/[^a-z0-9_]/g, ''))}
+                  placeholder="safety_drills"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={addCategory}
+                disabled={!newCategoryKey.trim() || !newCategoryLabel.trim()}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:opacity-50"
+              >
+                <Plus className="h-4 w-4" />
+                Add
+              </button>
+            </div>
           </div>
         </div>
 

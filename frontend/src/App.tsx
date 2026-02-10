@@ -20,6 +20,7 @@ import { RolesPage } from '@/features/admin/RolesPage'
 import { UsersPage } from '@/features/admin/UsersPage'
 import { GeneralSettingsPage } from '@/features/admin/GeneralSettingsPage'
 import { NotificationSettingsPage } from '@/features/admin/NotificationSettingsPage'
+import { CertificationsSettingsPage } from '@/features/admin/CertificationsSettingsPage'
 import { PhotosPage } from '@/features/photos/PhotosPage'
 import { CommunicationsPage } from '@/features/communications/CommunicationsPage'
 import { HealthSafetyPage } from '@/features/health/HealthSafetyPage'
@@ -48,6 +49,10 @@ import { FormsPage } from '@/features/forms/FormsPage'
 import { FormEditorPage } from '@/features/forms/FormEditorPage'
 import { WorkflowsPage } from '@/features/workflows/WorkflowsPage'
 import { WorkflowEditorPage } from '@/features/workflows/WorkflowEditorPage'
+
+// Phase 9: Lists
+import { ListsPage } from '@/features/lists/ListsPage'
+import { ListDetailPage } from '@/features/lists/ListDetailPage'
 
 // Phase 7: Schedule, Payments, Reports, Store, Portal
 import { SchedulePage } from '@/features/schedule/SchedulePage'
@@ -130,6 +135,10 @@ function App() {
             <Route path="workflows" element={<WorkflowsPage />} />
             <Route path="workflows/:id" element={<WorkflowEditorPage />} />
 
+            {/* Phase 9: Lists */}
+            <Route path="lists" element={<ListsPage />} />
+            <Route path="lists/:id" element={<ListDetailPage />} />
+
             {/* Settings (nested routes) */}
             <Route path="settings" element={<SettingsLayout />}>
               <Route index element={<Navigate to="/app/settings/profile" replace />} />
@@ -139,6 +148,7 @@ function App() {
               <Route path="users" element={<UsersPage />} />
               <Route path="general" element={<GeneralSettingsPage />} />
               <Route path="notifications" element={<NotificationSettingsPage />} />
+              <Route path="certifications" element={<CertificationsSettingsPage />} />
             </Route>
           </Route>
 

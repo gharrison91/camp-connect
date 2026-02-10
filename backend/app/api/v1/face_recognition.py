@@ -358,3 +358,111 @@ async def reprocess_photo(
         "faces_found": len(created_tags),
         "matches": created_tags,
     }
+
+
+@router.post(
+    "/reprocess-bulk",
+    status_code=status.HTTP_200_OK,
+)
+async def reprocess_photos_bulk(
+    body: Dict[str, Any] = None,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("photos.media.upload")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Bulk reprocess photos for face detection.
+    Body: { "photo_ids": ["uuid1", "uuid2", ...] | null }
+    null = all photos in org, array = specific photos.
+    Returns summary of processing results.
+    """
+    from app.models.photo import Photo as PhotoModel
+    from app.models.photo_face_tag import PhotoFaceTag
+
+    org_id = current_user["organization_id"]
+
+    # Determine which photos to process
+    if body and body.get("photo_ids"):
+        photo_ids = [uuid.UUID(pid) for pid in body["photo_ids"]]
+        query = (
+            select(PhotoModel)
+            .where(PhotoModel.id.in_(photo_ids))
+            .where(PhotoModel.organization_id == org_id)
+        )
+    else:
+        query = (
+            select(PhotoModel)
+            .where(PhotoModel.organization_id == org_id)
+            .order_by(PhotoModel.created_at.desc())
+            .limit(500)
+        )
+
+    result = await db.execute(query)
+    photos = result.scalars().all()
+
+    total = len(photos)
+    processed = 0
+    matches_found = 0
+    errors = 0
+
+    for photo in photos:
+        try:
+            if not photo.url:
+                continue
+
+            # Download photo bytes from Supabase
+            import httpx
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(photo.url, timeout=30.0)
+                if resp.status_code != 200:
+                    errors += 1
+                    continue
+                photo_bytes = resp.content
+
+            # Run face search
+            from app.services.rekognition_service import rekognition_service
+            search_results = await rekognition_service.search_faces_in_photo(
+                photo_bytes, org_id
+            )
+
+            # Delete existing tags
+            await db.execute(
+                select(PhotoFaceTag)
+                .where(PhotoFaceTag.photo_id == photo.id)
+            )
+            existing = await db.execute(
+                select(PhotoFaceTag).where(PhotoFaceTag.photo_id == photo.id)
+            )
+            for tag in existing.scalars().all():
+                await db.delete(tag)
+
+            # Create new tags
+            for face_match in search_results:
+                camper_id = face_match.get("camper_id")
+                if not camper_id:
+                    continue
+                new_tag = PhotoFaceTag(
+                    id=uuid.uuid4(),
+                    photo_id=photo.id,
+                    camper_id=uuid.UUID(camper_id),
+                    face_id=face_match.get("face_id"),
+                    bounding_box=face_match.get("bounding_box"),
+                    confidence=face_match.get("confidence"),
+                    similarity=face_match.get("similarity"),
+                )
+                db.add(new_tag)
+                matches_found += 1
+
+            processed += 1
+            await db.commit()
+        except Exception:
+            errors += 1
+            await db.rollback()
+
+    return {
+        "total": total,
+        "processed": processed,
+        "matches_found": matches_found,
+        "errors": errors,
+    }

@@ -9,7 +9,6 @@ import {
   ClipboardList,
   CreditCard,
   MessageSquare,
-  Heart,
   UserCog,
   Camera,
   BarChart3,
@@ -23,6 +22,7 @@ import {
   BedDouble,
   FileText,
   Workflow,
+  ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -44,13 +44,13 @@ const navItems = [
   { label: 'Activities', icon: Tent, path: '/app/activities', permission: 'core.activities.read' },
   { label: 'Bunks', icon: BedDouble, path: '/app/bunks', permission: 'core.bunks.read' },
   { label: 'Communications', icon: MessageSquare, path: '/app/communications', permission: 'comms.messages.read' },
-  { label: 'Health & Safety', icon: Heart, path: '/app/health-safety', permission: 'health.forms.read' },
   { label: 'Staff', icon: UserCog, path: '/app/staff', permission: 'staff.employees.read' },
   { label: 'Photos', icon: Camera, path: '/app/photos', permission: 'photos.media.view' },
   { label: 'Schedule', icon: CalendarDays, path: '/app/schedule', permission: 'scheduling.sessions.read' },
   { label: 'Payments', icon: CreditCard, path: '/app/payments', permission: 'payments.invoices.read' },
   { label: 'Analytics', icon: BarChart3, path: '/app/analytics', permission: 'analytics.dashboards.read' },
   { label: 'Reports', icon: FileBarChart, path: '/app/reports', permission: 'reports.export.read' },
+  { label: 'Lists', icon: ListChecks, path: '/app/lists', permission: null },
   { label: 'Store', icon: ShoppingBag, path: '/app/store', permission: 'store.manage.manage' },
   { label: 'Forms', icon: FileText, path: '/app/forms', permission: null },
   { label: 'Workflows', icon: Workflow, path: '/app/workflows', permission: null },
