@@ -43,12 +43,14 @@ export function useUploadPhoto() {
       category: string
       entity_id?: string
       caption?: string
+      custom_name?: string
     }) => {
       const formData = new FormData()
       formData.append('file', data.file)
       formData.append('category', data.category)
       if (data.entity_id) formData.append('entity_id', data.entity_id)
       if (data.caption) formData.append('caption', data.caption)
+      if (data.custom_name) formData.append('custom_name', data.custom_name)
       return api
         .post('/photos', formData, {
           headers: { 'Content-Type': undefined },

@@ -96,3 +96,22 @@ export function useUnlinkContact() {
     },
   })
 }
+
+export function useUploadProfilePhoto() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ camperId, file }: { camperId: string; file: File }) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      return api
+        .post(`/campers/${camperId}/profile-photo`, formData, {
+          headers: { 'Content-Type': undefined },
+        })
+        .then((r) => r.data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['camper-profile'] })
+      queryClient.invalidateQueries({ queryKey: ['campers'] })
+    },
+  })
+}

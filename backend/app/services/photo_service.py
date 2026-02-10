@@ -66,15 +66,36 @@ def _build_storage_path(
     category: str,
     entity_id: Optional[uuid.UUID],
     file_name: str,
+    custom_name: Optional[str] = None,
+    org_name: Optional[str] = None,
 ) -> str:
     """
     Build the storage path within the bucket.
-    Format: {organization_id}/{category}/{entity_id}/{uuid}_{file_name}
+    Format: {organization_id}/{category}/{entity_id}/{date}_{org_name}_{file_name}
+    If custom_name is provided, use it instead of the auto-generated name.
     """
-    unique_prefix = str(uuid.uuid4())[:8]
     entity_part = str(entity_id) if entity_id else "general"
-    # Sanitize the file name to avoid issues
-    safe_name = file_name.replace(" ", "_")
+    date_prefix = datetime.utcnow().strftime("%Y-%m-%d")
+
+    if custom_name:
+        # User-provided custom name — sanitize it
+        safe_name = custom_name.strip().replace(" ", "_")
+        # Preserve the original extension
+        ext = ""
+        if "." in file_name:
+            ext = "." + file_name.rsplit(".", 1)[-1].lower()
+        if not safe_name.endswith(ext):
+            safe_name = safe_name + ext
+    else:
+        # Auto-rename: {date}_{org_name}_{original_name}
+        safe_name = file_name.replace(" ", "_")
+        if org_name:
+            org_slug = org_name.strip().replace(" ", "-").lower()[:30]
+            safe_name = f"{date_prefix}_{org_slug}_{safe_name}"
+        else:
+            safe_name = f"{date_prefix}_{safe_name}"
+
+    unique_prefix = str(uuid.uuid4())[:8]
     return f"{organization_id}/{category}/{entity_part}/{unique_prefix}_{safe_name}"
 
 
@@ -103,6 +124,8 @@ async def upload_photo(
     category: str,
     entity_id: Optional[uuid.UUID] = None,
     caption: Optional[str] = None,
+    custom_name: Optional[str] = None,
+    org_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Upload a photo to Supabase Storage and create a database record.
@@ -138,10 +161,22 @@ async def upload_photo(
     if file_size == 0:
         raise ValueError("File is empty")
 
+    # If org_name not provided, look it up
+    if not org_name:
+        from app.models.organization import Organization
+        org_result = await db.execute(
+            select(Organization).where(Organization.id == organization_id)
+        )
+        org = org_result.scalar_one_or_none()
+        org_name = org.name if org else None
+
     # Build storage path and determine bucket
     file_name = file.filename or "unnamed"
     bucket = _get_bucket(category)
-    storage_path = _build_storage_path(organization_id, category, entity_id, file_name)
+    storage_path = _build_storage_path(
+        organization_id, category, entity_id, file_name,
+        custom_name=custom_name, org_name=org_name,
+    )
 
     # Upload to Supabase Storage
     try:
@@ -184,6 +219,60 @@ async def upload_photo(
     url = get_public_url(storage_path, bucket)
 
     return _photo_to_dict(photo, url)
+
+
+async def upload_profile_photo(
+    db: AsyncSession,
+    *,
+    organization_id: uuid.UUID,
+    file: UploadFile,
+    entity_id: uuid.UUID,
+) -> str:
+    """
+    Upload a profile photo to Supabase Storage WITHOUT creating a Photo record.
+    Returns a public URL suitable for storing in reference_photo_url.
+    This is separate from the album photos system.
+    """
+    content_type = file.content_type or "application/octet-stream"
+    if content_type not in ALLOWED_MIME_TYPES:
+        raise ValueError(
+            f"File type '{content_type}' not allowed. "
+            f"Allowed types: JPEG, PNG, GIF, WebP, SVG, HEIC"
+        )
+
+    file_content = await file.read()
+    file_size = len(file_content)
+
+    if file_size > MAX_FILE_SIZE:
+        raise ValueError(
+            f"File size ({file_size / 1024 / 1024:.1f} MB) exceeds "
+            f"maximum of {MAX_FILE_SIZE / 1024 / 1024:.0f} MB"
+        )
+
+    if file_size == 0:
+        raise ValueError("File is empty")
+
+    # Build a deterministic path so re-uploads overwrite the old profile photo
+    ext = ""
+    if file.filename and "." in file.filename:
+        ext = "." + file.filename.rsplit(".", 1)[-1].lower()
+    storage_path = f"{organization_id}/profiles/{entity_id}/profile{ext}"
+    bucket = "camper-photos"
+
+    try:
+        supabase = _get_supabase()
+        # Use upsert=True to overwrite if a profile photo already exists
+        supabase.storage.from_(bucket).upload(
+            path=storage_path,
+            file=file_content,
+            file_options={"content-type": content_type, "upsert": "true"},
+        )
+    except Exception as e:
+        logger.error(f"Profile photo upload failed: {e}")
+        raise ValueError(f"Failed to upload profile photo: {e}")
+
+    # Return a permanent public URL (not a signed URL that expires)
+    return f"{settings.supabase_url}/storage/v1/object/public/{bucket}/{storage_path}"
 
 
 async def list_photos(

@@ -26,7 +26,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useCamperProfile } from '@/hooks/useCamperProfile'
 import { useUploadPhoto } from '@/hooks/usePhotos'
-import { useUpdateCamper } from '@/hooks/useCampers'
+import { useUploadProfilePhoto } from '@/hooks/useCampers'
 import { useToast } from '@/components/ui/Toast'
 import { CamperEditModal } from './CamperEditModal'
 import type {
@@ -730,38 +730,49 @@ function EventsTab({ profile }: { profile: CamperProfile }) {
 
 function PhotosTab({
   profile,
-  onUploadPhoto,
-  photoInputRef,
-  isUploading,
+  onUploadProfilePhoto,
+  onUploadAlbumPhoto,
+  profilePhotoInputRef,
+  albumPhotoInputRef,
+  isUploadingProfile,
+  isUploadingAlbum,
 }: {
   profile: CamperProfile
-  onUploadPhoto: (e: React.ChangeEvent<HTMLInputElement>) => void
-  photoInputRef: React.RefObject<HTMLInputElement | null>
-  isUploading?: boolean
+  onUploadProfilePhoto: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onUploadAlbumPhoto: (e: React.ChangeEvent<HTMLInputElement>) => void
+  profilePhotoInputRef: React.RefObject<HTMLInputElement | null>
+  albumPhotoInputRef: React.RefObject<HTMLInputElement | null>
+  isUploadingProfile?: boolean
+  isUploadingAlbum?: boolean
 }) {
   return (
     <div className="space-y-6">
-      {/* Reference Photo */}
+      {/* Reference / Profile Photo */}
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-semibold text-gray-900">Reference Photo</h3>
+          <div>
+            <h3 className="text-base font-semibold text-gray-900">Profile Photo</h3>
+            <p className="mt-0.5 text-xs text-gray-500">
+              This is the camper&apos;s primary identification photo. Stored separately from the photo album.
+            </p>
+          </div>
           <button
-            onClick={() => photoInputRef.current?.click()}
-            disabled={isUploading}
+            onClick={() => profilePhotoInputRef.current?.click()}
+            disabled={isUploadingProfile}
             className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
           >
-            {isUploading ? (
+            {isUploadingProfile ? (
               <Upload className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Camera className="h-3.5 w-3.5" />
             )}
-            {isUploading ? 'Uploading...' : 'Update Photo'}
+            {isUploadingProfile ? 'Uploading...' : 'Update Profile Photo'}
           </button>
           <input
-            ref={photoInputRef}
+            ref={profilePhotoInputRef}
             type="file"
             accept="image/*"
-            onChange={onUploadPhoto}
+            onChange={onUploadProfilePhoto}
             className="hidden"
           />
         </div>
@@ -769,7 +780,7 @@ function PhotosTab({
           <div className="flex justify-center">
             <img
               src={profile.reference_photo_url}
-              alt={`${profile.first_name} ${profile.last_name} reference photo`}
+              alt={`${profile.first_name} ${profile.last_name} profile photo`}
               className="h-48 w-48 rounded-xl object-cover shadow-sm"
             />
           </div>
@@ -782,12 +793,43 @@ function PhotosTab({
         )}
       </div>
 
+      {/* Upload to Album */}
+      <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900">Photo Album</h3>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Upload photos to this camper&apos;s album. Photos are auto-renamed with today&apos;s date and your camp name.
+            </p>
+          </div>
+          <button
+            onClick={() => albumPhotoInputRef.current?.click()}
+            disabled={isUploadingAlbum}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isUploadingAlbum ? (
+              <Upload className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="h-3.5 w-3.5" />
+            )}
+            {isUploadingAlbum ? 'Uploading...' : 'Upload to Album'}
+          </button>
+          <input
+            ref={albumPhotoInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onUploadAlbumPhoto}
+            className="hidden"
+          />
+        </div>
+      </div>
+
       {/* Photo Grid */}
       {profile.photos.length === 0 ? (
         <EmptyState
           icon={Camera}
           title="No photos found"
-          description="No photos found for this camper."
+          description="No photos found for this camper. Upload photos above or they will appear here when detected via face recognition."
         />
       ) : (
         <div>
@@ -898,37 +940,46 @@ export function CamperDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [showEditModal, setShowEditModal] = useState(false)
-  const photoInputRef = useRef<HTMLInputElement>(null)
+  const profilePhotoInputRef = useRef<HTMLInputElement>(null)
+  const albumPhotoInputRef = useRef<HTMLInputElement>(null)
 
   const { data: profile, isLoading, error, refetch } = useCamperProfile(id)
-  const uploadPhoto = useUploadPhoto()
-  const updateCamper = useUpdateCamper()
+  const uploadProfilePhoto = useUploadProfilePhoto()
+  const uploadAlbumPhoto = useUploadPhoto()
   const { toast } = useToast()
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload profile photo — goes directly to camper's reference_photo_url (NOT the photo album)
+  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !id) return
 
     try {
-      const result = await uploadPhoto.mutateAsync({
+      await uploadProfilePhoto.mutateAsync({ camperId: id, file })
+      refetch()
+      toast({ type: 'success', message: 'Profile photo updated!' })
+    } catch {
+      toast({ type: 'error', message: 'Failed to upload profile photo.' })
+    }
+    if (profilePhotoInputRef.current) profilePhotoInputRef.current.value = ''
+  }
+
+  // Upload album photo — creates a Photo record with auto-rename (date + camp name)
+  const handleAlbumPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !id) return
+
+    try {
+      await uploadAlbumPhoto.mutateAsync({
         file,
         category: 'camper',
         entity_id: id,
       })
-      // Update camper's reference_photo_url with the new photo URL
-      if (result?.url) {
-        await updateCamper.mutateAsync({
-          id,
-          data: { reference_photo_url: result.url } as any,
-        })
-      }
       refetch()
-      toast({ type: 'success', message: 'Photo updated successfully!' })
+      toast({ type: 'success', message: 'Photo added to album!' })
     } catch {
-      toast({ type: 'error', message: 'Failed to upload photo.' })
+      toast({ type: 'error', message: 'Failed to upload album photo.' })
     }
-    // Reset input
-    if (photoInputRef.current) photoInputRef.current.value = ''
+    if (albumPhotoInputRef.current) albumPhotoInputRef.current.value = ''
   }
 
   // Loading state
@@ -1090,9 +1141,12 @@ export function CamperDetailPage() {
         {activeTab === 'photos' && (
           <PhotosTab
             profile={profile}
-            onUploadPhoto={handlePhotoUpload}
-            photoInputRef={photoInputRef}
-            isUploading={uploadPhoto.isPending}
+            onUploadProfilePhoto={handleProfilePhotoUpload}
+            onUploadAlbumPhoto={handleAlbumPhotoUpload}
+            profilePhotoInputRef={profilePhotoInputRef}
+            albumPhotoInputRef={albumPhotoInputRef}
+            isUploadingProfile={uploadProfilePhoto.isPending}
+            isUploadingAlbum={uploadAlbumPhoto.isPending}
           />
         )}
         {activeTab === 'communications' && <CommunicationsTab profile={profile} />}

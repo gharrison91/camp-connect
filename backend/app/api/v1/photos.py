@@ -29,6 +29,7 @@ async def upload_photo(
     category: str = Form(default="general"),
     entity_id: Optional[str] = Form(default=None),
     caption: Optional[str] = Form(default=None),
+    custom_name: Optional[str] = Form(default=None),
     current_user: Dict[str, Any] = Depends(
         require_permission("photos.media.upload")
     ),
@@ -41,6 +42,7 @@ async def upload_photo(
     - **category**: One of: camper, event, general
     - **entity_id**: Optional UUID of the associated camper or event
     - **caption**: Optional caption for the photo
+    - **custom_name**: Optional custom filename override (auto-renamed with date + camp name if not provided)
     """
     parsed_entity_id = None
     if entity_id:
@@ -61,6 +63,7 @@ async def upload_photo(
             category=category,
             entity_id=parsed_entity_id,
             caption=caption,
+            custom_name=custom_name,
         )
     except ValueError as e:
         raise HTTPException(

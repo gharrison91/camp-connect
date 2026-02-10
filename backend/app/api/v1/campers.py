@@ -8,13 +8,13 @@ from __future__ import annotations
 import uuid
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_permission
 from app.database import get_db
 from app.schemas.camper import CamperContactLink, CamperCreate, CamperResponse, CamperUpdate
-from app.services import camper_service
+from app.services import camper_service, photo_service
 from app.services.camper_profile_service import get_camper_profile
 
 router = APIRouter(prefix="/campers", tags=["Campers"])
@@ -144,6 +144,48 @@ async def update_camper(
             detail="Camper not found",
         )
     return result
+
+
+@router.post("/{camper_id}/profile-photo")
+async def upload_profile_photo(
+    camper_id: uuid.UUID,
+    file: UploadFile = File(...),
+    current_user: Dict[str, Any] = Depends(
+        require_permission("core.campers.update")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Upload a profile photo for a camper.
+    This stores the photo directly in Supabase Storage and updates
+    the camper's reference_photo_url. Does NOT create a Photo album record.
+    """
+    try:
+        url = await photo_service.upload_profile_photo(
+            db,
+            organization_id=current_user["organization_id"],
+            file=file,
+            entity_id=camper_id,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    # Update the camper's reference_photo_url
+    result = await camper_service.update_camper(
+        db,
+        organization_id=current_user["organization_id"],
+        camper_id=camper_id,
+        data={"reference_photo_url": url},
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Camper not found",
+        )
+    return {"url": url}
 
 
 @router.delete(
