@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_permission
+from app.api.deps import get_current_user, require_permission
 from app.models.bunk_buddy import BunkBuddyRequest
 from app.models.camper import Camper
 from app.models.event import Event
@@ -187,7 +187,7 @@ async def update_buddy_request(
 
     req.status = body.status
     req.admin_notes = body.admin_notes
-    req.reviewed_by = current_user["user_id"]
+    req.reviewed_by = current_user["id"]
     req.reviewed_at = datetime.utcnow()
 
     await db.commit()
