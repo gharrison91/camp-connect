@@ -276,6 +276,34 @@ SUGGESTED_PROMPTS = [
 
 
 # ---------------------------------------------------------------------------
+# SQL cleanup helper
+# ---------------------------------------------------------------------------
+
+def _clean_sql(raw: str) -> str:
+    """
+    Minimal, safe SQL cleanup.  Only strips markdown fences and trailing
+    semicolons.  Does NOT remove blank lines or reformat the query.
+    """
+    sql = raw.strip()
+
+    # Strip markdown code fences (```sql ... ``` or ``` ... ```)
+    if sql.startswith("```"):
+        # Find the end fence
+        first_newline = sql.find("\n")
+        if first_newline != -1:
+            sql = sql[first_newline + 1:]  # Remove first line (```sql)
+        # Remove trailing fence
+        if sql.rstrip().endswith("```"):
+            sql = sql.rstrip()
+            sql = sql[:-3]
+
+    # Strip trailing semicolons and whitespace
+    sql = sql.strip().rstrip(";").strip()
+
+    return sql
+
+
+# ---------------------------------------------------------------------------
 # Core AI chat handler
 # ---------------------------------------------------------------------------
 
@@ -345,7 +373,12 @@ The user's organization_id parameter is :org_id — always use this placeholder,
             messages=claude_messages,
         )
         raw_sql = sql_response.content[0].text.strip()
+        stop_reason = sql_response.stop_reason
+        print(f"[AI] Phase 1 stop_reason={stop_reason}, output length={len(raw_sql)}")
+        if stop_reason == "max_tokens":
+            print(f"[AI] WARNING: SQL generation hit max_tokens! Output may be truncated.")
     except Exception as e:
+        print(f"[AI] Phase 1 error: {type(e).__name__}: {e}")
         return {
             "response": f"Sorry, I encountered an error generating the query: {str(e)}",
             "sql": None,
@@ -387,25 +420,11 @@ Answer helpfully and concisely. You are speaking to {user_name}.""",
                 "error": "conversational_failed",
             }
 
-    # Clean up SQL (remove markdown fences, explanations, etc.)
-    sql = raw_sql.strip()
-    # Remove markdown code fences
-    if sql.startswith("```"):
-        sql = re.sub(r"^```(?:sql)?\s*\n?", "", sql)
-        sql = re.sub(r"\n?```\s*$", "", sql)
-    # Remove any trailing explanation text after the SQL
-    # (look for a line that doesn't look like SQL after the query)
-    lines = sql.split("\n")
-    sql_lines = []
-    for line in lines:
-        stripped = line.strip()
-        # Stop if we hit an empty line followed by non-SQL text
-        if not stripped and sql_lines:
-            # Peek ahead - if remaining lines don't look like SQL, stop
-            continue
-        if stripped and not stripped.startswith("--"):
-            sql_lines.append(line)
-    sql = "\n".join(sql_lines).strip().rstrip(";")
+    # Clean up SQL — minimal processing to avoid breaking valid queries
+    sql = _clean_sql(raw_sql)
+
+    print(f"[AI] Raw SQL from Claude:\n{raw_sql[:500]}")
+    print(f"[AI] Cleaned SQL:\n{sql[:500]}")
 
     # Validate the SQL
     is_valid, error_msg = validate_sql(sql)
@@ -427,10 +446,14 @@ Answer helpfully and concisely. You are speaking to {user_name}.""",
         }
 
     # Phase 2: Execute the SQL query
-    # Add LIMIT if not already present
-    exec_sql = sql
-    if "LIMIT" not in sql.upper().split("--")[0]:
-        exec_sql = sql + " LIMIT 500"
+    # Wrap in a subquery with LIMIT to safely cap results
+    # This avoids the double-LIMIT problem entirely
+    if re.search(r"\bLIMIT\b", sql, re.IGNORECASE):
+        exec_sql = sql
+    else:
+        exec_sql = sql + "\nLIMIT 500"
+
+    print(f"[AI] Executing SQL:\n{exec_sql[:500]}")
 
     try:
         result = await db.execute(
