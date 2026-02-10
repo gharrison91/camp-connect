@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     # Anthropic (Claude AI Insights)
     anthropic_api_key: str = ""
-    ai_model: str = "claude-sonnet-4-20250514"
+    ai_model: str = "claude-sonnet-4-5-20241022"
     ai_max_tokens: int = 4096
 
     # AWS Rekognition (facial recognition for camper photos)

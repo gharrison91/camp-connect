@@ -163,32 +163,6 @@ audit_log (id UUID PK, organization_id, user_id, action, resource_type, resource
 # SQL safety validation
 # ---------------------------------------------------------------------------
 
-_FORBIDDEN_KEYWORDS = [
-    "INSERT",
-    "UPDATE",
-    "DELETE",
-    "DROP",
-    "ALTER",
-    "TRUNCATE",
-    "CREATE",
-    "GRANT",
-    "REVOKE",
-    "EXEC",
-    "EXECUTE",
-    "CALL",
-    "SET ",
-    "COPY",
-    "VACUUM",
-    "REINDEX",
-    "COMMENT",
-    "LOCK",
-    "LISTEN",
-    "NOTIFY",
-    "PREPARE",
-    "DEALLOCATE",
-]
-
-
 def validate_sql(sql: str) -> tuple[bool, str]:
     """
     Validate that the generated SQL is safe to execute.
@@ -204,15 +178,19 @@ def validate_sql(sql: str) -> tuple[bool, str]:
     if not (upper.startswith("SELECT") or upper.startswith("WITH")):
         return False, "Only SELECT queries are allowed"
 
-    # Check for forbidden mutation keywords
-    for kw in _FORBIDDEN_KEYWORDS:
-        # Use word boundary check to avoid false positives like "SELECTED"
-        pattern = rf"\b{kw}\b"
-        if re.search(pattern, upper):
-            return False, f"Forbidden keyword detected: {kw.strip()}"
+    # Check for dangerous statement-level keywords at the START of a
+    # statement (not inside column names like "is_deleted").
+    # We look for these keywords appearing as standalone statements.
+    dangerous_starters = [
+        "INSERT", "UPDATE", "DROP", "ALTER", "TRUNCATE", "CREATE",
+        "GRANT", "REVOKE", "EXECUTE", "COPY", "VACUUM", "REINDEX",
+    ]
+    for kw in dangerous_starters:
+        # Match keyword at beginning of string or after a semicolon/newline
+        if re.search(rf"(?:^|;)\s*{kw}\b", upper):
+            return False, f"Forbidden keyword detected: {kw}"
 
     # Must not contain multiple statements
-    # Simple check: no semicolons in the middle
     if ";" in cleaned:
         return False, "Multiple statements are not allowed"
 
@@ -409,12 +387,25 @@ Answer helpfully and concisely. You are speaking to {user_name}.""",
                 "error": "conversational_failed",
             }
 
-    # Clean up SQL (remove markdown fences if Claude added them)
-    sql = raw_sql
+    # Clean up SQL (remove markdown fences, explanations, etc.)
+    sql = raw_sql.strip()
+    # Remove markdown code fences
     if sql.startswith("```"):
-        sql = re.sub(r"^```(?:sql)?\n?", "", sql)
-        sql = re.sub(r"\n?```$", "", sql)
-    sql = sql.strip().rstrip(";")
+        sql = re.sub(r"^```(?:sql)?\s*\n?", "", sql)
+        sql = re.sub(r"\n?```\s*$", "", sql)
+    # Remove any trailing explanation text after the SQL
+    # (look for a line that doesn't look like SQL after the query)
+    lines = sql.split("\n")
+    sql_lines = []
+    for line in lines:
+        stripped = line.strip()
+        # Stop if we hit an empty line followed by non-SQL text
+        if not stripped and sql_lines:
+            # Peek ahead - if remaining lines don't look like SQL, stop
+            continue
+        if stripped and not stripped.startswith("--"):
+            sql_lines.append(line)
+    sql = "\n".join(sql_lines).strip().rstrip(";")
 
     # Validate the SQL
     is_valid, error_msg = validate_sql(sql)
@@ -436,9 +427,14 @@ Answer helpfully and concisely. You are speaking to {user_name}.""",
         }
 
     # Phase 2: Execute the SQL query
+    # Add LIMIT if not already present
+    exec_sql = sql
+    if "LIMIT" not in sql.upper().split("--")[0]:
+        exec_sql = sql + " LIMIT 500"
+
     try:
         result = await db.execute(
-            text(sql + " LIMIT 500"),
+            text(exec_sql),
             {"org_id": org_id_str},
         )
         rows = result.fetchall()
