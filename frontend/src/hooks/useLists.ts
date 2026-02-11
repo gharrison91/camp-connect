@@ -126,3 +126,41 @@ export function useRemoveListMember() {
     },
   })
 }
+
+// ─── Preview Types & Hooks ──────────────────────────────────
+
+export interface PreviewResultItem {
+  id: string
+  name: string
+  email: string | null
+  extra: Record<string, string> | null
+}
+
+export interface PreviewResponse {
+  total_count: number
+  results: PreviewResultItem[]
+  entity_type: string
+}
+
+export interface PreviewRequestPayload {
+  entity_type: string
+  filter_criteria: Record<string, unknown>
+}
+
+export function usePreviewFilter() {
+  return useMutation<PreviewResponse, Error, PreviewRequestPayload>({
+    mutationFn: (data) =>
+      api.post('/lists/preview', data).then((r) => r.data),
+  })
+}
+
+export function usePreviewSavedList() {
+  const queryClient = useQueryClient()
+  return useMutation<PreviewResponse, Error, string>({
+    mutationFn: (listId) =>
+      api.post(`/lists/${listId}/preview`).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['saved-lists'] })
+    },
+  })
+}

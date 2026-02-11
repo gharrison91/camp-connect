@@ -70,6 +70,13 @@ from app.api.v1.job_titles import router as job_titles_router
 from app.api.v1.bunk_buddies import router as bunk_buddies_router
 from app.api.v1.ai import router as ai_router
 
+# Phase 11: Camper Messaging, Medicine, Schools, Alerts, Photo Albums
+from app.api.v1.camper_messages import router as camper_messages_router
+from app.api.v1.medicine import router as medicine_router
+from app.api.v1.schools import router as schools_router
+from app.api.v1.alerts import router as alerts_router
+from app.api.v1.photo_albums import router as photo_albums_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -166,6 +173,13 @@ app.include_router(lists_router, prefix=settings.api_v1_prefix)
 app.include_router(job_titles_router, prefix=settings.api_v1_prefix)
 app.include_router(bunk_buddies_router, prefix=settings.api_v1_prefix)
 app.include_router(ai_router, prefix=settings.api_v1_prefix)
+
+# Phase 11: Camper Messaging, Medicine, Schools, Alerts, Photo Albums
+app.include_router(camper_messages_router, prefix=settings.api_v1_prefix)
+app.include_router(medicine_router, prefix=settings.api_v1_prefix)
+app.include_router(schools_router, prefix=settings.api_v1_prefix)
+app.include_router(alerts_router, prefix=settings.api_v1_prefix)
+app.include_router(photo_albums_router, prefix=settings.api_v1_prefix)
 
 
 @app.exception_handler(Exception)

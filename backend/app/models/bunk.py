@@ -1,6 +1,7 @@
 """
-Camp Connect - Bunk & Bunk Assignment Models
-Cabin/bunk management and camper-to-bunk assignments.
+Camp Connect - Cabin, Bunk & Bunk Assignment Models
+Cabin = house/building, Bunk = room within a cabin.
+Camper-to-bunk assignments.
 """
 
 from __future__ import annotations
@@ -9,16 +10,47 @@ import uuid
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import Date, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 
+class Cabin(Base, TimestampMixin, SoftDeleteMixin):
+    """
+    Cabin model - a physical building/house that contains multiple bunks (rooms).
+    Scoped to an organization.
+    """
+
+    __tablename__ = "cabins"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id"),
+        index=True,
+        nullable=False,
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    total_capacity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    gender_restriction: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="all"
+    )  # all, male, female
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # Relationships
+    organization = relationship("Organization", backref="cabins")
+    bunks = relationship("Bunk", back_populates="cabin", lazy="selectin")
+
+
 class Bunk(Base, TimestampMixin, SoftDeleteMixin):
     """
-    Bunk model - cabins/bunks where campers sleep.
+    Bunk model - a room within a cabin where campers sleep.
     Scoped to an organization via organization_id.
     """
 
@@ -34,6 +66,14 @@ class Bunk(Base, TimestampMixin, SoftDeleteMixin):
         ForeignKey("organizations.id"),
         index=True,
         nullable=False,
+    )
+
+    # Cabin hierarchy — cabin_id is optional for backward compatibility
+    cabin_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("cabins.id"),
+        index=True,
+        nullable=True,
     )
 
     # Basic info
@@ -60,6 +100,7 @@ class Bunk(Base, TimestampMixin, SoftDeleteMixin):
 
     # Relationships
     organization = relationship("Organization", backref="bunks")
+    cabin = relationship("Cabin", back_populates="bunks")
     counselor = relationship("User", foreign_keys=[counselor_user_id])
     assignments = relationship(
         "BunkAssignment", back_populates="bunk", lazy="selectin"

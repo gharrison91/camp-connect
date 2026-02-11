@@ -59,6 +59,7 @@ const triggerLabels: Record<string, string> = {
   schedule: 'Scheduled',
   manual: 'Manual Enrollment',
   form_submitted: 'Form Submission',
+  list: 'List Enrollment',
 }
 
 export function WorkflowsPage() {

@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.schedule import Schedule, ScheduleAssignment
+from app.models.user import User
 
 
 # ---------------------------------------------------------------------------
@@ -373,3 +374,86 @@ def _assignment_to_dict(assignment: ScheduleAssignment) -> Dict[str, Any]:
         "bunk_name": bunk.name if bunk else None,
         "created_at": assignment.created_at,
     }
+
+
+# ---------------------------------------------------------------------------
+# Staff Schedule View
+# ---------------------------------------------------------------------------
+
+
+async def get_staff_schedule_view(
+    db: AsyncSession,
+    *,
+    organization_id: uuid.UUID,
+    event_id: uuid.UUID,
+    date: date,
+) -> List[Dict[str, Any]]:
+    """
+    Get a staff-centric view of the daily schedule.
+
+    For each staff member who appears in staff_user_ids of any schedule
+    on the given event/date, return their name and the list of sessions
+    they are assigned to.
+    """
+    # 1. Get all schedules for this event + date
+    query = (
+        select(Schedule)
+        .options(selectinload(Schedule.activity))
+        .where(Schedule.organization_id == organization_id)
+        .where(Schedule.event_id == event_id)
+        .where(Schedule.date == date)
+        .where(Schedule.deleted_at.is_(None))
+        .where(Schedule.is_cancelled.is_(False))
+        .order_by(Schedule.start_time)
+    )
+    result = await db.execute(query)
+    schedules = result.scalars().all()
+
+    # 2. Collect all unique staff user_ids and map userId -> list of sessions
+    staff_sessions: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    all_user_ids: set = set()
+
+    for s in schedules:
+        if not s.staff_user_ids:
+            continue
+        for uid_str in s.staff_user_ids:
+            uid = str(uid_str)
+            all_user_ids.add(uid)
+            staff_sessions[uid].append({
+                "schedule_id": str(s.id),
+                "activity_name": s.activity.name if s.activity else "Activity",
+                "start_time": s.start_time,
+                "end_time": s.end_time,
+                "location": s.location,
+            })
+
+    if not all_user_ids:
+        return []
+
+    # 3. Fetch user names for all staff user IDs
+    user_uuids = [uuid.UUID(uid) for uid in all_user_ids]
+    user_query = (
+        select(User)
+        .where(User.id.in_(user_uuids))
+        .where(User.organization_id == organization_id)
+    )
+    user_result = await db.execute(user_query)
+    users = user_result.scalars().all()
+    user_map = {str(u.id): u for u in users}
+
+    # 4. Build response
+    entries = []
+    for uid in sorted(all_user_ids):
+        user = user_map.get(uid)
+        if user is None:
+            continue
+        entries.append({
+            "user_id": uid,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "sessions": staff_sessions[uid],
+        })
+
+    # Sort by last name, then first name
+    entries.sort(key=lambda e: (e["last_name"], e["first_name"]))
+    return entries

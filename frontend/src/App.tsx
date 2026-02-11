@@ -58,6 +58,11 @@ import { ListDetailPage } from '@/features/lists/ListDetailPage'
 // Phase 10: AI Insights
 import { AIInsightsPage } from '@/features/ai/AIInsightsPage'
 
+// Phase 11: Messaging, Health, Alerts
+import { CamperMessagingPage } from '@/features/messaging/CamperMessagingPage'
+import { NurseSchedulePage } from '@/features/health/NurseSchedulePage'
+import { AlertsPage } from '@/features/alerts/AlertsPage'
+
 // Phase 7: Schedule, Payments, Reports, Store, Portal
 import { SchedulePage } from '@/features/schedule/SchedulePage'
 import { PaymentsPage } from '@/features/payments/PaymentsPage'
@@ -68,6 +73,8 @@ import { PortalDashboard } from '@/features/portal/PortalDashboard'
 import { PortalCamperView } from '@/features/portal/PortalCamperView'
 import { PortalPhotos } from '@/features/portal/PortalPhotos'
 import { PortalInvoices } from '@/features/portal/PortalInvoices'
+import { PortalMessages } from '@/features/portal/PortalMessages'
+import { PortalMedicine } from '@/features/portal/PortalMedicine'
 
 function App() {
   return (
@@ -146,6 +153,11 @@ function App() {
             {/* Phase 10: AI Insights */}
             <Route path="ai-insights" element={<AIInsightsPage />} />
 
+            {/* Phase 11: Messaging, Health, Alerts */}
+            <Route path="camper-messages" element={<CamperMessagingPage />} />
+            <Route path="nurse-schedule" element={<NurseSchedulePage />} />
+            <Route path="alerts" element={<AlertsPage />} />
+
             {/* Settings (nested routes) */}
             <Route path="settings" element={<SettingsLayout />}>
               <Route index element={<Navigate to="/app/settings/profile" replace />} />
@@ -173,6 +185,8 @@ function App() {
             <Route path="campers/:id" element={<PortalCamperView />} />
             <Route path="photos" element={<PortalPhotos />} />
             <Route path="invoices" element={<PortalInvoices />} />
+            <Route path="messages" element={<PortalMessages />} />
+            <Route path="medicine" element={<PortalMedicine />} />
           </Route>
 
           {/* Legacy redirects - old routes to new /app prefix */}

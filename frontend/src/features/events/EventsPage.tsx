@@ -99,13 +99,18 @@ export function EventsPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-          Events
-        </h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+            Events
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage camp sessions, programs, and special events
+          </p>
+        </div>
         {hasPermission('core.events.create') && (
           <button
             onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
           >
             <Plus className="h-4 w-4" />
             Create Event
@@ -166,7 +171,7 @@ export function EventsPage() {
               <div
                 key={event.id}
                 onClick={() => navigate(`/events/${event.id}`)}
-                className="group cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:border-gray-200 hover:shadow-md"
+                className="group cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-200 hover:shadow-lg"
               >
                 <div className="p-5">
                   {/* Header */}

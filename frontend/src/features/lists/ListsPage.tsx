@@ -19,20 +19,29 @@ import {
   useSavedLists,
   useCreateSavedList,
   useDeleteSavedList,
+  usePreviewFilter,
 } from '@/hooks/useLists'
 import { useToast } from '@/components/ui/Toast'
+import {
+  FilterBuilder,
+  createEmptyCriteria,
+  type FilterCriteria,
+} from './FilterBuilder'
 
 export function ListsPage() {
   const { toast } = useToast()
   const { data: lists = [], isLoading } = useSavedLists()
   const createList = useCreateSavedList()
   const deleteList = useDeleteSavedList()
+  const previewFilter = usePreviewFilter()
 
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
   const [newDescription, setNewDescription] = useState('')
   const [newListType, setNewListType] = useState<'static' | 'dynamic'>('static')
   const [newEntityType, setNewEntityType] = useState('contact')
+  const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>(createEmptyCriteria())
+  const [previewCount, setPreviewCount] = useState<number | null>(null)
   const [search, setSearch] = useState('')
 
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
@@ -46,13 +55,28 @@ export function ListsPage() {
         description: newDescription.trim() || undefined,
         list_type: newListType,
         entity_type: newEntityType,
+        filter_criteria: newListType === 'dynamic' ? (filterCriteria as unknown as Record<string, unknown>) : undefined,
       })
       toast({ type: 'success', message: 'List created!' })
       setShowCreate(false)
       setNewName('')
       setNewDescription('')
+      setFilterCriteria(createEmptyCriteria())
+      setPreviewCount(null)
     } catch {
       toast({ type: 'error', message: 'Failed to create list' })
+    }
+  }
+
+  const handlePreview = async () => {
+    try {
+      const result = await previewFilter.mutateAsync({
+        entity_type: newEntityType,
+        filter_criteria: filterCriteria as unknown as Record<string, unknown>,
+      })
+      setPreviewCount(result.total_count)
+    } catch {
+      toast({ type: 'error', message: 'Failed to preview filter' })
     }
   }
 
@@ -164,6 +188,25 @@ export function ListsPage() {
               </select>
             </div>
           </div>
+
+          {/* Filter Builder for Dynamic Lists */}
+          {newListType === 'dynamic' && (
+            <div className="mt-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Filter className="h-4 w-4 text-purple-600" />
+                <h4 className="text-sm font-semibold text-gray-900">Filter Criteria</h4>
+              </div>
+              <FilterBuilder
+                entityType={newEntityType}
+                criteria={filterCriteria}
+                onChange={(c) => { setFilterCriteria(c); setPreviewCount(null) }}
+                onPreview={handlePreview}
+                previewCount={previewCount}
+                isPreviewLoading={previewFilter.isPending}
+              />
+            </div>
+          )}
+
           <button
             onClick={handleCreate}
             disabled={!newName.trim() || createList.isPending}

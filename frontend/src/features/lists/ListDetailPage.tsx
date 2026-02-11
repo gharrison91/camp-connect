@@ -3,7 +3,7 @@
  * View and manage members of a saved list.
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -14,6 +14,7 @@ import {
   Filter,
   X,
   Mail,
+  Save,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -21,8 +22,17 @@ import {
   useAddListMember,
   useRemoveListMember,
   useUpdateSavedList,
+  usePreviewSavedList,
+  usePreviewFilter,
 } from '@/hooks/useLists'
 import { useToast } from '@/components/ui/Toast'
+import {
+  FilterBuilder,
+  PreviewResultsTable,
+  createEmptyCriteria,
+  type FilterCriteria,
+  type PreviewResult,
+} from './FilterBuilder'
 
 export function ListDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -32,12 +42,31 @@ export function ListDetailPage() {
   const addMember = useAddListMember()
   const removeMember = useRemoveListMember()
   const updateList = useUpdateSavedList()
+  const previewSavedList = usePreviewSavedList()
+  const previewFilter = usePreviewFilter()
 
   const [showAddMember, setShowAddMember] = useState(false)
   const [newEntityId, setNewEntityId] = useState('')
   const [editingName, setEditingName] = useState(false)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
+
+  // Dynamic list filter state
+  const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>(createEmptyCriteria())
+  const [criteriaInitialized, setCriteriaInitialized] = useState(false)
+  const [previewResults, setPreviewResults] = useState<PreviewResult[]>([])
+  const [previewCount, setPreviewCount] = useState<number | null>(null)
+  const [filterDirty, setFilterDirty] = useState(false)
+
+  // Initialize filter criteria from saved list data
+  useEffect(() => {
+    if (list && list.list_type === 'dynamic' && !criteriaInitialized) {
+      if (list.filter_criteria && typeof list.filter_criteria === 'object' && 'groups' in list.filter_criteria) {
+        setFilterCriteria(list.filter_criteria as unknown as FilterCriteria)
+      }
+      setCriteriaInitialized(true)
+    }
+  }, [list, criteriaInitialized])
 
   const handleAddMember = async () => {
     if (!id || !newEntityId.trim()) return
@@ -78,6 +107,41 @@ export function ListDetailPage() {
       setEditingName(false)
     } catch {
       toast({ type: 'error', message: 'Failed to update list' })
+    }
+  }
+
+  const handleSaveFilters = async () => {
+    if (!id) return
+    try {
+      await updateList.mutateAsync({
+        id,
+        data: { filter_criteria: filterCriteria as unknown as Record<string, unknown> },
+      })
+      toast({ type: 'success', message: 'Filter criteria saved' })
+      setFilterDirty(false)
+    } catch {
+      toast({ type: 'error', message: 'Failed to save filters' })
+    }
+  }
+
+  const handleDynamicPreview = async () => {
+    if (!id || !list) return
+    try {
+      // If dirty, preview with current unsaved criteria; otherwise use saved
+      if (filterDirty) {
+        const result = await previewFilter.mutateAsync({
+          entity_type: list.entity_type,
+          filter_criteria: filterCriteria as unknown as Record<string, unknown>,
+        })
+        setPreviewCount(result.total_count)
+        setPreviewResults(result.results as PreviewResult[])
+      } else {
+        const result = await previewSavedList.mutateAsync(id)
+        setPreviewCount(result.total_count)
+        setPreviewResults(result.results as PreviewResult[])
+      }
+    } catch {
+      toast({ type: 'error', message: 'Failed to preview list' })
     }
   }
 
@@ -243,31 +307,58 @@ export function ListDetailPage() {
         </div>
       )}
 
-      {/* Dynamic List Filter Display */}
-      {list.list_type === 'dynamic' && list.filter_criteria && (
-        <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Filter className="h-4 w-4 text-purple-600" />
-            <h3 className="text-sm font-semibold text-purple-900">Filter Criteria</h3>
+      {/* Dynamic List Filter Builder */}
+      {list.list_type === 'dynamic' && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-purple-200 bg-purple-50/30 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-purple-600" />
+                <h3 className="text-sm font-semibold text-purple-900">Filter Criteria</h3>
+              </div>
+              {filterDirty && (
+                <button
+                  onClick={handleSaveFilters}
+                  disabled={updateList.isPending}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {updateList.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                  Save Filters
+                </button>
+              )}
+            </div>
+            <FilterBuilder
+              entityType={list.entity_type}
+              criteria={filterCriteria}
+              onChange={(c) => { setFilterCriteria(c); setFilterDirty(true); setPreviewCount(null) }}
+              onPreview={handleDynamicPreview}
+              previewCount={previewCount}
+              isPreviewLoading={previewFilter.isPending || previewSavedList.isPending}
+            />
           </div>
-          <pre className="text-xs text-purple-800 bg-white rounded-lg p-3 border border-purple-100 overflow-x-auto">
-            {JSON.stringify(list.filter_criteria, null, 2)}
-          </pre>
+
+          {/* Preview Results */}
+          {previewResults.length > 0 && previewCount !== null && (
+            <PreviewResultsTable
+              results={previewResults}
+              totalCount={previewCount}
+              entityType={list.entity_type}
+            />
+          )}
         </div>
       )}
 
-      {/* Members Table */}
-      {list.members.length === 0 ? (
+      {/* Members Table (static lists only) */}
+      {list.list_type === 'static' && list.members.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-16">
           <Users className="h-10 w-10 text-gray-300" />
           <p className="mt-3 text-sm font-medium text-gray-900">No members yet</p>
           <p className="mt-1 text-sm text-gray-500">
-            {list.list_type === 'static'
-              ? 'Add members manually to this list.'
-              : 'Configure filter criteria to populate this list.'}
+            Add members manually to this list.
           </p>
         </div>
-      ) : (
+      )}
+      {list.list_type === 'static' && list.members.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">

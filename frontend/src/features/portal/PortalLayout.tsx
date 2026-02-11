@@ -4,7 +4,7 @@
  */
 
 import { NavLink, Outlet } from 'react-router-dom'
-import { Tent, LogOut, Home, Camera, Receipt } from 'lucide-react'
+import { Tent, LogOut, Home, Camera, Receipt, MessageCircle, Pill } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 
@@ -12,6 +12,8 @@ const portalNav = [
   { label: 'Dashboard', icon: Home, path: '/portal' },
   { label: 'Photos', icon: Camera, path: '/portal/photos' },
   { label: 'Invoices', icon: Receipt, path: '/portal/invoices' },
+  { label: 'Messages', icon: MessageCircle, path: '/portal/messages' },
+  { label: 'Medicine', icon: Pill, path: '/portal/medicine' },
 ]
 
 export function PortalLayout() {

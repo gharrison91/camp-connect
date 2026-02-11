@@ -214,6 +214,13 @@ def _extract_sql(raw: str) -> str:
     """
     text_val = raw.strip()
 
+    # Check for special responses first
+    upper_check = text_val.upper().strip()
+    if upper_check.startswith("NO_SQL_NEEDED") or upper_check == "NO_SQL_NEEDED":
+        return "NO_SQL_NEEDED"
+    if upper_check.startswith("REFUSED") or upper_check == "REFUSED":
+        return "REFUSED"
+
     # Strategy 1: If wrapped in markdown code fences, extract from there
     fence_match = re.search(r"```(?:sql)?\s*\n(.*?)```", text_val, re.DOTALL | re.IGNORECASE)
     if fence_match:
@@ -230,30 +237,57 @@ def _extract_sql(raw: str) -> str:
 
     # Strategy 3: If there's extra text before the SQL, find the SELECT/WITH
     upper = text_val.upper()
-    if not (upper.startswith("SELECT") or upper.startswith("WITH")
-            or upper.startswith("NO_SQL_NEEDED") or upper.startswith("REFUSED")):
+    if not (upper.startswith("SELECT") or upper.startswith("WITH")):
         # Try to find where the SQL starts
         select_match = re.search(r"(?:^|\n)((?:SELECT|WITH)\b.*)", text_val, re.DOTALL | re.IGNORECASE)
         if select_match:
             text_val = select_match.group(1).strip()
 
-    # Strategy 4: Find the LAST occurrence of LIMIT \d+ and trim everything after it.
-    # This handles Claude appending explanation text after the query.
+    # Strategy 4: Remove any trailing text after the SQL query.
+    # Find the LAST semicolon that ends the SQL and trim after it.
+    # Or find LIMIT N and trim after it.
+    # First try: find LIMIT \d+ and trim everything after it
     limit_matches = list(re.finditer(r"LIMIT\s+\d+", text_val, re.IGNORECASE))
     if limit_matches:
         last_limit = limit_matches[-1]
         text_val = text_val[:last_limit.end()].strip()
-
-    # Strategy 5: If no LIMIT found, look for end-of-SQL indicators
-    # (query ended but there's explanation text after it)
-    if not limit_matches:
-        # Check for common patterns: query followed by blank line + text
-        double_newline = re.search(r"((?:SELECT|WITH).*?)\n\n(?!SELECT|WITH|FROM|WHERE|JOIN|GROUP|ORDER|HAVING|LIMIT|AND|OR|\()", text_val, re.DOTALL | re.IGNORECASE)
+    else:
+        # Strategy 5: If no LIMIT found, look for end-of-SQL indicators
+        # Look for patterns like: SQL query followed by blank line + text explanation
+        double_newline = re.search(
+            r"((?:SELECT|WITH).*?)\n\n(?!SELECT|WITH|FROM|WHERE|JOIN|GROUP|ORDER|HAVING|LIMIT|AND|OR|UNION|\(|\s*$)",
+            text_val, re.DOTALL | re.IGNORECASE
+        )
         if double_newline:
             text_val = double_newline.group(1).strip()
 
+    # Strategy 6: Remove inline comments (-- comment)
+    # But preserve strings that might contain --
+    lines = text_val.split("\n")
+    cleaned_lines = []
+    for line in lines:
+        # Simple: remove trailing -- comments (not inside quotes)
+        # Only if the line has -- that's clearly a comment
+        comment_match = re.match(r"^(.*?)\s*--\s*(?!.*['\"])(.*)$", line)
+        if comment_match and not re.search(r"'[^']*--[^']*'", line):
+            cleaned = comment_match.group(1).rstrip()
+            if cleaned:
+                cleaned_lines.append(cleaned)
+        else:
+            cleaned_lines.append(line)
+    text_val = "\n".join(cleaned_lines)
+
     # Final cleanup
     text_val = text_val.strip().rstrip(";").strip()
+
+    # One more check: if the result doesn't start with SELECT or WITH, it's broken
+    final_upper = text_val.upper().strip()
+    if not (final_upper.startswith("SELECT") or final_upper.startswith("WITH")):
+        # Last resort: try to find SELECT/WITH anywhere
+        last_resort = re.search(r"((?:SELECT|WITH)\b[^;]*)", text_val, re.DOTALL | re.IGNORECASE)
+        if last_resort:
+            text_val = last_resort.group(1).strip().rstrip(";").strip()
+
     return text_val
 
 
@@ -339,54 +373,41 @@ async def chat(
         }
 
     # Build system prompt with live schema
-    system_prompt_sql = f"""You are an expert PostgreSQL analyst for Camp Connect, a camp management platform.
-Convert the user's natural language question into a single PostgreSQL SELECT query.
+    system_prompt_sql = f"""You are a SQL generator. Convert natural language to PostgreSQL SELECT queries for Camp Connect.
 
-YOUR OUTPUT MUST BE ONLY THE SQL QUERY. Nothing else. No explanation, no markdown, no comments.
+OUTPUT FORMAT: Your ENTIRE response must be ONLY a raw SQL query. No other text.
+- No markdown (no ```).
+- No explanations before or after.
+- No comments.
+- No "Here is the query:" prefix.
+- Just the SQL starting with SELECT or WITH.
 
-CRITICAL RULES:
-1. OUTPUT ONLY RAW SQL. No markdown fences (```). No text before or after the query. Just the SQL.
-2. ONLY SELECT queries. Never INSERT, UPDATE, DELETE, DROP, or any mutation.
-3. EVERY query MUST filter by organization: WHERE <table>.organization_id = :org_id
-   Use the parameter placeholder :org_id — never hardcode a UUID.
-4. Soft-delete filtering:
-   - For tables with is_deleted column: add AND is_deleted = false
-   - For tables with deleted_at column: add AND deleted_at IS NULL
-5. Always end with LIMIT 500.
-6. Use readable column aliases (e.g., AS total_revenue, AS camper_count).
-7. For age from date_of_birth: EXTRACT(YEAR FROM AGE(date_of_birth))
-8. For current date: CURRENT_DATE
-9. Use COALESCE for nullable numeric fields in aggregates.
+RULES:
+1. ONLY SELECT/WITH queries. Never INSERT, UPDATE, DELETE, DROP.
+2. EVERY query MUST have: WHERE <table>.organization_id = :org_id
+3. Soft-delete: tables with is_deleted → AND is_deleted = false; tables with deleted_at → AND deleted_at IS NULL
+4. End every query with LIMIT 500
+5. Use readable aliases: AS total_revenue, AS camper_count
+6. Age from date_of_birth: EXTRACT(YEAR FROM AGE(date_of_birth))
+7. Use COALESCE for nullable numeric aggregates
+8. ILIKE '%term%' for all text searches (never use = for text matching)
 
-IMPORTANT — ALWAYS INCLUDE ENTITY IDs:
-When the query returns individual records (campers, contacts, families, staff, events, etc.),
-ALWAYS include the primary key ID column with a clear alias:
-- For campers: include c.id AS camper_id
-- For contacts: include co.id AS contact_id
-- For families: include f.id AS family_id
-- For events: include e.id AS event_id
-- For staff/users: include u.id AS staff_id
-- For registrations: include r.id AS registration_id
-This is required so the UI can link to the detail pages.
+ENTITY IDs — When returning individual records, ALWAYS include the primary key:
+- Campers: c.id AS camper_id
+- Contacts: co.id AS contact_id
+- Families: f.id AS family_id
+- Events: e.id AS event_id
+- Staff/Users: u.id AS staff_id
+- Registrations: r.id AS registration_id
 
-FUZZY TEXT MATCHING:
-When the user searches for names, schools, locations, or other text fields,
-ALWAYS use ILIKE with %wildcards% for fuzzy matching. Examples:
-- "kids from briarcrest" → WHERE c.school ILIKE '%briarcrest%'
-- "camper named emma" → WHERE c.first_name ILIKE '%emma%'
-- "families named johnson" → WHERE f.family_name ILIKE '%johnson%'
-Never use = for text searches. Always use ILIKE '%term%'.
-
-SPECIAL RESPONSES (output these EXACT strings with no other text):
+SPECIAL RESPONSES (output ONLY these exact strings, nothing else):
 - If the question cannot be answered with SQL: NO_SQL_NEEDED
-- If the question asks to change data: REFUSED
+- If the question asks to modify/delete data: REFUSED
 
-DATABASE SCHEMA (live from the actual database):
+DATABASE SCHEMA:
 {live_schema}
 
-Parameter: :org_id (the user's organization UUID — always use this placeholder)
-
-REMEMBER: Your entire response must be a single SQL query. Nothing else."""
+Parameter placeholder: :org_id"""
 
     # Prepare user messages for Claude
     claude_messages = [{"role": m["role"], "content": m["content"]} for m in messages]

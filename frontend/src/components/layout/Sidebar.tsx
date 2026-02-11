@@ -24,6 +24,9 @@ import {
   Workflow,
   ListChecks,
   Sparkles,
+  MessageCircle,
+  Heart,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -35,38 +38,83 @@ interface SidebarProps {
   onToggleCollapse: () => void;
 }
 
-const navItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/app/dashboard', permission: null },
-  { label: 'AI Insights', icon: Sparkles, path: '/app/ai-insights', permission: 'analytics.insights.read' },
-  { label: 'Events', icon: Calendar, path: '/app/events', permission: 'core.events.read' },
-  { label: 'Campers', icon: Users, path: '/app/campers', permission: 'core.campers.read' },
-  { label: 'Contacts', icon: BookUser, path: '/app/contacts', permission: 'core.contacts.read' },
-  { label: 'Registrations', icon: ClipboardList, path: '/app/registrations', permission: 'core.registrations.read' },
-  { label: 'Families', icon: UsersRound, path: '/app/families', permission: 'core.families.read' },
-  { label: 'Activities', icon: Tent, path: '/app/activities', permission: 'core.activities.read' },
-  { label: 'Bunks', icon: BedDouble, path: '/app/bunks', permission: 'core.bunks.read' },
-  { label: 'Communications', icon: MessageSquare, path: '/app/communications', permission: 'comms.messages.read' },
-  { label: 'Staff', icon: UserCog, path: '/app/staff', permission: 'staff.employees.read' },
-  { label: 'Photos', icon: Camera, path: '/app/photos', permission: 'photos.media.view' },
-  { label: 'Schedule', icon: CalendarDays, path: '/app/schedule', permission: 'scheduling.sessions.read' },
-  { label: 'Payments', icon: CreditCard, path: '/app/payments', permission: 'payments.invoices.read' },
-  { label: 'Analytics', icon: BarChart3, path: '/app/analytics', permission: 'analytics.dashboards.read' },
-  { label: 'Reports', icon: FileBarChart, path: '/app/reports', permission: 'reports.export.read' },
-  { label: 'Lists', icon: ListChecks, path: '/app/lists', permission: null },
-  { label: 'Store', icon: ShoppingBag, path: '/app/store', permission: 'store.manage.manage' },
-  { label: 'Forms', icon: FileText, path: '/app/forms', permission: null },
-  { label: 'Workflows', icon: Workflow, path: '/app/workflows', permission: null },
-  { label: 'Settings', icon: Settings, path: '/app/settings', permission: null },
-] as const;
+type NavItem = {
+  label: string;
+  icon: typeof LayoutDashboard;
+  path: string;
+  permission: string | null;
+};
+
+type NavSection = {
+  title: string;
+  items: NavItem[];
+};
+
+const navSections: NavSection[] = [
+  {
+    title: '',
+    items: [
+      { label: 'Dashboard', icon: LayoutDashboard, path: '/app/dashboard', permission: null },
+      { label: 'AI Insights', icon: Sparkles, path: '/app/ai-insights', permission: 'analytics.insights.read' },
+    ],
+  },
+  {
+    title: 'Camp Management',
+    items: [
+      { label: 'Events', icon: Calendar, path: '/app/events', permission: 'core.events.read' },
+      { label: 'Campers', icon: Users, path: '/app/campers', permission: 'core.campers.read' },
+      { label: 'Contacts', icon: BookUser, path: '/app/contacts', permission: 'core.contacts.read' },
+      { label: 'Registrations', icon: ClipboardList, path: '/app/registrations', permission: 'core.registrations.read' },
+      { label: 'Families', icon: UsersRound, path: '/app/families', permission: 'core.families.read' },
+      { label: 'Activities', icon: Tent, path: '/app/activities', permission: 'core.activities.read' },
+      { label: 'Bunks', icon: BedDouble, path: '/app/bunks', permission: 'core.bunks.read' },
+    ],
+  },
+  {
+    title: 'Operations',
+    items: [
+      { label: 'Schedule', icon: CalendarDays, path: '/app/schedule', permission: 'scheduling.sessions.read' },
+      { label: 'Staff', icon: UserCog, path: '/app/staff', permission: 'staff.employees.read' },
+      { label: 'Communications', icon: MessageSquare, path: '/app/communications', permission: 'comms.messages.read' },
+      { label: 'Camper Messages', icon: MessageCircle, path: '/app/camper-messages', permission: null },
+      { label: 'Nurse Schedule', icon: Heart, path: '/app/nurse-schedule', permission: null },
+      { label: 'Photos', icon: Camera, path: '/app/photos', permission: 'photos.media.view' },
+    ],
+  },
+  {
+    title: 'Data & Reporting',
+    items: [
+      { label: 'Analytics', icon: BarChart3, path: '/app/analytics', permission: 'analytics.dashboards.read' },
+      { label: 'Reports', icon: FileBarChart, path: '/app/reports', permission: 'reports.export.read' },
+      { label: 'Lists', icon: ListChecks, path: '/app/lists', permission: null },
+      { label: 'Alerts', icon: Bell, path: '/app/alerts', permission: null },
+    ],
+  },
+  {
+    title: 'Tools',
+    items: [
+      { label: 'Payments', icon: CreditCard, path: '/app/payments', permission: 'payments.invoices.read' },
+      { label: 'Store', icon: ShoppingBag, path: '/app/store', permission: 'store.manage.manage' },
+      { label: 'Forms', icon: FileText, path: '/app/forms', permission: null },
+      { label: 'Workflows', icon: Workflow, path: '/app/workflows', permission: null },
+      { label: 'Settings', icon: Settings, path: '/app/settings', permission: null },
+    ],
+  },
+];
 
 export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProps) {
   const location = useLocation();
   const { hasPermission } = usePermissions();
 
-  // Filter nav items based on user permissions
-  const visibleNavItems = navItems.filter(
-    (item) => item.permission === null || hasPermission(item.permission)
-  );
+  // Filter nav sections based on user permissions
+  const visibleSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => item.permission === null || hasPermission(item.permission)
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <>
@@ -114,51 +162,67 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <ul className="flex flex-col gap-1" role="list">
-            {visibleNavItems.map((item) => {
-              const isActive =
-                location.pathname === item.path ||
-                location.pathname.startsWith(item.path + '/');
-              const Icon = item.icon;
+          <div className="flex flex-col gap-6">
+            {visibleSections.map((section, sectionIndex) => (
+              <div key={sectionIndex}>
+                {section.title && !isCollapsed && (
+                  <div className="mb-2 px-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      {section.title}
+                    </p>
+                  </div>
+                )}
+                {section.title && isCollapsed && (
+                  <div className="mx-auto mb-2 h-px w-6 bg-white/[0.08]" />
+                )}
+                <ul className="flex flex-col gap-0.5" role="list">
+                  {section.items.map((item) => {
+                    const isActive =
+                      location.pathname === item.path ||
+                      location.pathname.startsWith(item.path + '/');
+                    const Icon = item.icon;
 
-              return (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    onClick={onClose}
-                    className={cn(
-                      'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
-                      isActive
-                        ? 'bg-emerald-500/15 text-emerald-400'
-                        : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
-                    )}
-                    title={isCollapsed ? item.label : undefined}
-                  >
-                    <Icon
-                      className={cn(
-                        'h-5 w-5 shrink-0 transition-colors',
-                        isActive
-                          ? 'text-emerald-400'
-                          : 'text-slate-500 group-hover:text-slate-300'
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        'truncate transition-opacity duration-200',
-                        isCollapsed && 'lg:sr-only'
-                      )}
-                    >
-                      {item.label}
-                    </span>
+                    return (
+                      <li key={item.path}>
+                        <Link
+                          to={item.path}
+                          onClick={onClose}
+                          className={cn(
+                            'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150',
+                            isActive
+                              ? 'bg-emerald-500/15 text-emerald-400'
+                              : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
+                          )}
+                          title={isCollapsed ? item.label : undefined}
+                        >
+                          <Icon
+                            className={cn(
+                              'h-[18px] w-[18px] shrink-0 transition-colors',
+                              isActive
+                                ? 'text-emerald-400'
+                                : 'text-slate-500 group-hover:text-slate-300'
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              'truncate transition-opacity duration-200',
+                              isCollapsed && 'lg:sr-only'
+                            )}
+                          >
+                            {item.label}
+                          </span>
 
-                    {isActive && (
-                      <span className="absolute left-0 h-6 w-[3px] rounded-r-full bg-emerald-400" />
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                          {isActive && (
+                            <span className="absolute left-0 h-6 w-[3px] rounded-r-full bg-emerald-400" />
+                          )}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
         </nav>
 
         {/* Footer */}

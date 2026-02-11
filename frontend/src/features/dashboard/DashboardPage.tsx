@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import {
   Users,
   Calendar,
@@ -5,9 +6,16 @@ import {
   ClipboardList,
   Loader2,
   AlertCircle,
+  TrendingUp,
+  MessageCircle,
+  Camera,
+  Sparkles,
+  ArrowRight,
+  Bell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDashboardStats } from '@/hooks/useDashboard'
+import { useAlertCounts } from '@/hooks/useAlerts'
 import { useAuthStore } from '@/stores/authStore'
 
 interface StatCard {
@@ -50,6 +58,7 @@ function capitalizeFirst(str: string): string {
 export function DashboardPage() {
   const user = useAuthStore((state) => state.user)
   const { data: stats, isLoading, error } = useDashboardStats()
+  const { data: alertCounts } = useAlertCounts()
 
   const firstName = user?.first_name || 'there'
 
@@ -64,30 +73,44 @@ export function DashboardPage() {
       label: 'Total Events',
       value: stats?.total_events ?? 0,
       icon: Calendar,
-      iconBg: 'bg-blue-50 text-blue-600',
+      iconBg: 'bg-emerald-50 text-emerald-600',
     },
     {
       label: 'Upcoming Events',
       value: stats?.upcoming_events ?? 0,
       icon: Clock,
-      iconBg: 'bg-blue-50 text-blue-600',
+      iconBg: 'bg-amber-50 text-amber-600',
     },
     {
       label: 'Total Registrations',
       value: stats?.total_registrations ?? 0,
       icon: ClipboardList,
-      iconBg: 'bg-blue-50 text-blue-600',
+      iconBg: 'bg-violet-50 text-violet-600',
     },
   ]
 
   return (
     <div className="space-y-8">
       {/* Welcome Header */}
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-          Welcome back, {firstName}
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">{formatDate()}</p>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 px-6 py-8 text-white shadow-lg">
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
+        <div className="absolute -bottom-6 -left-6 h-24 w-24 rounded-full bg-white/5" />
+        <div className="relative">
+          <h1 className="text-2xl font-bold tracking-tight">
+            Welcome back, {firstName} 👋
+          </h1>
+          <p className="mt-1 text-sm text-emerald-100">{formatDate()}</p>
+          {alertCounts && alertCounts.total > 0 && (
+            <Link
+              to="/app/alerts"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-white/20 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+            >
+              <Bell className="h-4 w-4" />
+              {alertCounts.total} new alert{alertCounts.total !== 1 ? 's' : ''}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Loading State */}
@@ -124,8 +147,9 @@ export function DashboardPage() {
               return (
                 <div
                   key={stat.label}
-                  className="group relative overflow-hidden rounded-xl border border-gray-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+                  className="group relative overflow-hidden rounded-xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
                 >
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-400 opacity-0 transition-opacity group-hover:opacity-100" />
                   <div className="flex items-start gap-4">
                     <div
                       className={cn(
@@ -145,6 +169,33 @@ export function DashboardPage() {
                     </div>
                   </div>
                 </div>
+              )
+            })}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { label: 'AI Insights', icon: Sparkles, path: '/app/ai-insights', color: 'from-violet-500 to-purple-600' },
+              { label: 'Messages', icon: MessageCircle, path: '/app/camper-messages', color: 'from-blue-500 to-cyan-600' },
+              { label: 'Photos', icon: Camera, path: '/app/photos', color: 'from-amber-500 to-orange-600' },
+              { label: 'Analytics', icon: TrendingUp, path: '/app/analytics', color: 'from-emerald-500 to-teal-600' },
+            ].map((action) => {
+              const ActionIcon = action.icon
+              return (
+                <Link
+                  key={action.path}
+                  to={action.path}
+                  className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
+                >
+                  <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white', action.color)}>
+                    <ActionIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 group-hover:text-emerald-600">{action.label}</p>
+                    <p className="text-xs text-gray-400">Quick access</p>
+                  </div>
+                </Link>
               )
             })}
           </div>

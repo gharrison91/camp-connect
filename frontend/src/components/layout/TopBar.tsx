@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, Search, Bell, LogOut } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Menu, Search, Bell, LogOut, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuth } from '@/hooks/useAuth';
+import { useAlertCounts } from '@/hooks/useAlerts';
 
 interface TopBarProps {
   onMenuClick: () => void;
@@ -12,6 +14,7 @@ interface TopBarProps {
 export function TopBar({ onMenuClick, isSidebarCollapsed }: TopBarProps) {
   const user = useAuthStore((state) => state.user);
   const { logout } = useAuth();
+  const { data: alertCounts } = useAlertCounts();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -71,13 +74,19 @@ export function TopBar({ onMenuClick, isSidebarCollapsed }: TopBarProps) {
 
       {/* Right actions */}
       <div className="flex items-center gap-2">
-        {/* Notification bell */}
-        <button
+        {/* Notification bell with alert count */}
+        <Link
+          to="/app/alerts"
           className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
           aria-label="Notifications"
         >
           <Bell className="h-5 w-5" />
-        </button>
+          {alertCounts && alertCounts.total > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+              {alertCounts.total > 99 ? '99+' : alertCounts.total}
+            </span>
+          )}
+        </Link>
 
         {/* User avatar + dropdown */}
         <div className="relative" ref={dropdownRef}>
@@ -99,6 +108,14 @@ export function TopBar({ onMenuClick, isSidebarCollapsed }: TopBarProps) {
                   <p className="mt-1 text-xs text-emerald-600 font-medium">{user.role_name}</p>
                 )}
               </div>
+              <Link
+                to="/app/settings"
+                onClick={() => setShowDropdown(false)}
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </Link>
               <button
                 onClick={handleLogout}
                 className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50"

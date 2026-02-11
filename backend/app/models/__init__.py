@@ -20,7 +20,7 @@ from app.models.registration import Registration
 from app.models.waitlist import Waitlist
 
 # Phase 3: Photos, Communications, Health & Safety
-from app.models.photo import Photo
+from app.models.photo import Photo, PhotoAlbum
 from app.models.message import Message
 from app.models.message_template import MessageTemplate
 from app.models.health_form import HealthFormTemplate, HealthForm, HealthFormSubmission
@@ -36,7 +36,7 @@ from app.models.photo_face_tag import PhotoFaceTag
 
 # Phase 5: Analytics, Activities, Bunks, Families
 from app.models.activity import Activity
-from app.models.bunk import Bunk, BunkAssignment
+from app.models.bunk import Cabin, Bunk, BunkAssignment
 from app.models.family import Family
 
 # Phase 7: Scheduling, Payments, Store, Notifications, Event Bunk Config
@@ -62,6 +62,12 @@ from app.models.saved_list import SavedList, SavedListMember
 # Phase 10: Job Titles, Bunk Buddy Requests
 from app.models.bunk_buddy import BunkBuddyRequest
 
+# Phase 11: Camper Messages, Medicine Schedules, Schools, Contact Alerts
+from app.models.camper_message import CamperMessage
+from app.models.medicine_schedule import MedicineSchedule, MedicineAdministration
+from app.models.school import School
+from app.models.contact_alert import ContactAlert
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -82,6 +88,7 @@ __all__ = [
     "Waitlist",
     # Phase 3
     "Photo",
+    "PhotoAlbum",
     "Message",
     "MessageTemplate",
     "HealthFormTemplate",
@@ -95,6 +102,7 @@ __all__ = [
     "PhotoFaceTag",
     # Phase 5
     "Activity",
+    "Cabin",
     "Bunk",
     "BunkAssignment",
     "Family",
@@ -123,4 +131,10 @@ __all__ = [
     # Phase 10
     "JobTitle",
     "BunkBuddyRequest",
+    # Phase 11
+    "CamperMessage",
+    "MedicineSchedule",
+    "MedicineAdministration",
+    "School",
+    "ContactAlert",
 ]

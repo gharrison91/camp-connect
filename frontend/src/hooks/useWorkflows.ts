@@ -8,9 +8,10 @@ import { api } from '../lib/api'
 // ─── Types ──────────────────────────────────────────────────
 
 export interface WorkflowTrigger {
-  type: 'event' | 'schedule' | 'manual' | 'form_submitted'
+  type: 'event' | 'schedule' | 'manual' | 'form_submitted' | 'list'
   event_type?: string
   form_template_id?: string
+  list_id?: string
   schedule?: string
   conditions?: Record<string, unknown>
 }

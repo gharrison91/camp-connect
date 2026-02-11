@@ -11,6 +11,7 @@ import type {
   ScheduleUpdate,
   ScheduleAssignment,
   ScheduleAssignmentCreate,
+  StaffScheduleEntry,
 } from '../types'
 
 // ─── Queries ────────────────────────────────────────────────
@@ -112,5 +113,21 @@ export function useDeleteAssignment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedules'] })
     },
+  })
+}
+
+// ─── Staff Schedule View Query ──────────────────────────────
+
+export function useStaffScheduleView(
+  eventId: string | undefined,
+  date: string | undefined
+) {
+  return useQuery<StaffScheduleEntry[]>({
+    queryKey: ['schedules', 'staff-view', eventId, date],
+    queryFn: () =>
+      api
+        .get('/schedules/staff-view', { params: { event_id: eventId, date } })
+        .then((r) => r.data),
+    enabled: !!eventId && !!date,
   })
 }

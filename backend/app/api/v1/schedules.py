@@ -52,6 +52,28 @@ async def get_daily_view(
     )
 
 
+
+
+@router.get(
+    "/staff-view",
+    response_model=None,
+)
+async def get_staff_schedule_view(
+    event_id: uuid.UUID = Query(..., description="Event ID (required)"),
+    date: date = Query(..., description="Date for staff view (required)"),
+    current_user: Dict[str, Any] = Depends(
+        require_permission("scheduling.sessions.read")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get staff-centric view of the daily schedule."""
+    return await schedule_service.get_staff_schedule_view(
+        db,
+        organization_id=current_user["organization_id"],
+        event_id=event_id,
+        date=date,
+    )
+
 @router.post(
     "/assignments",
     response_model=ScheduleAssignmentResponse,

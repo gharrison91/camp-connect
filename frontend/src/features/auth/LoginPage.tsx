@@ -29,24 +29,32 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 px-4">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-700 to-blue-800 px-4">
+      {/* Decorative background elements */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-emerald-400/10 blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-blue-400/10 blur-3xl" />
+        <div className="absolute left-1/4 top-1/3 h-64 w-64 rounded-full bg-teal-300/5 blur-2xl" />
+        <div className="absolute bottom-1/4 right-1/4 h-48 w-48 rounded-full bg-emerald-300/5 blur-2xl" />
+      </div>
+
       {/* Login Card */}
-      <div className="w-full max-w-sm">
+      <div className="relative z-10 w-full max-w-sm">
         {/* Logo & Branding */}
         <div className="mb-8 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 shadow-lg backdrop-blur-sm">
-            <Tent className="h-8 w-8 text-white" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 shadow-lg backdrop-blur-sm ring-1 ring-white/20">
+            <Tent className="h-9 w-9 text-white" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-white">
+          <h1 className="mt-4 text-3xl font-bold tracking-tight text-white">
             Camp Connect
           </h1>
-          <p className="mt-1 text-sm text-blue-200">
-            Registration & Event Management Platform
+          <p className="mt-2 text-sm text-emerald-100/80">
+            Camp Management Platform
           </p>
         </div>
 
         {/* Form Card */}
-        <div className="rounded-2xl border border-white/10 bg-white p-8 shadow-2xl">
+        <div className="rounded-2xl border border-white/10 bg-white/95 p-8 shadow-2xl backdrop-blur-xl">
           {/* Error message */}
           {error && (
             <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 border border-red-200">
@@ -122,7 +130,7 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {submitting ? 'Signing in...' : 'Sign In'}
@@ -147,7 +155,7 @@ export function LoginPage() {
         <div className="mt-6 text-center">
           <Link
             to="/"
-            className="inline-flex items-center gap-1.5 text-sm text-blue-200/80 transition-colors hover:text-white"
+            className="inline-flex items-center gap-1.5 text-sm text-emerald-100/70 transition-colors hover:text-white"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to Home
@@ -155,7 +163,7 @@ export function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="mt-4 text-center text-xs text-blue-300/60">
+        <p className="mt-4 text-center text-xs text-emerald-200/40">
           Camp Connect v0.1.0
         </p>
       </div>

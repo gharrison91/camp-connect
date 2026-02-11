@@ -67,3 +67,40 @@ class SavedListDetailResponse(BaseModel):
     created_by: Optional[uuid.UUID] = None
     created_at: datetime
     updated_at: datetime
+
+
+# ─── Filter Preview Schemas ──────────────────────────────────
+
+
+class FilterCondition(BaseModel):
+    field: str
+    operator: str
+    value: Optional[Any] = None
+
+
+class FilterGroup(BaseModel):
+    operator: str = "AND"
+    filters: List[FilterCondition] = []
+
+
+class FilterCriteria(BaseModel):
+    groups: List[FilterGroup] = []
+    group_operator: str = "OR"
+
+
+class PreviewRequest(BaseModel):
+    entity_type: str = "contact"
+    filter_criteria: FilterCriteria
+
+
+class PreviewResultItem(BaseModel):
+    id: uuid.UUID
+    name: str
+    email: Optional[str] = None
+    extra: Optional[Dict[str, Any]] = None
+
+
+class PreviewResponse(BaseModel):
+    total_count: int
+    results: List[PreviewResultItem] = []
+    entity_type: str

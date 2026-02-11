@@ -1,17 +1,23 @@
 /**
  * Camp Connect - SchedulePage
- * Daily schedule management with event/date selection and session creation.
+ * Daily schedule management with event/date selection, session creation,
+ * and toggleable Day View / Staff Schedule views.
  */
 
 import { useState } from 'react'
-import { CalendarDays, Plus, Loader2 } from 'lucide-react'
+import { CalendarDays, Plus, Loader2, Users } from 'lucide-react'
 import { useEvents } from '@/hooks/useEvents'
 import { useDailyView, useDeleteSchedule } from '@/hooks/useSchedules'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useToast } from '@/components/ui/Toast'
 import { DayView } from './DayView'
 import { ScheduleSessionModal } from './ScheduleSessionModal'
+import { SessionAssignmentModal } from './SessionAssignmentModal'
+import { StaffScheduleView } from './StaffScheduleView'
+import { cn } from '@/lib/utils'
 import type { Schedule } from '@/types'
+
+type ViewMode = 'day' | 'staff'
 
 export function SchedulePage() {
   const { hasPermission } = usePermissions()
@@ -24,6 +30,8 @@ export function SchedulePage() {
   )
   const [showModal, setShowModal] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null)
+  const [assigningSchedule, setAssigningSchedule] = useState<Schedule | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>('day')
 
   const { data: sessions = [], isLoading: sessionsLoading } = useDailyView(
     selectedEventId || undefined,
@@ -35,6 +43,10 @@ export function SchedulePage() {
   function handleEdit(schedule: Schedule) {
     setEditingSchedule(schedule)
     setShowModal(true)
+  }
+
+  function handleAssign(schedule: Schedule) {
+    setAssigningSchedule(schedule)
   }
 
   async function handleDelete(scheduleId: string) {
@@ -86,6 +98,36 @@ export function SchedulePage() {
         </div>
       </div>
 
+      {/* View mode toggle */}
+      {selectedEventId && !isLoading && (
+        <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 w-fit">
+          <button
+            onClick={() => setViewMode('day')}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              viewMode === 'day'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            )}
+          >
+            <CalendarDays className="h-4 w-4" />
+            Day View
+          </button>
+          <button
+            onClick={() => setViewMode('staff')}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              viewMode === 'staff'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            )}
+          >
+            <Users className="h-4 w-4" />
+            Staff Schedule
+          </button>
+        </div>
+      )}
+
       {/* Empty state */}
       {!selectedEventId && !isLoading && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-20">
@@ -107,23 +149,37 @@ export function SchedulePage() {
       )}
 
       {/* Day View */}
-      {selectedEventId && !isLoading && (
+      {selectedEventId && !isLoading && viewMode === 'day' && (
         <DayView
           sessions={sessions}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onAssign={handleAssign}
           canEdit={hasPermission('scheduling.sessions.update')}
           canDelete={hasPermission('scheduling.sessions.delete')}
         />
       )}
 
-      {/* Modal */}
+      {/* Staff Schedule View */}
+      {selectedEventId && !isLoading && viewMode === 'staff' && (
+        <StaffScheduleView eventId={selectedEventId} date={selectedDate} />
+      )}
+
+      {/* Create/Edit Session Modal */}
       {showModal && (
         <ScheduleSessionModal
           eventId={selectedEventId}
           date={selectedDate}
           schedule={editingSchedule}
           onClose={() => { setShowModal(false); setEditingSchedule(null) }}
+        />
+      )}
+
+      {/* Assignment Modal */}
+      {assigningSchedule && (
+        <SessionAssignmentModal
+          schedule={assigningSchedule}
+          onClose={() => setAssigningSchedule(null)}
         />
       )}
     </div>

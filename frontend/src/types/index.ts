@@ -569,6 +569,7 @@ export interface Schedule {
   max_capacity: number | null;
   notes: string | null;
   is_cancelled: boolean;
+  assignments?: ScheduleAssignment[];
   created_at: string;
 }
 
@@ -606,6 +607,23 @@ export interface ScheduleAssignmentCreate {
 export interface DailyViewSlot {
   time: string;
   sessions: Schedule[];
+}
+
+// ─── Staff Schedule View ────────────────────────────────────
+
+export interface StaffScheduleSession {
+  schedule_id: string;
+  activity_name: string;
+  start_time: string;
+  end_time: string;
+  location: string | null;
+}
+
+export interface StaffScheduleEntry {
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  sessions: StaffScheduleSession[];
 }
 
 // ─── Event Bunk Config ──────────────────────────────────────
