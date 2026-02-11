@@ -3,7 +3,8 @@
  * Team, mission, story, values, and timeline.
  */
 
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { useRef } from 'react';
 import {
   Heart,
   Shield,
@@ -72,12 +73,19 @@ const stats = [
 ];
 
 export function AboutPage() {
+  const heroRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, 80]);
+
   return (
     <main>
       {/* Hero */}
-      <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+      <section ref={heroRef} className="relative pt-32 pb-20 px-6 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(16,185,129,0.08)_0%,_transparent_50%)]" />
-        <div className="relative z-10 max-w-4xl mx-auto text-center">
+        <motion.div style={{ y: heroY }} className="relative z-10 max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -97,7 +105,7 @@ export function AboutPage() {
               We grew up at camp. We understand the magic of those summers and the operational challenges of making them happen. Camp Connect exists to take the busywork off your plate so you can focus on what matters: the kids.
             </p>
           </motion.div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Stats Bar */}

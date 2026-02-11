@@ -4,7 +4,8 @@
  */
 
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { useRef } from 'react';
 import {
   ClipboardList,
   CalendarDays,
@@ -128,12 +129,19 @@ const modules: FeatureModule[] = [
 ];
 
 export function FeaturesPage() {
+  const heroRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, 80]);
+
   return (
     <main>
       {/* Hero */}
-      <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+      <section ref={heroRef} className="relative pt-32 pb-20 px-6 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(16,185,129,0.1)_0%,_transparent_50%)]" />
-        <div className="relative z-10 max-w-4xl mx-auto text-center">
+        <motion.div style={{ y: heroY }} className="relative z-10 max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -153,7 +161,7 @@ export function FeaturesPage() {
               From registration to reporting, Camp Connect gives you a complete platform to manage every aspect of your camp operations.
             </p>
           </motion.div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Feature Modules */}
@@ -187,11 +195,18 @@ export function FeaturesPage() {
                     {mod.description}
                   </p>
                   <ul className="mt-6 space-y-3">
-                    {mod.features.map((feat) => (
-                      <li key={feat} className="flex items-center gap-3 text-sm text-gray-300">
+                    {mod.features.map((feat, featIdx) => (
+                      <motion.li
+                        key={feat}
+                        initial={{ opacity: 0, x: -10 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true, margin: '-50px' }}
+                        transition={{ duration: 0.3, delay: featIdx * 0.1 }}
+                        className="flex items-center gap-3 text-sm text-gray-300"
+                      >
                         <CheckCircle2 className={`w-4 h-4 shrink-0 ${mod.color}`} />
                         {feat}
-                      </li>
+                      </motion.li>
                     ))}
                   </ul>
                 </ScrollReveal>

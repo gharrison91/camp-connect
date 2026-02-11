@@ -1,211 +1,238 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { ToastProvider } from '@/components/ui/Toast'
-import { DashboardPage } from '@/features/dashboard/DashboardPage'
-import { EventsPage } from '@/features/events/EventsPage'
-import { EventDetailPage } from '@/features/events/EventDetailPage'
-import { CampersPage } from '@/features/campers/CampersPage'
-import { CamperDetailPage } from '@/features/campers/CamperDetailPage'
-import { ContactsPage } from '@/features/contacts/ContactsPage'
-import { ContactDetailPage } from '@/features/contacts/ContactDetailPage'
-import { RegistrationListPage } from '@/features/registrations/RegistrationListPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
-import { SettingsLayout } from '@/features/admin/SettingsLayout'
-import { OrgProfilePage } from '@/features/admin/OrgProfilePage'
-import { LocationsPage } from '@/features/admin/LocationsPage'
-import { RolesPage } from '@/features/admin/RolesPage'
-import { UsersPage } from '@/features/admin/UsersPage'
-import { GeneralSettingsPage } from '@/features/admin/GeneralSettingsPage'
-import { NotificationSettingsPage } from '@/features/admin/NotificationSettingsPage'
-import { CertificationsSettingsPage } from '@/features/admin/CertificationsSettingsPage'
-import { JobTitlesSettingsPage } from '@/features/admin/JobTitlesSettingsPage'
-import { PhotosPage } from '@/features/photos/PhotosPage'
-import { CommunicationsPage } from '@/features/communications/CommunicationsPage'
-import { HealthSafetyPage } from '@/features/health/HealthSafetyPage'
 import { LandingPage } from '@/features/landing/LandingPage'
 import { MarketingLayout } from '@/features/landing/MarketingLayout'
-import { FeaturesPage } from '@/features/landing/FeaturesPage'
-import { GalleryPage } from '@/features/landing/GalleryPage'
-import { ScheduleDemoPage } from '@/features/landing/ScheduleDemoPage'
-import { DashboardPreviewPage } from '@/features/landing/DashboardPreviewPage'
-import { AboutPage } from '@/features/landing/AboutPage'
-import { ContactPage } from '@/features/landing/ContactPage'
-import { StaffDirectoryPage } from '@/features/staff/StaffDirectoryPage'
-import { StaffProfilePage } from '@/features/staff/StaffProfilePage'
-import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard'
-import { OnboardingDashboard } from '@/features/onboarding/OnboardingDashboard'
+
+// Lazy-loaded page components (code splitting)
+const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const EventsPage = lazy(() => import('@/features/events/EventsPage').then(m => ({ default: m.EventsPage })))
+const EventDetailPage = lazy(() => import('@/features/events/EventDetailPage').then(m => ({ default: m.EventDetailPage })))
+const CampersPage = lazy(() => import('@/features/campers/CampersPage').then(m => ({ default: m.CampersPage })))
+const CamperDetailPage = lazy(() => import('@/features/campers/CamperDetailPage').then(m => ({ default: m.CamperDetailPage })))
+const ContactsPage = lazy(() => import('@/features/contacts/ContactsPage').then(m => ({ default: m.ContactsPage })))
+const ContactDetailPage = lazy(() => import('@/features/contacts/ContactDetailPage').then(m => ({ default: m.ContactDetailPage })))
+const RegistrationListPage = lazy(() => import('@/features/registrations/RegistrationListPage').then(m => ({ default: m.RegistrationListPage })))
+
+// Settings pages
+const SettingsLayout = lazy(() => import('@/features/admin/SettingsLayout').then(m => ({ default: m.SettingsLayout })))
+const OrgProfilePage = lazy(() => import('@/features/admin/OrgProfilePage').then(m => ({ default: m.OrgProfilePage })))
+const LocationsPage = lazy(() => import('@/features/admin/LocationsPage').then(m => ({ default: m.LocationsPage })))
+const RolesPage = lazy(() => import('@/features/admin/RolesPage').then(m => ({ default: m.RolesPage })))
+const UsersPage = lazy(() => import('@/features/admin/UsersPage').then(m => ({ default: m.UsersPage })))
+const GeneralSettingsPage = lazy(() => import('@/features/admin/GeneralSettingsPage').then(m => ({ default: m.GeneralSettingsPage })))
+const NotificationSettingsPage = lazy(() => import('@/features/admin/NotificationSettingsPage').then(m => ({ default: m.NotificationSettingsPage })))
+const CertificationsSettingsPage = lazy(() => import('@/features/admin/CertificationsSettingsPage').then(m => ({ default: m.CertificationsSettingsPage })))
+const JobTitlesSettingsPage = lazy(() => import('@/features/admin/JobTitlesSettingsPage').then(m => ({ default: m.JobTitlesSettingsPage })))
+
+// Phase 3
+const PhotosPage = lazy(() => import('@/features/photos/PhotosPage').then(m => ({ default: m.PhotosPage })))
+const CommunicationsPage = lazy(() => import('@/features/communications/CommunicationsPage').then(m => ({ default: m.CommunicationsPage })))
+const HealthSafetyPage = lazy(() => import('@/features/health/HealthSafetyPage').then(m => ({ default: m.HealthSafetyPage })))
+
+// Marketing pages
+const FeaturesPage = lazy(() => import('@/features/landing/FeaturesPage').then(m => ({ default: m.FeaturesPage })))
+const GalleryPage = lazy(() => import('@/features/landing/GalleryPage').then(m => ({ default: m.GalleryPage })))
+const ScheduleDemoPage = lazy(() => import('@/features/landing/ScheduleDemoPage').then(m => ({ default: m.ScheduleDemoPage })))
+const DashboardPreviewPage = lazy(() => import('@/features/landing/DashboardPreviewPage').then(m => ({ default: m.DashboardPreviewPage })))
+const AboutPage = lazy(() => import('@/features/landing/AboutPage').then(m => ({ default: m.AboutPage })))
+const ContactPage = lazy(() => import('@/features/landing/ContactPage').then(m => ({ default: m.ContactPage })))
+const BlogPage = lazy(() => import('@/features/landing/BlogPage').then(m => ({ default: m.BlogPage })))
+const MapPage = lazy(() => import('@/features/landing/MapPage').then(m => ({ default: m.MapPage })))
+
+// Phase 4: Staff & Onboarding
+const StaffDirectoryPage = lazy(() => import('@/features/staff/StaffDirectoryPage').then(m => ({ default: m.StaffDirectoryPage })))
+const StaffProfilePage = lazy(() => import('@/features/staff/StaffProfilePage').then(m => ({ default: m.StaffProfilePage })))
+const OnboardingWizard = lazy(() => import('@/features/onboarding/OnboardingWizard').then(m => ({ default: m.OnboardingWizard })))
+const OnboardingDashboard = lazy(() => import('@/features/onboarding/OnboardingDashboard').then(m => ({ default: m.OnboardingDashboard })))
 
 // Phase 5: Analytics, Activities, Bunks, Families
-import { AnalyticsPage } from '@/features/analytics/AnalyticsPage'
-import { ActivitiesPage } from '@/features/activities/ActivitiesPage'
-import { BunksPage } from '@/features/bunks/BunksPage'
-import { FamiliesPage } from '@/features/families/FamiliesPage'
-import { FamilyDetailPage } from '@/features/families/FamilyDetailPage'
+const AnalyticsPage = lazy(() => import('@/features/analytics/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })))
+const ActivitiesPage = lazy(() => import('@/features/activities/ActivitiesPage').then(m => ({ default: m.ActivitiesPage })))
+const BunksPage = lazy(() => import('@/features/bunks/BunksPage').then(m => ({ default: m.BunksPage })))
+const FamiliesPage = lazy(() => import('@/features/families/FamiliesPage').then(m => ({ default: m.FamiliesPage })))
+const FamilyDetailPage = lazy(() => import('@/features/families/FamilyDetailPage').then(m => ({ default: m.FamilyDetailPage })))
+
+// Phase 7: Schedule, Payments, Reports, Store
+const SchedulePage = lazy(() => import('@/features/schedule/SchedulePage').then(m => ({ default: m.SchedulePage })))
+const PaymentsPage = lazy(() => import('@/features/payments/PaymentsPage').then(m => ({ default: m.PaymentsPage })))
+const ReportsPage = lazy(() => import('@/features/reports/ReportsPage').then(m => ({ default: m.ReportsPage })))
+const StoreManagementPage = lazy(() => import('@/features/store/StoreManagementPage').then(m => ({ default: m.StoreManagementPage })))
+
+// Phase 7: Portal
+const PortalLayout = lazy(() => import('@/features/portal/PortalLayout').then(m => ({ default: m.PortalLayout })))
+const PortalDashboard = lazy(() => import('@/features/portal/PortalDashboard').then(m => ({ default: m.PortalDashboard })))
+const PortalCamperView = lazy(() => import('@/features/portal/PortalCamperView').then(m => ({ default: m.PortalCamperView })))
+const PortalPhotos = lazy(() => import('@/features/portal/PortalPhotos').then(m => ({ default: m.PortalPhotos })))
+const PortalInvoices = lazy(() => import('@/features/portal/PortalInvoices').then(m => ({ default: m.PortalInvoices })))
+const PortalMessages = lazy(() => import('@/features/portal/PortalMessages').then(m => ({ default: m.PortalMessages })))
+const PortalMedicine = lazy(() => import('@/features/portal/PortalMedicine').then(m => ({ default: m.PortalMedicine })))
 
 // Phase 8: Form Builder, Workflows
-import { FormsPage } from '@/features/forms/FormsPage'
-import { FormEditorPage } from '@/features/forms/FormEditorPage'
-import { WorkflowsPage } from '@/features/workflows/WorkflowsPage'
-import { WorkflowEditorPage } from '@/features/workflows/WorkflowEditorPage'
+const FormsPage = lazy(() => import('@/features/forms/FormsPage').then(m => ({ default: m.FormsPage })))
+const FormEditorPage = lazy(() => import('@/features/forms/FormEditorPage').then(m => ({ default: m.FormEditorPage })))
+const WorkflowsPage = lazy(() => import('@/features/workflows/WorkflowsPage').then(m => ({ default: m.WorkflowsPage })))
+const WorkflowEditorPage = lazy(() => import('@/features/workflows/WorkflowEditorPage').then(m => ({ default: m.WorkflowEditorPage })))
 
 // Phase 9: Lists
-import { ListsPage } from '@/features/lists/ListsPage'
-import { ListDetailPage } from '@/features/lists/ListDetailPage'
+const ListsPage = lazy(() => import('@/features/lists/ListsPage').then(m => ({ default: m.ListsPage })))
+const ListDetailPage = lazy(() => import('@/features/lists/ListDetailPage').then(m => ({ default: m.ListDetailPage })))
 
 // Phase 10: AI Insights
-import { AIInsightsPage } from '@/features/ai/AIInsightsPage'
+const AIInsightsPage = lazy(() => import('@/features/ai/AIInsightsPage').then(m => ({ default: m.AIInsightsPage })))
 
 // Phase 11: Messaging, Health, Alerts
-import { CamperMessagingPage } from '@/features/messaging/CamperMessagingPage'
-import { NurseSchedulePage } from '@/features/health/NurseSchedulePage'
-import { AlertsPage } from '@/features/alerts/AlertsPage'
+const CamperMessagingPage = lazy(() => import('@/features/messaging/CamperMessagingPage').then(m => ({ default: m.CamperMessagingPage })))
+const NurseSchedulePage = lazy(() => import('@/features/health/NurseSchedulePage').then(m => ({ default: m.NurseSchedulePage })))
+const AlertsPage = lazy(() => import('@/features/alerts/AlertsPage').then(m => ({ default: m.AlertsPage })))
 
-// Phase 7: Schedule, Payments, Reports, Store, Portal
-import { SchedulePage } from '@/features/schedule/SchedulePage'
-import { PaymentsPage } from '@/features/payments/PaymentsPage'
-import { ReportsPage } from '@/features/reports/ReportsPage'
-import { StoreManagementPage } from '@/features/store/StoreManagementPage'
-import { PortalLayout } from '@/features/portal/PortalLayout'
-import { PortalDashboard } from '@/features/portal/PortalDashboard'
-import { PortalCamperView } from '@/features/portal/PortalCamperView'
-import { PortalPhotos } from '@/features/portal/PortalPhotos'
-import { PortalInvoices } from '@/features/portal/PortalInvoices'
-import { PortalMessages } from '@/features/portal/PortalMessages'
-import { PortalMedicine } from '@/features/portal/PortalMedicine'
+function LoadingSpinner() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+    </div>
+  )
+}
 
 function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
-        <Routes>
-          {/* Public marketing pages */}
-          <Route path="/" element={<LandingPage />} />
-          <Route element={<MarketingLayout />}>
-            <Route path="/features" element={<FeaturesPage />} />
-            <Route path="/gallery" element={<GalleryPage />} />
-            <Route path="/schedule-demo" element={<ScheduleDemoPage />} />
-            <Route path="/dashboard-preview" element={<DashboardPreviewPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-          </Route>
-
-          {/* Public auth routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-
-          {/* Protected routes */}
-          <Route
-            path="/app"
-            element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/app/dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="events" element={<EventsPage />} />
-            <Route path="events/:id" element={<EventDetailPage />} />
-            <Route path="campers" element={<CampersPage />} />
-            <Route path="campers/:id" element={<CamperDetailPage />} />
-            <Route path="contacts" element={<ContactsPage />} />
-            <Route path="contacts/:id" element={<ContactDetailPage />} />
-            <Route path="registrations" element={<RegistrationListPage />} />
-
-            {/* Phase 3 */}
-            <Route path="communications" element={<CommunicationsPage />} />
-            <Route path="health-safety" element={<HealthSafetyPage />} />
-            <Route path="photos" element={<PhotosPage />} />
-
-            {/* Phase 4: Staff & Onboarding */}
-            <Route path="staff" element={<StaffDirectoryPage />} />
-            <Route path="staff/:id" element={<StaffProfilePage />} />
-            <Route path="onboarding" element={<OnboardingWizard />} />
-            <Route path="onboarding/manage" element={<OnboardingDashboard />} />
-
-            {/* Phase 5: Analytics, Activities, Bunks, Families */}
-            <Route path="analytics" element={<AnalyticsPage />} />
-            <Route path="activities" element={<ActivitiesPage />} />
-            <Route path="bunks" element={<BunksPage />} />
-            <Route path="families" element={<FamiliesPage />} />
-            <Route path="families/:id" element={<FamilyDetailPage />} />
-
-            {/* Phase 7: Schedule, Payments, Reports, Store */}
-            <Route path="schedule" element={<SchedulePage />} />
-            <Route path="payments" element={<PaymentsPage />} />
-            <Route path="reports" element={<ReportsPage />} />
-            <Route path="store" element={<StoreManagementPage />} />
-
-            {/* Phase 8: Form Builder, Workflows */}
-            <Route path="forms" element={<FormsPage />} />
-            <Route path="forms/:id" element={<FormEditorPage />} />
-            <Route path="workflows" element={<WorkflowsPage />} />
-            <Route path="workflows/:id" element={<WorkflowEditorPage />} />
-
-            {/* Phase 9: Lists */}
-            <Route path="lists" element={<ListsPage />} />
-            <Route path="lists/:id" element={<ListDetailPage />} />
-
-            {/* Phase 10: AI Insights */}
-            <Route path="ai-insights" element={<AIInsightsPage />} />
-
-            {/* Phase 11: Messaging, Health, Alerts */}
-            <Route path="camper-messages" element={<CamperMessagingPage />} />
-            <Route path="nurse-schedule" element={<NurseSchedulePage />} />
-            <Route path="alerts" element={<AlertsPage />} />
-
-            {/* Settings (nested routes) */}
-            <Route path="settings" element={<SettingsLayout />}>
-              <Route index element={<Navigate to="/app/settings/profile" replace />} />
-              <Route path="profile" element={<OrgProfilePage />} />
-              <Route path="locations" element={<LocationsPage />} />
-              <Route path="roles" element={<RolesPage />} />
-              <Route path="users" element={<UsersPage />} />
-              <Route path="general" element={<GeneralSettingsPage />} />
-              <Route path="notifications" element={<NotificationSettingsPage />} />
-              <Route path="certifications" element={<CertificationsSettingsPage />} />
-              <Route path="job-titles" element={<JobTitlesSettingsPage />} />
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
+            {/* Public marketing pages */}
+            <Route path="/" element={<LandingPage />} />
+            <Route element={<MarketingLayout />}>
+              <Route path="/features" element={<FeaturesPage />} />
+              <Route path="/gallery" element={<GalleryPage />} />
+              <Route path="/schedule-demo" element={<ScheduleDemoPage />} />
+              <Route path="/dashboard-preview" element={<DashboardPreviewPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/blog" element={<BlogPage />} />
+              <Route path="/map" element={<MapPage />} />
             </Route>
-          </Route>
 
-          {/* Parent Portal */}
-          <Route
-            path="/portal"
-            element={
-              <ProtectedRoute>
-                <PortalLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<PortalDashboard />} />
-            <Route path="campers/:id" element={<PortalCamperView />} />
-            <Route path="photos" element={<PortalPhotos />} />
-            <Route path="invoices" element={<PortalInvoices />} />
-            <Route path="messages" element={<PortalMessages />} />
-            <Route path="medicine" element={<PortalMedicine />} />
-          </Route>
+            {/* Public auth routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-          {/* Legacy redirects - old routes to new /app prefix */}
-          <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
-          <Route path="/events/*" element={<Navigate to="/app/events" replace />} />
-          <Route path="/campers/*" element={<Navigate to="/app/campers" replace />} />
-          <Route path="/contacts/*" element={<Navigate to="/app/contacts" replace />} />
-          <Route path="/registrations" element={<Navigate to="/app/registrations" replace />} />
-          <Route path="/communications" element={<Navigate to="/app/communications" replace />} />
-          <Route path="/health-safety" element={<Navigate to="/app/health-safety" replace />} />
-          <Route path="/photos" element={<Navigate to="/app/photos" replace />} />
-          <Route path="/staff/*" element={<Navigate to="/app/staff" replace />} />
-          <Route path="/analytics" element={<Navigate to="/app/analytics" replace />} />
-          <Route path="/store" element={<Navigate to="/app/store" replace />} />
-          <Route path="/settings/*" element={<Navigate to="/app/settings" replace />} />
+            {/* Protected routes */}
+            <Route
+              path="/app"
+              element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/app/dashboard" replace />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="events" element={<EventsPage />} />
+              <Route path="events/:id" element={<EventDetailPage />} />
+              <Route path="campers" element={<CampersPage />} />
+              <Route path="campers/:id" element={<CamperDetailPage />} />
+              <Route path="contacts" element={<ContactsPage />} />
+              <Route path="contacts/:id" element={<ContactDetailPage />} />
+              <Route path="registrations" element={<RegistrationListPage />} />
 
-          {/* Catch-all: redirect unknown routes to dashboard */}
-          <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
-        </Routes>
+              {/* Phase 3 */}
+              <Route path="communications" element={<CommunicationsPage />} />
+              <Route path="health-safety" element={<HealthSafetyPage />} />
+              <Route path="photos" element={<PhotosPage />} />
+
+              {/* Phase 4: Staff & Onboarding */}
+              <Route path="staff" element={<StaffDirectoryPage />} />
+              <Route path="staff/:id" element={<StaffProfilePage />} />
+              <Route path="onboarding" element={<OnboardingWizard />} />
+              <Route path="onboarding/manage" element={<OnboardingDashboard />} />
+
+              {/* Phase 5: Analytics, Activities, Bunks, Families */}
+              <Route path="analytics" element={<AnalyticsPage />} />
+              <Route path="activities" element={<ActivitiesPage />} />
+              <Route path="bunks" element={<BunksPage />} />
+              <Route path="families" element={<FamiliesPage />} />
+              <Route path="families/:id" element={<FamilyDetailPage />} />
+
+              {/* Phase 7: Schedule, Payments, Reports, Store */}
+              <Route path="schedule" element={<SchedulePage />} />
+              <Route path="payments" element={<PaymentsPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="store" element={<StoreManagementPage />} />
+
+              {/* Phase 8: Form Builder, Workflows */}
+              <Route path="forms" element={<FormsPage />} />
+              <Route path="forms/:id" element={<FormEditorPage />} />
+              <Route path="workflows" element={<WorkflowsPage />} />
+              <Route path="workflows/:id" element={<WorkflowEditorPage />} />
+
+              {/* Phase 9: Lists */}
+              <Route path="lists" element={<ListsPage />} />
+              <Route path="lists/:id" element={<ListDetailPage />} />
+
+              {/* Phase 10: AI Insights */}
+              <Route path="ai-insights" element={<AIInsightsPage />} />
+
+              {/* Phase 11: Messaging, Health, Alerts */}
+              <Route path="camper-messages" element={<CamperMessagingPage />} />
+              <Route path="nurse-schedule" element={<NurseSchedulePage />} />
+              <Route path="alerts" element={<AlertsPage />} />
+
+              {/* Settings (nested routes) */}
+              <Route path="settings" element={<SettingsLayout />}>
+                <Route index element={<Navigate to="/app/settings/profile" replace />} />
+                <Route path="profile" element={<OrgProfilePage />} />
+                <Route path="locations" element={<LocationsPage />} />
+                <Route path="roles" element={<RolesPage />} />
+                <Route path="users" element={<UsersPage />} />
+                <Route path="general" element={<GeneralSettingsPage />} />
+                <Route path="notifications" element={<NotificationSettingsPage />} />
+                <Route path="certifications" element={<CertificationsSettingsPage />} />
+                <Route path="job-titles" element={<JobTitlesSettingsPage />} />
+              </Route>
+            </Route>
+
+            {/* Parent Portal */}
+            <Route
+              path="/portal"
+              element={
+                <ProtectedRoute>
+                  <PortalLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<PortalDashboard />} />
+              <Route path="campers/:id" element={<PortalCamperView />} />
+              <Route path="photos" element={<PortalPhotos />} />
+              <Route path="invoices" element={<PortalInvoices />} />
+              <Route path="messages" element={<PortalMessages />} />
+              <Route path="medicine" element={<PortalMedicine />} />
+            </Route>
+
+            {/* Legacy redirects - old routes to new /app prefix */}
+            <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
+            <Route path="/events/*" element={<Navigate to="/app/events" replace />} />
+            <Route path="/campers/*" element={<Navigate to="/app/campers" replace />} />
+            <Route path="/contacts/*" element={<Navigate to="/app/contacts" replace />} />
+            <Route path="/registrations" element={<Navigate to="/app/registrations" replace />} />
+            <Route path="/communications" element={<Navigate to="/app/communications" replace />} />
+            <Route path="/health-safety" element={<Navigate to="/app/health-safety" replace />} />
+            <Route path="/photos" element={<Navigate to="/app/photos" replace />} />
+            <Route path="/staff/*" element={<Navigate to="/app/staff" replace />} />
+            <Route path="/analytics" element={<Navigate to="/app/analytics" replace />} />
+            <Route path="/store" element={<Navigate to="/app/store" replace />} />
+            <Route path="/settings/*" element={<Navigate to="/app/settings" replace />} />
+
+            {/* Catch-all: redirect unknown routes to dashboard */}
+            <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
+          </Routes>
+        </Suspense>
       </ToastProvider>
     </BrowserRouter>
   )

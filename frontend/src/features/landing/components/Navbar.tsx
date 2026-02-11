@@ -14,10 +14,12 @@ const navLinks = [
     children: [
       { label: 'Schedule Demo', href: '/schedule-demo' },
       { label: 'Dashboard Preview', href: '/dashboard-preview' },
+      { label: 'Camp Map', href: '/map' },
     ],
   },
   { label: 'About', href: '/about' },
   { label: 'Contact', href: '/contact' },
+  { label: 'Blog', href: '/blog' },
 ];
 
 export function Navbar() {
