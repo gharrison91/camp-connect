@@ -237,13 +237,20 @@ def _extract_sql(raw: str) -> str:
         if select_match:
             text_val = select_match.group(1).strip()
 
-    # Strategy 4: If there's extra text AFTER the SQL (explanation after LIMIT),
-    # find the last LIMIT clause and trim after it
-    limit_match = re.search(r"(LIMIT\s+\d+)\s*;?\s*\n", text_val, re.IGNORECASE)
-    if limit_match:
-        # Keep everything up to and including the LIMIT clause
-        end_pos = limit_match.end(1)
-        text_val = text_val[:end_pos].strip()
+    # Strategy 4: Find the LAST occurrence of LIMIT \d+ and trim everything after it.
+    # This handles Claude appending explanation text after the query.
+    limit_matches = list(re.finditer(r"LIMIT\s+\d+", text_val, re.IGNORECASE))
+    if limit_matches:
+        last_limit = limit_matches[-1]
+        text_val = text_val[:last_limit.end()].strip()
+
+    # Strategy 5: If no LIMIT found, look for end-of-SQL indicators
+    # (query ended but there's explanation text after it)
+    if not limit_matches:
+        # Check for common patterns: query followed by blank line + text
+        double_newline = re.search(r"((?:SELECT|WITH).*?)\n\n(?!SELECT|WITH|FROM|WHERE|JOIN|GROUP|ORDER|HAVING|LIMIT|AND|OR|\()", text_val, re.DOTALL | re.IGNORECASE)
+        if double_newline:
+            text_val = double_newline.group(1).strip()
 
     # Final cleanup
     text_val = text_val.strip().rstrip(";").strip()
@@ -433,7 +440,16 @@ REMEMBER: Your entire response must be a single SQL query. Nothing else."""
 
         retry_messages = claude_messages + [
             {"role": "assistant", "content": sql},
-            {"role": "user", "content": f"That query failed with this PostgreSQL error:\n\n{exec_error[:500]}\n\nPlease fix the SQL query. Output ONLY the corrected SQL. No explanation."},
+            {"role": "user", "content": (
+                f"That query returned this PostgreSQL error:\n\n"
+                f"{exec_error[:500]}\n\n"
+                f"Fix the SQL. Common issues:\n"
+                f"- Missing comma between SELECT columns\n"
+                f"- Referencing a column that doesn't exist (check schema)\n"
+                f"- Subquery syntax errors\n"
+                f"- Missing JOIN conditions\n\n"
+                f"Output ONLY the corrected SQL query. Nothing else."
+            )},
         ]
 
         raw_sql2, sql2, _ = await _generate_sql(client, system_prompt_sql, retry_messages)
@@ -521,6 +537,8 @@ async def _generate_sql(
             max_tokens=2048,
             system=system_prompt,
             messages=messages,
+            # Use temperature 0 for deterministic SQL generation
+            temperature=0,
         )
         raw = resp.content[0].text.strip()
         stop_reason = resp.stop_reason

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -20,6 +20,7 @@ function useMediaQuery(query: string): boolean {
 }
 
 export function AppLayout() {
+  const location = useLocation();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
   // Mobile: sidebar open/closed (hidden by default)
@@ -69,7 +70,7 @@ export function AppLayout() {
         )}
       >
         <div className="p-4 sm:p-6 lg:p-8">
-          <Outlet />
+          <Outlet key={location.pathname} />
         </div>
       </main>
     </div>
