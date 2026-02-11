@@ -148,3 +148,44 @@ export function useCreatePortalCheckout() {
         .then((r) => r.data),
   })
 }
+
+// --- Financing / BNPL Hooks ---
+
+export function useFinancingSettings() {
+  return useQuery({
+    queryKey: ['financing-settings'],
+    queryFn: async () => {
+      const res = await api.get('/payments/financing/settings')
+      return res.data
+    },
+  })
+}
+
+export function useUpdateFinancingSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: Record<string, unknown>) => {
+      const res = await api.put('/payments/financing/settings', data)
+      return res.data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['financing-settings'] }),
+  })
+}
+
+export function useFinancingEstimate() {
+  return useMutation({
+    mutationFn: async (data: { amount: number; terms?: number[] }) => {
+      const res = await api.post('/payments/financing/estimate', data)
+      return res.data as {
+        amount: number;
+        estimates: {
+          term_months: number;
+          monthly_payment: number;
+          total_cost: number;
+          apr: string;
+          finance_charge: number;
+        }[];
+      }
+    },
+  })
+}

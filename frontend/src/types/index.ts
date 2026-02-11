@@ -878,3 +878,233 @@ export interface DealPipeline {
   total_deals: number;
   total_value: number;
 }
+
+
+// ─── Background Checks ──────────────────────────────────────
+export interface BackgroundCheck {
+  id: string;
+  organization_id: string;
+  staff_user_id: string;
+  staff_name?: string;
+  provider: string;
+  external_id: string | null;
+  package: 'basic' | 'standard' | 'professional';
+  status: 'pending' | 'processing' | 'complete' | 'failed' | 'flagged';
+  result: 'clear' | 'consider' | 'suspended' | null;
+  report_url: string | null;
+  details: Record<string, unknown> | null;
+  initiated_by: string | null;
+  completed_at: string | null;
+  expires_at: string | null;
+  notes: string | null;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BackgroundCheckCreate {
+  staff_user_id: string;
+  package?: string;
+  notes?: string;
+}
+
+export interface BackgroundCheckUpdate {
+  status?: string;
+  result?: string;
+  notes?: string;
+  report_url?: string;
+  details?: Record<string, unknown>;
+  is_archived?: boolean;
+}
+
+export interface BackgroundCheckSettings {
+  provider: string;
+  api_key_configured: boolean;
+  api_key_last4: string | null;
+  webhook_url: string | null;
+}
+
+
+// ─── Job Listings / Staff Marketplace ────────────────────────
+export interface JobListing {
+  id: string;
+  organization_id: string;
+  title: string;
+  description: string | null;
+  department: string | null;
+  location: string | null;
+  employment_type: 'seasonal' | 'full_time' | 'part_time' | 'volunteer';
+  pay_rate: number | null;
+  pay_type: 'hourly' | 'weekly' | 'seasonal' | 'stipend';
+  start_date: string | null;
+  end_date: string | null;
+  requirements: string[] | null;
+  certifications_required: string[] | null;
+  min_age: number | null;
+  positions_available: number;
+  positions_filled: number;
+  status: 'draft' | 'published' | 'closed' | 'filled';
+  is_featured: boolean;
+  application_deadline: string | null;
+  application_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobListingCreate {
+  title: string;
+  description?: string;
+  department?: string;
+  location?: string;
+  employment_type?: string;
+  pay_rate?: number;
+  pay_type?: string;
+  start_date?: string;
+  end_date?: string;
+  requirements?: string[];
+  certifications_required?: string[];
+  min_age?: number;
+  positions_available?: number;
+  is_featured?: boolean;
+  application_deadline?: string;
+}
+
+export interface JobApplication {
+  id: string;
+  listing_id: string;
+  listing_title?: string;
+  applicant_name: string;
+  applicant_email: string;
+  applicant_phone: string | null;
+  resume_url: string | null;
+  cover_letter: string | null;
+  experience_years: number | null;
+  certifications: string[] | null;
+  availability_start: string | null;
+  availability_end: string | null;
+  status: 'submitted' | 'reviewing' | 'interview' | 'offered' | 'hired' | 'rejected';
+  notes: string | null;
+  created_at: string;
+}
+
+
+// ─── Custom Fields ──────────────────────────────────────────
+
+export interface CustomFieldDefinition {
+  id: string;
+  organization_id: string;
+  entity_type: string;
+  field_name: string;
+  field_key: string;
+  field_type: 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select' | 'url' | 'email' | 'phone';
+  description: string | null;
+  is_required: boolean;
+  options: string[] | null;
+  default_value: string | null;
+  sort_order: number;
+  is_active: boolean;
+  show_in_list: boolean;
+  show_in_detail: boolean;
+  created_at: string;
+}
+
+export interface CustomFieldValue {
+  id: string | null;
+  field_definition_id: string;
+  field_name?: string;
+  field_key?: string;
+  field_type?: string;
+  description?: string | null;
+  is_required?: boolean;
+  options?: string[] | null;
+  default_value?: string | null;
+  show_in_list?: boolean;
+  show_in_detail?: boolean;
+  entity_id: string;
+  entity_type: string;
+  value: string | null;
+}
+
+export interface CustomFieldDefinitionCreate {
+  entity_type: string;
+  field_name: string;
+  field_key: string;
+  field_type: string;
+  description?: string;
+  is_required?: boolean;
+  options?: string[];
+  default_value?: string;
+  show_in_list?: boolean;
+  show_in_detail?: boolean;
+}
+
+
+// ─── Camp Directory ─────────────────────────────────────────
+
+export interface CampProfile {
+  id: string;
+  organization_id: string;
+  slug: string;
+  name: string;
+  tagline: string | null;
+  description: string | null;
+  logo_url: string | null;
+  cover_image_url: string | null;
+  gallery_urls: string[] | null;
+  website_url: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  camp_type: string[] | null;
+  age_range_min: number | null;
+  age_range_max: number | null;
+  amenities: string[] | null;
+  activities: string[] | null;
+  accreditations: string[] | null;
+  price_range_min: number | null;
+  price_range_max: number | null;
+  session_dates: { name: string; start: string; end: string; price: number }[] | null;
+  social_links: { facebook?: string; instagram?: string; twitter?: string; youtube?: string } | null;
+  is_published: boolean;
+  is_featured: boolean;
+  rating: number | null;
+  review_count: number;
+  created_at: string;
+}
+
+export interface CampProfileUpdate {
+  name?: string;
+  slug?: string;
+  tagline?: string;
+  description?: string;
+  logo_url?: string;
+  cover_image_url?: string;
+  gallery_urls?: string[];
+  website_url?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  camp_type?: string[];
+  age_range_min?: number;
+  age_range_max?: number;
+  amenities?: string[];
+  activities?: string[];
+  accreditations?: string[];
+  price_range_min?: number;
+  price_range_max?: number;
+  session_dates?: { name: string; start: string; end: string; price: number }[];
+  social_links?: { facebook?: string; instagram?: string; twitter?: string; youtube?: string };
+}
+
+export interface DirectorySearchResult {
+  items: CampProfile[];
+  total: number;
+  skip: number;
+  limit: number;
+}

@@ -396,3 +396,89 @@ async def stripe_webhook(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
+
+
+
+# ─── Financing / BNPL ─────────────────────────────────────────
+
+
+@router.get(
+    "/financing/settings",
+)
+async def get_financing_settings(
+    current_user: Dict[str, Any] = Depends(
+        require_permission("payments.invoices.read")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get financing provider settings (Affirm, Klarna, etc.)."""
+    return {
+        "provider": "affirm",
+        "is_enabled": False,
+        "public_api_key": "",
+        "min_amount": 100,
+        "max_amount": 10000,
+        "terms": [3, 6, 12],
+        "apr_range": "0-30%",
+    }
+
+
+@router.put(
+    "/financing/settings",
+)
+async def update_financing_settings(
+    data: dict,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("payments.invoices.update")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update financing provider settings."""
+    return {"message": "Financing settings updated", **data}
+
+
+@router.post(
+    "/financing/estimate",
+)
+async def get_financing_estimate(
+    data: dict,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("payments.invoices.read")
+    ),
+):
+    """Get payment plan estimate for a given amount."""
+    amount = data.get("amount", 0)
+    terms = data.get("terms", [3, 6, 12])
+    estimates = []
+    for term in terms:
+        apr = 0.10 if term <= 6 else 0.15
+        monthly = (amount * (1 + apr * term / 12)) / term
+        estimates.append(
+            {
+                "term_months": term,
+                "monthly_payment": round(monthly, 2),
+                "total_cost": round(monthly * term, 2),
+                "apr": f"{apr * 100:.0f}%",
+                "finance_charge": round(monthly * term - amount, 2),
+            }
+        )
+    return {"amount": amount, "estimates": estimates}
+
+
+@router.post(
+    "/financing/create-checkout",
+)
+async def create_financing_checkout(
+    data: dict,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("payments.transactions.create")
+    ),
+):
+    """Create a financing checkout session (would redirect to Affirm in production)."""
+    checkout_id = str(uuid.uuid4())
+    return {
+        "checkout_id": checkout_id,
+        "checkout_url": f"https://checkout.affirm.com/mock/{checkout_id}",
+        "expires_at": "2026-12-31T23:59:59Z",
+        "status": "created",
+    }

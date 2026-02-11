@@ -85,6 +85,18 @@ from app.api.v1.payment_plans import router as payment_plans_router
 # Phase 13: CRM / Deals
 from app.api.v1.deals import router as deals_router
 
+# Phase 14: Camp Directory
+from app.api.v1.camp_directory import router as camp_directory_router
+
+# Phase 14: Custom Fields
+from app.api.v1.custom_fields import router as custom_fields_router
+# Phase 15: Staff Marketplace / Job Board
+from app.api.v1.job_listings import router as job_listings_router
+
+
+# Phase 14: Background Checks
+from app.api.v1.background_checks import router as background_checks_router
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
@@ -195,6 +207,18 @@ app.include_router(payment_plans_router, prefix=settings.api_v1_prefix)
 
 # Phase 13: CRM / Deals
 app.include_router(deals_router, prefix=settings.api_v1_prefix)
+
+# Phase 14: Camp Directory
+app.include_router(camp_directory_router, prefix=settings.api_v1_prefix)
+
+# Phase 14: Custom Fields
+app.include_router(custom_fields_router, prefix=settings.api_v1_prefix)
+# Phase 15: Staff Marketplace / Job Board
+app.include_router(job_listings_router, prefix=settings.api_v1_prefix)
+
+
+# Phase 14: Background Checks
+app.include_router(background_checks_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

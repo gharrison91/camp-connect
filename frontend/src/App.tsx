@@ -94,8 +94,17 @@ const AlertsPage = lazy(() => import('@/features/alerts/AlertsPage').then(m => (
 
 // Phase 13: CRM / Deals, Embeddable Forms, Invoice Template
 const DealsPage = lazy(() => import('@/features/deals/DealsPage').then(m => ({ default: m.DealsPage })))
+const JobsPage = lazy(() => import('@/features/jobs/JobsPage').then(m => ({ default: m.JobsPage })))
+const BackgroundChecksPage = lazy(() => import('@/features/staff/BackgroundChecksPage').then(m => ({ default: m.BackgroundChecksPage })))
 const PublicFormPage = lazy(() => import('@/features/forms/PublicFormPage').then(m => ({ default: m.PublicFormPage })))
 const InvoiceTemplateSettings = lazy(() => import('@/features/admin/InvoiceTemplateSettings').then(m => ({ default: m.InvoiceTemplateSettings })))
+const CustomFieldsSettingsPage = lazy(() => import('@/features/admin/CustomFieldsSettingsPage').then(m => ({ default: m.CustomFieldsSettingsPage })))
+
+// Phase 14: Camp Directory
+const DirectoryPage = lazy(() => import('@/features/directory/DirectoryPage').then(m => ({ default: m.DirectoryPage })))
+const CampDetailPage = lazy(() => import('@/features/directory/CampDetailPage').then(m => ({ default: m.CampDetailPage })))
+const CampProfileSettings = lazy(() => import('@/features/admin/CampProfileSettings').then(m => ({ default: m.CampProfileSettings })))
+
 
 function LoadingSpinner() {
   return (
@@ -126,6 +135,10 @@ function App() {
 
             {/* Public embeddable forms */}
             <Route path="/embed/form/:id" element={<PublicFormPage />} />
+
+            {/* Public camp directory */}
+            <Route path="/directory" element={<DirectoryPage />} />
+            <Route path="/directory/:slug" element={<CampDetailPage />} />
 
             {/* Public auth routes */}
             <Route path="/login" element={<LoginPage />} />
@@ -195,6 +208,10 @@ function App() {
 
               {/* Phase 13: CRM / Deals */}
               <Route path="deals" element={<DealsPage />} />
+              <Route path="jobs" element={<JobsPage />} />
+
+              {/* Phase 14: Background Checks */}
+              <Route path="background-checks" element={<BackgroundChecksPage />} />
 
               {/* Settings (nested routes) */}
               <Route path="settings" element={<SettingsLayout />}>
@@ -209,6 +226,8 @@ function App() {
                 <Route path="job-titles" element={<JobTitlesSettingsPage />} />
                 <Route path="developer" element={<DeveloperReferencePage />} />
                 <Route path="invoice-template" element={<InvoiceTemplateSettings />} />
+                <Route path="custom-fields" element={<CustomFieldsSettingsPage />} />
+                <Route path="camp-profile" element={<CampProfileSettings />} />
               </Route>
             </Route>
 

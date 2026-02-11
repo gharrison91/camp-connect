@@ -28,6 +28,8 @@ import {
   Heart,
   Bell,
   Target,
+  ShieldCheck,
+  Briefcase,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -76,10 +78,12 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Schedule', icon: CalendarDays, path: '/app/schedule', permission: 'scheduling.sessions.read' },
       { label: 'Staff', icon: UserCog, path: '/app/staff', permission: 'staff.employees.read' },
+      { label: 'Background Checks', icon: ShieldCheck, path: '/app/background-checks', permission: 'staff.employees.read' },
       { label: 'Communications', icon: MessageSquare, path: '/app/communications', permission: 'comms.messages.read' },
       { label: 'Camper Messages', icon: MessageCircle, path: '/app/camper-messages', permission: null },
       { label: 'Nurse Schedule', icon: Heart, path: '/app/nurse-schedule', permission: null },
       { label: 'Photos', icon: Camera, path: '/app/photos', permission: 'photos.media.view' },
+      { label: 'Job Board', icon: Briefcase, path: '/app/jobs', permission: null },
     ],
   },
   {

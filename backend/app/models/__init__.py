@@ -76,6 +76,18 @@ from app.models.payment_plan import PaymentPlan, PaymentPlanInstallment
 # Phase 13: CRM / Deals
 from app.models.deal import Deal
 
+# Phase 14: Camp Directory
+from app.models.camp_profile import CampProfile
+
+# Phase 14: Custom Fields
+from app.models.custom_field import CustomFieldDefinition, CustomFieldValue
+
+# Phase 14: Background Checks
+from app.models.background_check import BackgroundCheck
+# Phase 15: Staff Marketplace / Job Board
+from app.models.job_listing import JobListing, JobApplication
+
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -151,4 +163,14 @@ __all__ = [
     "PaymentPlanInstallment",
     # Phase 13
     "Deal",
+    # Phase 14
+    "CustomFieldDefinition",
+    "CustomFieldValue",
+    # Phase 14
+    "BackgroundCheck",
+    # Phase 15
+    "JobListing",
+    "JobApplication",
+    # Camp Directory
+    "CampProfile",
 ]

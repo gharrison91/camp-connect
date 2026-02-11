@@ -4,10 +4,10 @@
  */
 
 import { useState } from 'react'
-import { Receipt, Loader2, CreditCard, Building2, AlertCircle } from 'lucide-react'
+import { Receipt, Loader2, CreditCard, Building2, AlertCircle, DollarSign, X, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePortalInvoices } from '@/hooks/usePortal'
-import { useCreatePortalCheckout } from '@/hooks/usePayments'
+import { useCreatePortalCheckout, useFinancingEstimate } from '@/hooks/usePayments'
 import { useToast } from '@/components/ui/Toast'
 
 function getStatusBadge(status: string) {
@@ -27,6 +27,8 @@ export function PortalInvoices() {
   const { toast } = useToast()
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null)
   const [payingMethod, setPayingMethod] = useState<'card' | 'ach' | null>(null)
+  const [financingInvoice, setFinancingInvoice] = useState<{ id: string; total: number } | null>(null)
+  const financingEstimate = useFinancingEstimate()
 
   async function handlePay(invoiceId: string, method: 'card' | 'ach') {
     setPayingInvoiceId(invoiceId)
@@ -168,12 +170,87 @@ export function PortalInvoices() {
                         )}
                         Bank (ACH)
                       </button>
+                      <button
+                        className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50"
+                        disabled={isThisLoading}
+                        onClick={() => {
+                          setFinancingInvoice({ id: invoice.id, total: Number(invoice.total) })
+                          financingEstimate.mutate({ amount: Number(invoice.total) })
+                        }}
+                        title="Pay with monthly financing"
+                      >
+                        <DollarSign className="h-3 w-3" />
+                        Financing
+                      </button>
                     </div>
                   )}
                 </div>
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Financing Estimate Modal */}
+      {financingInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Pay with Financing</h3>
+                <p className="text-sm text-gray-500">Monthly payment options for ${Number(financingInvoice.total).toFixed(2)}</p>
+              </div>
+              <button onClick={() => setFinancingInvoice(null)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              {financingEstimate.isPending ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+                </div>
+              ) : financingEstimate.data ? (
+                <div className="space-y-4">
+                  <div className="grid gap-3">
+                    {financingEstimate.data.estimates.map((est, idx) => {
+                      const isPopular = idx === Math.floor(financingEstimate.data!.estimates.length / 2)
+                      return (
+                        <div key={est.term_months} className={cn(
+                          'relative flex items-center justify-between rounded-xl border p-4',
+                          isPopular ? 'border-emerald-300 bg-emerald-50/50 ring-1 ring-emerald-200' : 'border-gray-100'
+                        )}>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-gray-900">{est.term_months} Months</span>
+                              {isPopular && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+                                  <Star className="h-2 w-2" /> Popular
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500">APR: {est.apr} | Total: ${est.total_cost}</p>
+                          </div>
+                          <p className="text-lg font-bold text-gray-900">${est.monthly_payment}<span className="text-xs font-normal text-gray-500">/mo</span></p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <button
+                    onClick={() => {
+                      window.open('https://checkout.affirm.com/mock/' + financingInvoice.id, '_blank')
+                      setFinancingInvoice(null)
+                    }}
+                    className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+                  >
+                    Apply for Financing
+                  </button>
+                  <p className="text-center text-[11px] text-gray-400">Subject to credit approval. Terms may vary.</p>
+                </div>
+              ) : (
+                <p className="text-center text-sm text-gray-500">Unable to load financing options.</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

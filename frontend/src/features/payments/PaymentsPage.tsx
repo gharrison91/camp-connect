@@ -11,8 +11,9 @@ import type { Invoice } from '@/types'
 import { InvoiceDetailModal } from './InvoiceDetailModal'
 import { QuotesTab } from './QuotesTab'
 import { PaymentPlansTab } from './PaymentPlansTab'
+import { FinancingTab } from './FinancingTab'
 
-type Tab = 'invoices' | 'quotes' | 'plans' | 'payments'
+type Tab = 'invoices' | 'quotes' | 'plans' | 'payments' | 'financing'
 
 const STATUS_FILTERS = [
   { value: '', label: 'All' },
@@ -53,6 +54,7 @@ export function PaymentsPage() {
     { key: 'quotes', label: 'Quotes', icon: ClipboardList },
     { key: 'plans', label: 'Payment Plans', icon: CalendarRange },
     { key: 'payments', label: 'Transactions', icon: CreditCard },
+    { key: 'financing', label: 'Financing', icon: DollarSign },
   ]
 
   return (
@@ -220,6 +222,9 @@ export function PaymentsPage() {
           )}
         </div>
       )}
+
+      {/* Financing Tab */}
+      {tab === 'financing' && <FinancingTab />}
 
       {/* Invoice Detail Modal */}
       {selectedInvoice && (
