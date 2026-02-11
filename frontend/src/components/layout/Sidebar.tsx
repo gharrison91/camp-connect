@@ -30,6 +30,7 @@ import {
   Target,
   ShieldCheck,
   Briefcase,
+  Radar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -103,6 +104,7 @@ const navSections: NavSection[] = [
       { label: 'Forms', icon: FileText, path: '/app/forms', permission: null },
       { label: 'Workflows', icon: Workflow, path: '/app/workflows', permission: null },
       { label: 'Deals', icon: Target, path: '/app/deals', permission: null },
+      { label: 'Lead Gen', icon: Radar, path: '/app/leads', permission: null },
       { label: 'Settings', icon: Settings, path: '/app/settings', permission: null },
     ],
   },

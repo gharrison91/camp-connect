@@ -12,8 +12,9 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEvent } from '@/hooks/useEvents'
-import { useRegistrations, useEventWaitlist } from '@/hooks/useRegistrations'
-import type { Event, Registration, WaitlistEntry } from '@/types'
+import { useRegistrations } from '@/hooks/useRegistrations'
+import type { Event, Registration } from '@/types'
+import { WaitlistPanel } from './WaitlistPanel'
 
 type EventStatus = Event['status']
 
@@ -83,27 +84,7 @@ const paymentStatusConfig: Record<
   },
 }
 
-const waitlistStatusConfig: Record<
-  WaitlistEntry['status'],
-  { label: string; className: string }
-> = {
-  waiting: {
-    label: 'Waiting',
-    className: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  },
-  offered: {
-    label: 'Offered',
-    className: 'bg-blue-50 text-blue-700 ring-blue-600/20',
-  },
-  expired: {
-    label: 'Expired',
-    className: 'bg-gray-50 text-gray-500 ring-gray-400/20',
-  },
-  enrolled: {
-    label: 'Enrolled',
-    className: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  },
-}
+
 
 function formatDateRange(start: string, end: string): string {
   const startDate = new Date(start + 'T00:00:00')
@@ -159,8 +140,7 @@ export function EventDetailPage() {
   const { data: event, isLoading, error } = useEvent(id)
   const { data: registrations = [], isLoading: registrationsLoading } =
     useRegistrations({ event_id: id })
-  const { data: waitlist = [], isLoading: waitlistLoading } =
-    useEventWaitlist(id)
+
 
   if (isLoading) {
     return (
@@ -356,7 +336,7 @@ export function EventDetailPage() {
                 : 'text-gray-500 hover:text-gray-700'
             )}
           >
-            Waitlist ({waitlist.length})
+            Waitlist
           </button>
         </div>
 
@@ -452,88 +432,12 @@ export function EventDetailPage() {
         {/* Waitlist Tab */}
         {activeTab === 'waitlist' && (
           <div className="mt-4">
-            {waitlistLoading && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              </div>
-            )}
-            {!waitlistLoading && waitlist.length === 0 && (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-12">
-                <Users className="h-10 w-10 text-gray-300" />
-                <p className="mt-3 text-sm font-medium text-gray-900">
-                  No one on the waitlist
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  The waitlist is empty for this event.
-                </p>
-              </div>
-            )}
-            {!waitlistLoading && waitlist.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                        <th className="px-6 py-3">Position</th>
-                        <th className="px-6 py-3">Camper</th>
-                        <th className="hidden px-6 py-3 sm:table-cell">
-                          Contact
-                        </th>
-                        <th className="px-6 py-3">Status</th>
-                        <th className="hidden px-6 py-3 md:table-cell">
-                          Added
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {waitlist.map((entry) => {
-                        const wlStatus = waitlistStatusConfig[entry.status]
-                        return (
-                          <tr
-                            key={entry.id}
-                            className="transition-colors hover:bg-gray-50/80"
-                          >
-                            <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                              #{entry.position}
-                            </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                              {entry.camper_name ?? 'Unknown'}
-                            </td>
-                            <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 sm:table-cell">
-                              {entry.contact_name ?? '—'}
-                            </td>
-                            <td className="whitespace-nowrap px-6 py-4">
-                              <span
-                                className={cn(
-                                  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
-                                  wlStatus.className
-                                )}
-                              >
-                                {wlStatus.label}
-                              </span>
-                            </td>
-                            <td className="hidden whitespace-nowrap px-6 py-4 text-sm text-gray-600 md:table-cell">
-                              {new Date(
-                                entry.created_at
-                              ).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+            <WaitlistPanel eventId={id!} />
           </div>
         )}
       </div>
 
-      {/* Register Camper Modal Placeholder */}
+            {/* Register Camper Modal Placeholder */}
       {showRegisterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">

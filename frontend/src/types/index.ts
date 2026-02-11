@@ -190,11 +190,15 @@ export interface WaitlistEntry {
   event_id: string;
   camper_id: string;
   contact_id: string | null;
-  camper_name: string | null;
-  contact_name: string | null;
+  camper_name?: string;
+  contact_name?: string;
+  event_name?: string;
   position: number;
-  status: 'waiting' | 'offered' | 'expired' | 'enrolled';
-  notified_at: string | null;
+  status: 'waiting' | 'offered' | 'accepted' | 'declined' | 'expired';
+  priority: 'normal' | 'high' | 'vip';
+  notes: string | null;
+  offered_at: string | null;
+  expires_at: string | null;
   created_at: string;
 }
 
@@ -1108,3 +1112,21 @@ export interface DirectorySearchResult {
   skip: number;
   limit: number;
 }
+
+
+// Schools
+export interface School {
+  id: string;
+  name: string;
+  nces_id: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  district: string | null;
+  is_custom: boolean;
+}
+
+
+// Lead Enrichment
+export interface LeadEnrichmentSettings { api_key_set: boolean; enabled: boolean; auto_enrich: boolean; provider: string; }
+export interface EnrichedLead { name: string; email: string; phone: string | null; title: string; company: string; linkedin_url: string | null; location: string | null; }

@@ -49,3 +49,74 @@ export function useSubmitHealthForm() {
     },
   })
 }
+
+
+// --- Portal Documents ---------------------------------------------------
+
+export interface PortalDocumentItem {
+  id: string
+  name: string
+  type: string
+  size_bytes: number
+  uploaded_at: string
+  camper_name: string | null
+  download_url: string | null
+}
+
+export interface PortalFormAssignmentItem {
+  id: string
+  form_name: string
+  description: string | null
+  status: 'pending' | 'completed' | 'overdue'
+  due_date: string | null
+  camper_name: string | null
+  template_id: string
+  fields: any[]
+  settings: Record<string, any>
+  require_signature: boolean
+  submitted_at: string | null
+}
+
+export function usePortalDocuments(params?: { camper_id?: string; search?: string }) {
+  return useQuery<{ items: PortalDocumentItem[]; total: number }>({
+    queryKey: ['portal', 'documents', params],
+    queryFn: () =>
+      api
+        .get('/portal/documents', { params })
+        .then((r) => r.data),
+  })
+}
+
+export function usePortalForms(params?: { camper_id?: string; status_filter?: string }) {
+  return useQuery<{ items: PortalFormAssignmentItem[]; total: number }>({
+    queryKey: ['portal', 'forms', params],
+    queryFn: () =>
+      api
+        .get('/portal/forms', { params })
+        .then((r) => r.data),
+  })
+}
+
+export function useSubmitPortalForm() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      templateId,
+      answers,
+      signature_data,
+    }: {
+      templateId: string
+      answers: Record<string, any>
+      signature_data?: Record<string, any> | null
+    }) =>
+      api
+        .post('/portal/forms/' + templateId + '/submit', {
+          answers,
+          signature_data: signature_data || null,
+        })
+        .then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal', 'forms'] })
+    },
+  })
+}

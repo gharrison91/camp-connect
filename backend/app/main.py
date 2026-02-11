@@ -50,6 +50,7 @@ from app.api.v1.families import router as families_router
 
 # Phase 6: Parent Portal
 from app.api.v1.portal import router as portal_router
+from app.api.v1.portal_documents import router as portal_documents_router
 
 # Phase 7: Scheduling, Payments, Notifications, Reports, Store
 from app.api.v1.schedules import router as schedules_router
@@ -96,6 +97,15 @@ from app.api.v1.job_listings import router as job_listings_router
 
 # Phase 14: Background Checks
 from app.api.v1.background_checks import router as background_checks_router
+
+# Waitlist Management
+from app.api.v1.waitlist import router as waitlist_router
+
+# Phase 16: Lead Enrichment
+from app.api.v1.lead_enrichment import router as lead_enrichment_router
+
+# Branding / Theme
+from app.api.v1.branding import router as branding_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -171,6 +181,7 @@ app.include_router(families_router, prefix=settings.api_v1_prefix)
 
 # Phase 6: Parent Portal
 app.include_router(portal_router, prefix=settings.api_v1_prefix)
+app.include_router(portal_documents_router, prefix=settings.api_v1_prefix)
 
 # Phase 7: Scheduling, Payments, Notifications, Reports, Store
 app.include_router(schedules_router, prefix=settings.api_v1_prefix)
@@ -219,6 +230,15 @@ app.include_router(job_listings_router, prefix=settings.api_v1_prefix)
 
 # Phase 14: Background Checks
 app.include_router(background_checks_router, prefix=settings.api_v1_prefix)
+
+# Waitlist Management
+app.include_router(waitlist_router, prefix=settings.api_v1_prefix)
+
+# Phase 16: Lead Enrichment
+app.include_router(lead_enrichment_router, prefix=settings.api_v1_prefix)
+
+# Branding / Theme
+app.include_router(branding_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

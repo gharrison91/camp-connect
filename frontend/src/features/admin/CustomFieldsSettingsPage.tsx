@@ -63,7 +63,7 @@ function FieldDefinitionModal({
   const [isRequired, setIsRequired] = useState(field?.is_required ?? false)
   const [options, setOptions] = useState<string[]>(field?.options ?? [])
   const [newOption, setNewOption] = useState('')
-  const [defaultValue] = useState(field?.default_value ?? '')
+  const defaultValue = field?.default_value ?? ''
   const [showInList, setShowInList] = useState(field?.show_in_list ?? false)
   const [showInDetail, setShowInDetail] = useState(field?.show_in_detail ?? true)
   const [keyManuallyEdited, setKeyManuallyEdited] = useState(false)
@@ -150,7 +150,7 @@ function FieldDefinitionModal({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Field Type</label>
             <div className="relative">
-              <select value={fieldType} onChange={(e) => setFieldType(e.target.value)}
+              <select value={fieldType} onChange={(e) => setFieldType(e.target.value as CustomFieldDefinition['field_type'])}
                 className="w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 pr-10 text-sm focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100">
                 {FIELD_TYPES.map((ft) => (
                   <option key={ft.key} value={ft.key}>{ft.label}</option>

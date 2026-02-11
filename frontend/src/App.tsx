@@ -105,6 +105,12 @@ const DirectoryPage = lazy(() => import('@/features/directory/DirectoryPage').th
 const CampDetailPage = lazy(() => import('@/features/directory/CampDetailPage').then(m => ({ default: m.CampDetailPage })))
 const CampProfileSettings = lazy(() => import('@/features/admin/CampProfileSettings').then(m => ({ default: m.CampProfileSettings })))
 
+// Phase 15: Lead Enrichment, Portal enhancements
+const LeadEnrichmentPage = lazy(() => import('@/features/leads/LeadEnrichmentPage').then(m => ({ default: m.LeadEnrichmentPage })))
+const BrandingSettingsPage = lazy(() => import('@/features/admin/BrandingSettingsPage').then(m => ({ default: m.BrandingSettingsPage })))
+const PortalDocuments = lazy(() => import('@/features/portal/PortalDocuments').then(m => ({ default: m.PortalDocuments })))
+const PortalForms = lazy(() => import('@/features/portal/PortalForms').then(m => ({ default: m.PortalForms })))
+
 
 function LoadingSpinner() {
   return (
@@ -213,6 +219,9 @@ function App() {
               {/* Phase 14: Background Checks */}
               <Route path="background-checks" element={<BackgroundChecksPage />} />
 
+              {/* Phase 16: Lead Enrichment */}
+              <Route path="leads" element={<LeadEnrichmentPage />} />
+
               {/* Settings (nested routes) */}
               <Route path="settings" element={<SettingsLayout />}>
                 <Route index element={<Navigate to="/app/settings/profile" replace />} />
@@ -228,6 +237,7 @@ function App() {
                 <Route path="invoice-template" element={<InvoiceTemplateSettings />} />
                 <Route path="custom-fields" element={<CustomFieldsSettingsPage />} />
                 <Route path="camp-profile" element={<CampProfileSettings />} />
+                <Route path="branding" element={<BrandingSettingsPage />} />
               </Route>
             </Route>
 
@@ -246,6 +256,8 @@ function App() {
               <Route path="invoices" element={<PortalInvoices />} />
               <Route path="messages" element={<PortalMessages />} />
               <Route path="medicine" element={<PortalMedicine />} />
+              <Route path="documents" element={<PortalDocuments />} />
+              <Route path="forms" element={<PortalForms />} />
             </Route>
 
             {/* Legacy redirects - old routes to new /app prefix */}
