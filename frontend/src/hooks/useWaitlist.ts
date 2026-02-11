@@ -7,6 +7,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { WaitlistEntry } from '@/types'
 
+export function useWaitlists(filters?: { status?: string }) {
+  return useQuery<WaitlistEntry[]>({
+    queryKey: ["waitlist", "all", filters],
+    queryFn: () =>
+      api
+        .get("/waitlist", { params: filters })
+        .then((r) => r.data),
+  })
+}
+
 export function useWaitlist(eventId: string | undefined) {
   return useQuery<WaitlistEntry[]>({
     queryKey: ['waitlist', eventId],

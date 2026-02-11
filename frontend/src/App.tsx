@@ -99,13 +99,13 @@ const AlertsPage = lazy(() => import('@/features/alerts/AlertsPage').then(m => (
 const DealsPage = lazy(() => import('@/features/deals/DealsPage').then(m => ({ default: m.DealsPage })))
 const JobsPage = lazy(() => import('@/features/jobs/JobsPage').then(m => ({ default: m.JobsPage })))
 const BackgroundChecksPage = lazy(() => import('@/features/staff/BackgroundChecksPage').then(m => ({ default: m.BackgroundChecksPage })))
+const CertificationsPage = lazy(() => import('@/features/staff/CertificationsPage').then(m => ({ default: m.CertificationsPage })))
 const IncidentsPage = lazy(() => import('@/features/incidents/IncidentsPage').then(m => ({ default: m.IncidentsPage })))
 const PublicFormPage = lazy(() => import('@/features/forms/PublicFormPage').then(m => ({ default: m.PublicFormPage })))
 const InvoiceTemplateSettings = lazy(() => import('@/features/admin/InvoiceTemplateSettings').then(m => ({ default: m.InvoiceTemplateSettings })))
 const CustomFieldsSettingsPage = lazy(() => import('@/features/admin/CustomFieldsSettingsPage').then(m => ({ default: m.CustomFieldsSettingsPage })))
 
 // Phase 14: Camp Directory
-const DirectoryPage = lazy(() => import('@/features/directory/DirectoryPage').then(m => ({ default: m.DirectoryPage })))
 const CampDetailPage = lazy(() => import('@/features/directory/CampDetailPage').then(m => ({ default: m.CampDetailPage })))
 const CampProfileSettings = lazy(() => import('@/features/admin/CampProfileSettings').then(m => ({ default: m.CampProfileSettings })))
 
@@ -161,6 +161,18 @@ const NotificationPreferencesPage = lazy(() => import('@/features/admin/Notifica
 // Audit Log
 const AuditLogPage = lazy(() => import('@/features/audit/AuditLogPage').then(m => ({ default: m.AuditLogPage })))
 
+// Face Tagging
+const FaceTaggingPage = lazy(() => import('@/features/photos/FaceTaggingPage').then(m => ({ default: m.FaceTaggingPage })))
+
+// Waitlist
+const WaitlistPage = lazy(() => import('@/features/waitlist/WaitlistPage').then(m => ({ default: m.WaitlistPage })))
+
+// Medical Dashboard
+const MedicalDashboardPage = lazy(() => import('@/features/health/MedicalDashboardPage').then(m => ({ default: m.MedicalDashboardPage })))
+
+// Camp Directory (public)
+const CampDirectoryPage = lazy(() => import('@/features/directory/CampDirectoryPage').then(m => ({ default: m.CampDirectoryPage })))
+
 
 function LoadingSpinner() {
   return (
@@ -193,7 +205,7 @@ function App() {
             <Route path="/embed/form/:id" element={<PublicFormPage />} />
 
             {/* Public camp directory */}
-            <Route path="/directory" element={<DirectoryPage />} />
+            <Route path="/directory" element={<CampDirectoryPage />} />
             <Route path="/directory/:slug" element={<CampDetailPage />} />
 
             {/* Public auth routes */}
@@ -224,6 +236,7 @@ function App() {
               <Route path="communications" element={<CommunicationsPage />} />
               <Route path="health-safety" element={<HealthSafetyPage />} />
               <Route path="photos" element={<PhotosPage />} />
+              <Route path="face-tagging" element={<FaceTaggingPage />} />
 
               {/* Phase 4: Staff & Onboarding */}
               <Route path="staff" element={<StaffDirectoryPage />} />
@@ -268,7 +281,10 @@ function App() {
 
               {/* Phase 14: Background Checks */}
               <Route path="background-checks" element={<BackgroundChecksPage />} />
+              <Route path="certifications" element={<CertificationsPage />} />
               <Route path="incidents" element={<IncidentsPage />} />
+              <Route path="waitlist" element={<WaitlistPage />} />
+              <Route path="medical-dashboard" element={<MedicalDashboardPage />} />
 
               {/* Phase 16: Lead Enrichment */}
               <Route path="leads" element={<LeadEnrichmentPage />} />

@@ -1887,3 +1887,59 @@ export interface NotificationPreferences {
   quiet_hours_end: string | null
   digest_frequency: 'instant' | 'hourly' | 'daily'
 }
+
+
+// ─── Staff Certifications Page ───────────────────────────────
+
+export interface CertificationPageType {
+  id: string
+  name: string
+  description?: string
+  required: boolean
+  renewal_period_months?: number
+}
+
+export interface CertificationPageRecord {
+  id: string
+  employee_id: string
+  employee_name?: string
+  certification_type_id: string
+  certification_type_name?: string
+  issued_date: string
+  expiry_date?: string | null
+  issuing_authority?: string | null
+  certificate_number?: string | null
+  status: 'active' | 'expiring_soon' | 'expired' | 'pending'
+  document_url?: string | null
+  notes?: string | null
+}
+
+
+// ─── Face Tagging ────────────────────────────────────────────
+
+export interface DetectedFace {
+  id: string
+  photo_id: string
+  photo_url: string
+  face_bbox: { x: number; y: number; width: number; height: number }
+  confidence: number
+  camper_id?: string
+  camper_name?: string
+  status: 'untagged' | 'tagged' | 'dismissed'
+  created_at: string
+}
+
+export interface FaceSuggestion {
+  camper_id: string
+  camper_name: string
+  photo_url?: string
+  confidence: number
+}
+
+export interface FaceTagStats {
+  total_faces: number
+  tagged: number
+  untagged: number
+  dismissed: number
+  accuracy_rate: number
+}

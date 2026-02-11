@@ -46,6 +46,9 @@ import {
 Hash,
   ClipboardCheck,
   GraduationCap,
+  ScanFace,
+  ListOrdered,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -92,6 +95,7 @@ const navSections: NavSection[] = [
       { label: 'Bunks', icon: BedDouble, path: '/app/bunks', permission: 'core.bunks.read' },
       { label: 'Meals', icon: Utensils, path: '/app/meals', permission: 'core.settings.manage' },
       { label: 'Weather', icon: CloudSun, path: '/app/weather', permission: null },
+      { label: 'Waitlist', icon: ListOrdered, path: '/app/waitlist', permission: null },
     ],
   },
   {
@@ -101,11 +105,14 @@ const navSections: NavSection[] = [
       { label: 'Staff', icon: UserCog, path: '/app/staff', permission: 'staff.employees.read' },
       { label: 'Volunteers', icon: HandHeart, path: '/app/volunteers', permission: null },
       { label: 'Background Checks', icon: ShieldCheck, path: '/app/background-checks', permission: 'staff.employees.read' },
+      { label: 'Certifications', icon: Award, path: '/app/certifications', permission: null },
       { label: 'Communications', icon: MessageSquare, path: '/app/communications', permission: 'comms.messages.read' },
       { label: 'Team Chat', icon: Hash, path: '/app/team-chat', permission: null },
       { label: 'Camper Messages', icon: MessageCircle, path: '/app/camper-messages', permission: null },
       { label: 'Nurse Schedule', icon: Heart, path: '/app/nurse-schedule', permission: null },
+      { label: 'Medical Dashboard', icon: Activity, path: '/app/medical-dashboard', permission: null },
       { label: 'Photos', icon: Camera, path: '/app/photos', permission: 'photos.media.view' },
+      { label: 'Face Tagging', icon: ScanFace, path: '/app/face-tagging', permission: null },
       { label: 'Job Board', icon: Briefcase, path: '/app/jobs', permission: null },
       { label: 'Inventory', icon: Package, path: '/app/inventory', permission: null },
       { label: 'Incidents', icon: AlertTriangle, path: '/app/incidents', permission: null },

@@ -161,6 +161,9 @@ from app.api.v1.notification_preferences import router as notification_prefs_rou
 # Global Search
 from app.api.v1.search import router as search_router
 
+# Medical Dashboard
+from app.api.v1.medical_dashboard import router as medical_dashboard_router
+
 # Audit Logs
 from app.api.v1.audit_logs import router as audit_logs_router
 @asynccontextmanager
@@ -350,6 +353,9 @@ app.include_router(notification_prefs_router, prefix=settings.api_v1_prefix)
 
 # Global Search
 app.include_router(search_router, prefix=settings.api_v1_prefix)
+
+# Medical Dashboard
+app.include_router(medical_dashboard_router, prefix=settings.api_v1_prefix)
 
 # Audit Logs
 app.include_router(audit_logs_router, prefix=settings.api_v1_prefix)

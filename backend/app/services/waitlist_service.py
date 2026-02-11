@@ -415,3 +415,27 @@ async def _update_event_waitlist_count(
     event = event_result.scalar_one_or_none()
     if event:
         event.waitlist_count = count
+
+
+async def get_all_waitlist(
+    db: AsyncSession,
+    *,
+    organization_id: uuid.UUID,
+    status_filter: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Get all waitlist entries across all events for the organization."""
+    query = (
+        select(Waitlist)
+        .options(
+            selectinload(Waitlist.camper),
+            selectinload(Waitlist.contact),
+            selectinload(Waitlist.event),
+        )
+        .where(Waitlist.organization_id == organization_id)
+    )
+    if status_filter:
+        query = query.where(Waitlist.status == status_filter)
+    query = query.order_by(Waitlist.created_at.desc())
+    result = await db.execute(query)
+    entries = result.scalars().all()
+    return [_entry_to_dict(e) for e in entries]

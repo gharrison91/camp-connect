@@ -6,9 +6,9 @@ Full CRUD + offer/accept/decline workflow for event waitlists.
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_permission
@@ -23,6 +23,25 @@ from app.schemas.waitlist import (
 from app.services import waitlist_service
 
 router = APIRouter(prefix="/waitlist", tags=["Waitlist"])
+
+
+@router.get(
+    "",
+    response_model=List[WaitlistEntryRead],
+)
+async def get_all_waitlist(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    current_user: Dict[str, Any] = Depends(
+        require_permission("core.events.read")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all waitlist entries across all events."""
+    return await waitlist_service.get_all_waitlist(
+        db,
+        organization_id=current_user["organization_id"],
+        status_filter=status_filter,
+    )
 
 
 @router.get(
