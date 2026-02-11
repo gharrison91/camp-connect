@@ -203,26 +203,51 @@ def validate_sql(sql: str) -> Tuple[bool, str]:
 
 
 # ---------------------------------------------------------------------------
-# SQL cleanup
+# SQL extraction and cleanup
 # ---------------------------------------------------------------------------
 
-def _clean_sql(raw: str) -> str:
+def _extract_sql(raw: str) -> str:
     """
-    Minimal, safe SQL cleanup.  Only strips markdown fences and trailing
-    semicolons.  Does NOT remove blank lines or reformat the query.
+    Extract and clean SQL from Claude's response.
+    Handles: markdown fences, extra explanation text, trailing semicolons.
+    This is the most critical function — it must reliably extract JUST the SQL.
     """
-    sql = raw.strip()
+    text_val = raw.strip()
 
-    # Strip markdown code fences
-    if sql.startswith("```"):
-        first_newline = sql.find("\n")
-        if first_newline != -1:
-            sql = sql[first_newline + 1:]
-        if sql.rstrip().endswith("```"):
-            sql = sql.rstrip()[:-3]
+    # Strategy 1: If wrapped in markdown code fences, extract from there
+    fence_match = re.search(r"```(?:sql)?\s*\n(.*?)```", text_val, re.DOTALL | re.IGNORECASE)
+    if fence_match:
+        text_val = fence_match.group(1).strip()
+    else:
+        # Strategy 2: If starts with ``` without closing, strip opening fence
+        if text_val.startswith("```"):
+            first_newline = text_val.find("\n")
+            if first_newline != -1:
+                text_val = text_val[first_newline + 1:]
+            if text_val.rstrip().endswith("```"):
+                text_val = text_val.rstrip()[:-3]
+            text_val = text_val.strip()
 
-    sql = sql.strip().rstrip(";").strip()
-    return sql
+    # Strategy 3: If there's extra text before the SQL, find the SELECT/WITH
+    upper = text_val.upper()
+    if not (upper.startswith("SELECT") or upper.startswith("WITH")
+            or upper.startswith("NO_SQL_NEEDED") or upper.startswith("REFUSED")):
+        # Try to find where the SQL starts
+        select_match = re.search(r"(?:^|\n)((?:SELECT|WITH)\b.*)", text_val, re.DOTALL | re.IGNORECASE)
+        if select_match:
+            text_val = select_match.group(1).strip()
+
+    # Strategy 4: If there's extra text AFTER the SQL (explanation after LIMIT),
+    # find the last LIMIT clause and trim after it
+    limit_match = re.search(r"(LIMIT\s+\d+)\s*;?\s*\n", text_val, re.IGNORECASE)
+    if limit_match:
+        # Keep everything up to and including the LIMIT clause
+        end_pos = limit_match.end(1)
+        text_val = text_val[:end_pos].strip()
+
+    # Final cleanup
+    text_val = text_val.strip().rstrip(";").strip()
+    return text_val
 
 
 # ---------------------------------------------------------------------------
@@ -243,6 +268,23 @@ SUGGESTED_PROMPTS = [
     {"title": "Buddy requests", "prompt": "Show me all pending bunk buddy requests with mutual matches.", "icon": "heart"},
     {"title": "Waitlist summary", "prompt": "How many campers are on the waitlist for each event?", "icon": "list"},
 ]
+
+
+# ---------------------------------------------------------------------------
+# Entity type mapping — tells the frontend what kind of link each ID is
+# ---------------------------------------------------------------------------
+
+# Maps column alias patterns to entity types for clickable links
+ENTITY_LINK_MAP = {
+    "camper_id": "campers",
+    "contact_id": "contacts",
+    "family_id": "families",
+    "event_id": "events",
+    "staff_id": "staff",
+    "registration_id": "registrations",
+    "activity_id": "activities",
+    "user_id": "staff",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -293,28 +335,51 @@ async def chat(
     system_prompt_sql = f"""You are an expert PostgreSQL analyst for Camp Connect, a camp management platform.
 Convert the user's natural language question into a single PostgreSQL SELECT query.
 
-CRITICAL RULES — follow these exactly:
-1. Return ONLY the SQL query. No explanation, no markdown fences, no comments, no preamble.
+YOUR OUTPUT MUST BE ONLY THE SQL QUERY. Nothing else. No explanation, no markdown, no comments.
+
+CRITICAL RULES:
+1. OUTPUT ONLY RAW SQL. No markdown fences (```). No text before or after the query. Just the SQL.
 2. ONLY SELECT queries. Never INSERT, UPDATE, DELETE, DROP, or any mutation.
-3. EVERY query MUST include: WHERE <table>.organization_id = :org_id
-   (use the parameter placeholder :org_id — never hardcode a UUID).
-4. For tables with is_deleted column: add AND is_deleted = false
-   For tables with deleted_at column: add AND deleted_at IS NULL
-5. Add LIMIT 500 at the end of every query.
+3. EVERY query MUST filter by organization: WHERE <table>.organization_id = :org_id
+   Use the parameter placeholder :org_id — never hardcode a UUID.
+4. Soft-delete filtering:
+   - For tables with is_deleted column: add AND is_deleted = false
+   - For tables with deleted_at column: add AND deleted_at IS NULL
+5. Always end with LIMIT 500.
 6. Use readable column aliases (e.g., AS total_revenue, AS camper_count).
 7. For age from date_of_birth: EXTRACT(YEAR FROM AGE(date_of_birth))
 8. For current date: CURRENT_DATE
 9. Use COALESCE for nullable numeric fields in aggregates.
-10. If the question cannot be answered with SQL, respond with exactly: NO_SQL_NEEDED
-11. If the question asks to change data, respond with exactly: REFUSED
 
-IMPORTANT: Only use table names and column names that appear in the schema below.
-Do NOT guess or invent column names. If a column doesn't exist, use NO_SQL_NEEDED.
+IMPORTANT — ALWAYS INCLUDE ENTITY IDs:
+When the query returns individual records (campers, contacts, families, staff, events, etc.),
+ALWAYS include the primary key ID column with a clear alias:
+- For campers: include c.id AS camper_id
+- For contacts: include co.id AS contact_id
+- For families: include f.id AS family_id
+- For events: include e.id AS event_id
+- For staff/users: include u.id AS staff_id
+- For registrations: include r.id AS registration_id
+This is required so the UI can link to the detail pages.
+
+FUZZY TEXT MATCHING:
+When the user searches for names, schools, locations, or other text fields,
+ALWAYS use ILIKE with %wildcards% for fuzzy matching. Examples:
+- "kids from briarcrest" → WHERE c.school ILIKE '%briarcrest%'
+- "camper named emma" → WHERE c.first_name ILIKE '%emma%'
+- "families named johnson" → WHERE f.family_name ILIKE '%johnson%'
+Never use = for text searches. Always use ILIKE '%term%'.
+
+SPECIAL RESPONSES (output these EXACT strings with no other text):
+- If the question cannot be answered with SQL: NO_SQL_NEEDED
+- If the question asks to change data: REFUSED
 
 DATABASE SCHEMA (live from the actual database):
 {live_schema}
 
-Parameter: :org_id (the user's organization UUID — always use this placeholder)"""
+Parameter: :org_id (the user's organization UUID — always use this placeholder)
+
+REMEMBER: Your entire response must be a single SQL query. Nothing else."""
 
     # Prepare user messages for Claude
     claude_messages = [{"role": m["role"], "content": m["content"]} for m in messages]
@@ -330,9 +395,12 @@ Parameter: :org_id (the user's organization UUID — always use this placeholder
             "error": "sql_generation_failed",
         }
 
-    # Handle non-SQL responses
-    if raw_sql in ("REFUSED", "NO_SQL_NEEDED"):
-        return await _handle_non_sql(client, raw_sql, claude_messages, user_name)
+    # Handle non-SQL responses (check both raw and cleaned)
+    raw_upper = raw_sql.strip().upper()
+    if raw_upper.startswith("REFUSED") or raw_upper == "REFUSED":
+        return await _handle_non_sql(client, "REFUSED", claude_messages, user_name)
+    if raw_upper.startswith("NO_SQL_NEEDED") or raw_upper == "NO_SQL_NEEDED":
+        return await _handle_non_sql(client, "NO_SQL_NEEDED", claude_messages, user_name)
 
     # Validate
     is_valid, error_msg = validate_sql(sql)
@@ -359,12 +427,13 @@ Parameter: :org_id (the user's organization UUID — always use this placeholder
 
     # Phase 2b: If query failed, retry once — tell Claude the error and ask it to fix
     if exec_error:
-        print(f"[AI] First query failed: {exec_error[:200]}")
+        print(f"[AI] First query failed: {exec_error[:300]}")
+        print(f"[AI] Failed SQL:\n{exec_sql[:500]}")
         print(f"[AI] Retrying with error context...")
 
         retry_messages = claude_messages + [
             {"role": "assistant", "content": sql},
-            {"role": "user", "content": f"That query failed with this PostgreSQL error:\n{exec_error[:300]}\n\nPlease fix the query. Return ONLY the corrected SQL, nothing else."},
+            {"role": "user", "content": f"That query failed with this PostgreSQL error:\n\n{exec_error[:500]}\n\nPlease fix the SQL query. Output ONLY the corrected SQL. No explanation."},
         ]
 
         raw_sql2, sql2, _ = await _generate_sql(client, system_prompt_sql, retry_messages)
@@ -388,6 +457,9 @@ Parameter: :org_id (the user's organization UUID — always use this placeholder
             "data": None,
             "error": "query_execution_failed",
         }
+
+    # Detect entity types in the result columns for clickable links
+    entity_links = _detect_entity_links(columns)
 
     # Phase 3: Summarise results
     row_count = len(data)
@@ -428,6 +500,7 @@ RULES:
         "sql": sql,
         "data": data[:200],
         "row_count": row_count,
+        "entity_links": entity_links,
         "error": None,
     }
 
@@ -457,8 +530,9 @@ async def _generate_sql(
             print(f"[AI] WARNING: output truncated by max_tokens!")
             return None, None, stop_reason
 
-        cleaned = _clean_sql(raw)
-        print(f"[AI] Cleaned SQL ({len(cleaned)} chars):\n{cleaned[:400]}")
+        cleaned = _extract_sql(raw)
+        print(f"[AI] Raw output ({len(raw)} chars):\n{raw[:400]}")
+        print(f"[AI] Extracted SQL ({len(cleaned)} chars):\n{cleaned[:400]}")
         return raw, cleaned, stop_reason
 
     except Exception as e:
@@ -499,6 +573,22 @@ async def _execute_query(
         # Rollback the failed transaction so the session is still usable
         await db.rollback()
         return [], [], str(e)
+
+
+def _detect_entity_links(columns: List[str]) -> Dict[str, str]:
+    """
+    Detect which columns in the result set are entity IDs that should become
+    clickable links. Returns a mapping of column_name -> entity_type.
+    e.g. {"camper_id": "campers", "contact_id": "contacts"}
+    """
+    links = {}
+    for col in columns:
+        col_lower = col.lower()
+        for pattern, entity_type in ENTITY_LINK_MAP.items():
+            if col_lower == pattern or col_lower.endswith(f"_{pattern}"):
+                links[col] = entity_type
+                break
+    return links
 
 
 async def _handle_non_sql(

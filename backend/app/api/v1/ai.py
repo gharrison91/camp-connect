@@ -35,6 +35,7 @@ class ChatResponse(BaseModel):
     sql: Optional[str] = None
     data: Optional[List[Dict[str, Any]]] = None
     row_count: Optional[int] = None
+    entity_links: Optional[Dict[str, str]] = None
     error: Optional[str] = None
 
 

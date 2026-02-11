@@ -15,6 +15,7 @@ export interface ChatResponse {
   sql: string | null
   data: Record<string, unknown>[] | null
   row_count?: number | null
+  entity_links?: Record<string, string> | null
   error: string | null
 }
 

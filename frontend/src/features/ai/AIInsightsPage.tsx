@@ -1,9 +1,11 @@
 /**
  * Camp Connect - AI Insights Page
  * Full-page chat interface powered by Claude for natural language data queries.
+ * Features: CSV export, clickable entity links, fuzzy search.
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Sparkles,
   Send,
@@ -13,6 +15,8 @@ import {
   ChevronUp,
   Database,
   Table2,
+  Download,
+  ExternalLink,
   Users,
   DollarSign,
   AlertCircle,
@@ -50,6 +54,7 @@ interface ConversationMessage {
   sql?: string | null
   data?: Record<string, unknown>[] | null
   rowCount?: number | null
+  entityLinks?: Record<string, string> | null
   error?: string | null
   timestamp: Date
 }
@@ -92,11 +97,10 @@ export function AIInsightsPage() {
     setInput('')
 
     // Build the message history for the API
-    const apiMessages: ChatMessage[] = updatedMessages
-      .map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      }))
+    const apiMessages: ChatMessage[] = updatedMessages.map((m) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }))
 
     try {
       const response: ChatResponse = await chatMutation.mutateAsync({
@@ -109,6 +113,7 @@ export function AIInsightsPage() {
         sql: response.sql,
         data: response.data,
         rowCount: response.row_count,
+        entityLinks: response.entity_links,
         error: response.error,
         timestamp: new Date(),
       }
@@ -307,11 +312,12 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
         {/* SQL collapsible */}
         {message.sql && <SQLViewer sql={message.sql} />}
 
-        {/* Data table */}
+        {/* Data table with CSV export and clickable links */}
         {message.data && message.data.length > 0 && (
           <DataTable
             data={message.data}
             rowCount={message.rowCount ?? message.data.length}
+            entityLinks={message.entityLinks ?? null}
           />
         )}
       </div>
@@ -322,7 +328,6 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
 // ---------- Markdown Content (simple renderer) ----------
 
 function MarkdownContent({ content }: { content: string }) {
-  // Simple markdown-like rendering
   const lines = content.split('\n')
 
   return (
@@ -388,7 +393,7 @@ function MarkdownContent({ content }: { content: string }) {
 }
 
 function InlineFormat({ text }: { text: string }) {
-  // Bold: **text** → <strong>
+  // Bold: **text** -> <strong>
   const parts = text.split(/(\*\*[^*]+\*\*)/g)
   return (
     <>
@@ -436,39 +441,112 @@ function SQLViewer({ sql }: { sql: string }) {
   )
 }
 
+// ---------- CSV Export Helper ----------
+
+function exportToCSV(data: Record<string, unknown>[], filename: string) {
+  if (!data.length) return
+
+  const columns = Object.keys(data[0])
+
+  // Build CSV content
+  const header = columns.map((col) => `"${col.replace(/"/g, '""')}"`).join(',')
+  const rows = data.map((row) =>
+    columns
+      .map((col) => {
+        const val = row[col]
+        if (val === null || val === undefined) return '""'
+        const str = String(val)
+        return `"${str.replace(/"/g, '""')}"`
+      })
+      .join(',')
+  )
+
+  const csv = [header, ...rows].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+
+  URL.revokeObjectURL(url)
+}
+
 // ---------- Data Table ----------
 
 function DataTable({
   data,
   rowCount,
+  entityLinks,
 }: {
   data: Record<string, unknown>[]
   rowCount: number
+  entityLinks: Record<string, string> | null
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const navigate = useNavigate()
   const columns = Object.keys(data[0] || {})
   const displayRows = data.slice(0, 50)
 
+  // Determine which columns are ID columns that should be hidden
+  // (we'll use them for linking but not display UUID values)
+  const idColumns = new Set(
+    entityLinks ? Object.keys(entityLinks) : []
+  )
+
+  // Visible columns = all columns except raw ID columns
+  const visibleColumns = columns.filter((col) => !idColumns.has(col))
+
+  // Figure out which visible column should be the "link" column for each entity type
+  // e.g., if we have camper_id and first_name, the first_name cell becomes clickable
+  const linkableColumns = _detectLinkableColumns(columns, entityLinks)
+
+  const handleCellClick = (row: Record<string, unknown>, col: string) => {
+    const linkInfo = linkableColumns[col]
+    if (!linkInfo) return
+
+    const id = row[linkInfo.idColumn]
+    if (!id) return
+
+    navigate(`/app/${linkInfo.entityType}/${id}`)
+  }
+
+  const handleExportCSV = () => {
+    const timestamp = new Date().toISOString().slice(0, 10)
+    exportToCSV(data, `camp-connect-export-${timestamp}.csv`)
+  }
+
   return (
     <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center gap-2 px-4 py-2.5 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-      >
-        <Table2 className="h-3.5 w-3.5" />
-        View Data ({rowCount} row{rowCount !== 1 ? 's' : ''})
-        {isOpen ? (
-          <ChevronUp className="ml-auto h-3.5 w-3.5" />
-        ) : (
-          <ChevronDown className="ml-auto h-3.5 w-3.5" />
-        )}
-      </button>
+      <div className="flex items-center">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex flex-1 items-center gap-2 px-4 py-2.5 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+        >
+          <Table2 className="h-3.5 w-3.5" />
+          View Data ({rowCount} row{rowCount !== 1 ? 's' : ''})
+          {isOpen ? (
+            <ChevronUp className="ml-auto h-3.5 w-3.5" />
+          ) : (
+            <ChevronDown className="ml-auto h-3.5 w-3.5" />
+          )}
+        </button>
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium text-gray-500 hover:text-violet-600 hover:bg-violet-50 transition-colors border-l border-gray-100"
+          title="Export to CSV"
+        >
+          <Download className="h-3.5 w-3.5" />
+          CSV
+        </button>
+      </div>
       {isOpen && (
         <div className="border-t border-gray-100 overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-gray-50">
-                {columns.map((col) => (
+                {visibleColumns.map((col) => (
                   <th
                     key={col}
                     className="px-3 py-2 text-left font-semibold text-gray-600 whitespace-nowrap border-b border-gray-100"
@@ -487,15 +565,33 @@ function DataTable({
                     i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                   )}
                 >
-                  {columns.map((col) => (
-                    <td
-                      key={col}
-                      className="px-3 py-2 text-gray-700 whitespace-nowrap max-w-[200px] truncate"
-                      title={String(row[col] ?? '')}
-                    >
-                      {formatCellValue(row[col])}
-                    </td>
-                  ))}
+                  {visibleColumns.map((col) => {
+                    const isLinkable = !!linkableColumns[col]
+                    return (
+                      <td
+                        key={col}
+                        className={cn(
+                          'px-3 py-2 whitespace-nowrap max-w-[200px] truncate',
+                          isLinkable
+                            ? 'text-violet-600 font-medium cursor-pointer hover:text-violet-800 hover:underline'
+                            : 'text-gray-700'
+                        )}
+                        title={String(row[col] ?? '')}
+                        onClick={
+                          isLinkable
+                            ? () => handleCellClick(row, col)
+                            : undefined
+                        }
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          {formatCellValue(row[col])}
+                          {isLinkable && (
+                            <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
+                          )}
+                        </span>
+                      </td>
+                    )
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -511,8 +607,104 @@ function DataTable({
   )
 }
 
+// ---------- Helpers for clickable links ----------
+
+interface LinkInfo {
+  idColumn: string
+  entityType: string
+}
+
+/**
+ * Detect which visible columns should be clickable links.
+ * For example, if we have "camper_id" and "first_name" in the same row,
+ * the "first_name" column becomes a link to /app/campers/:camper_id.
+ *
+ * Strategy: for each entity ID column, find the best "display" column
+ * to make clickable (name, first_name, email, title, etc.)
+ */
+function _detectLinkableColumns(
+  columns: string[],
+  entityLinks: Record<string, string> | null
+): Record<string, LinkInfo> {
+  if (!entityLinks) return {}
+
+  const result: Record<string, LinkInfo> = {}
+
+  // Name-like column patterns in priority order
+  const namePatterns = [
+    'name',
+    'full_name',
+    'first_name',
+    'family_name',
+    'title',
+    'email',
+    'event_name',
+    'activity_name',
+    'camper_name',
+    'contact_name',
+    'staff_name',
+  ]
+
+  for (const [idCol, entityType] of Object.entries(entityLinks)) {
+    if (!columns.includes(idCol)) continue
+
+    // Extract prefix from ID column (e.g., "camper" from "camper_id")
+    const prefix = idCol.replace(/_id$/, '')
+
+    // Find the best display column for this entity
+    let bestCol: string | null = null
+
+    // First, look for columns with the entity prefix
+    for (const col of columns) {
+      if (col === idCol) continue
+      const colLower = col.toLowerCase()
+
+      // Check for prefixed name columns (e.g., camper_name, event_name)
+      if (colLower === `${prefix}_name`) {
+        bestCol = col
+        break
+      }
+    }
+
+    // If no prefixed column, look for generic name patterns
+    if (!bestCol) {
+      for (const pattern of namePatterns) {
+        const match = columns.find(
+          (c) => c.toLowerCase() === pattern && c !== idCol
+        )
+        if (match) {
+          bestCol = match
+          break
+        }
+      }
+    }
+
+    // If still nothing, try partial matches
+    if (!bestCol) {
+      for (const pattern of namePatterns) {
+        const match = columns.find(
+          (c) =>
+            c.toLowerCase().includes(pattern) &&
+            c !== idCol &&
+            !c.endsWith('_id')
+        )
+        if (match) {
+          bestCol = match
+          break
+        }
+      }
+    }
+
+    if (bestCol) {
+      result[bestCol] = { idColumn: idCol, entityType }
+    }
+  }
+
+  return result
+}
+
 function formatCellValue(value: unknown): string {
-  if (value === null || value === undefined) return '—'
+  if (value === null || value === undefined) return '\u2014'
   if (typeof value === 'number') {
     // Format currency-like numbers
     if (Number.isInteger(value)) return value.toLocaleString()
