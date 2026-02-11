@@ -46,6 +46,7 @@ from app.api.v1.face_recognition import router as face_recognition_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.activities import router as activities_router
 from app.api.v1.bunks import router as bunks_router
+from app.api.v1.cabins import router as cabins_router
 from app.api.v1.families import router as families_router
 
 # Phase 6: Parent Portal
@@ -69,6 +70,7 @@ from app.api.v1.lists import router as lists_router
 # Phase 10: Job Titles, Bunk Buddy Requests, AI Insights
 from app.api.v1.job_titles import router as job_titles_router
 from app.api.v1.bunk_buddies import router as bunk_buddies_router
+from app.api.v1.portal_bunk_buddies import router as portal_bunk_buddies_router
 from app.api.v1.ai import router as ai_router
 
 # Phase 11: Camper Messaging, Medicine, Schools, Alerts, Photo Albums
@@ -177,6 +179,7 @@ app.include_router(face_recognition_router, prefix=settings.api_v1_prefix)
 app.include_router(analytics_router, prefix=settings.api_v1_prefix)
 app.include_router(activities_router, prefix=settings.api_v1_prefix)
 app.include_router(bunks_router, prefix=settings.api_v1_prefix)
+app.include_router(cabins_router, prefix=settings.api_v1_prefix)
 app.include_router(families_router, prefix=settings.api_v1_prefix)
 
 # Phase 6: Parent Portal
@@ -202,6 +205,7 @@ app.include_router(lists_router, prefix=settings.api_v1_prefix)
 # Phase 10: Job Titles, Bunk Buddy Requests, AI Insights
 app.include_router(job_titles_router, prefix=settings.api_v1_prefix)
 app.include_router(bunk_buddies_router, prefix=settings.api_v1_prefix)
+app.include_router(portal_bunk_buddies_router, prefix=settings.api_v1_prefix)
 app.include_router(ai_router, prefix=settings.api_v1_prefix)
 
 # Phase 11: Camper Messaging, Medicine, Schools, Alerts, Photo Albums

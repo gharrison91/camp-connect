@@ -44,3 +44,49 @@ class BuddyRequestResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Buddy Settings (v2) -------------------------------------------------
+
+
+class BuddySettingsResponse(BaseModel):
+    """Bunk buddy request settings for the organization."""
+    max_requests_per_camper: int = 3
+    request_deadline: Optional[str] = None
+    allow_portal_requests: bool = True
+
+
+class BuddySettingsUpdate(BaseModel):
+    """Update bunk buddy request settings."""
+    max_requests_per_camper: Optional[int] = Field(default=None, ge=1, le=20)
+    request_deadline: Optional[str] = None
+    allow_portal_requests: Optional[bool] = None
+
+
+# --- Portal Buddy Request (v2) -------------------------------------------
+
+
+class PortalBuddyRequestCreate(BaseModel):
+    """Parent submits a buddy request from the portal."""
+    event_id: uuid.UUID
+    requester_camper_id: uuid.UUID
+    requested_camper_name: str = Field(
+        ..., min_length=1, max_length=200,
+        description="Name of the buddy the parent wants (free text)"
+    )
+
+
+class PortalBuddyRequestResponse(BaseModel):
+    """Portal-facing buddy request display."""
+    id: uuid.UUID
+    event_id: uuid.UUID
+    event_name: Optional[str] = None
+    requester_camper_id: uuid.UUID
+    requester_name: str
+    requested_camper_id: Optional[uuid.UUID] = None
+    requested_name: str
+    status: str
+    is_mutual: bool = False
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

@@ -17,6 +17,8 @@ from sqlalchemy.orm import selectinload
 
 from app.models.schedule import Schedule, ScheduleAssignment
 from app.models.user import User
+from app.models.camper import Camper
+from app.models.bunk import Bunk
 
 
 # ---------------------------------------------------------------------------
@@ -555,3 +557,153 @@ async def get_staff_schedule_view(
     # Sort by last name, then first name
     entries.sort(key=lambda e: (e["last_name"], e["first_name"]))
     return entries
+
+
+# Scheduling v2 -- Staff and Camper Assignment Service Methods
+
+
+async def assign_staff_to_schedule(
+    db: AsyncSession, *, organization_id: uuid.UUID,
+    schedule_id: uuid.UUID, staff_user_id: uuid.UUID,
+) -> Dict[str, Any]:
+    result = await db.execute(
+        select(Schedule).options(selectinload(Schedule.activity))
+        .where(Schedule.id == schedule_id)
+        .where(Schedule.organization_id == organization_id)
+        .where(Schedule.deleted_at.is_(None))
+    )
+    schedule = result.scalar_one_or_none()
+    if schedule is None:
+        raise ValueError("Schedule not found")
+    user_result = await db.execute(
+        select(User).where(User.id == staff_user_id).where(User.organization_id == organization_id)
+    )
+    user = user_result.scalar_one_or_none()
+    if user is None:
+        raise ValueError("Staff member not found")
+    current_ids = schedule.staff_user_ids or []
+    str_ids = [str(uid) for uid in current_ids]
+    if str(staff_user_id) in str_ids:
+        raise ValueError("Staff member is already assigned")
+    new_ids = list(current_ids) + [str(staff_user_id)]
+    schedule.staff_user_ids = new_ids
+    await db.commit()
+    activity = schedule.activity
+    return {
+        "schedule_id": schedule.id, "staff_user_id": staff_user_id,
+        "activity_name": activity.name if activity else None,
+        "date": schedule.date, "start_time": schedule.start_time,
+        "end_time": schedule.end_time, "location": schedule.location,
+        "message": "Staff assigned successfully",
+    }
+
+async def assign_camper_to_schedule(
+    db: AsyncSession, *, organization_id: uuid.UUID,
+    schedule_id: uuid.UUID, camper_id: uuid.UUID,
+    bunk_id: uuid.UUID | None = None, assigned_by: uuid.UUID | None = None,
+) -> Dict[str, Any]:
+    data = {"schedule_id": schedule_id, "camper_id": camper_id, "bunk_id": bunk_id, "assigned_by": assigned_by}
+    assignment_dict = await create_assignment(db, organization_id=organization_id, data=data)
+    sched_result = await db.execute(
+        select(Schedule).options(selectinload(Schedule.activity))
+        .where(Schedule.id == schedule_id).where(Schedule.deleted_at.is_(None))
+    )
+    schedule = sched_result.scalar_one_or_none()
+    activity_name = sched_date = start_time = end_time = None
+    if schedule:
+        activity_name = schedule.activity.name if schedule.activity else None
+        sched_date = schedule.date
+        start_time = schedule.start_time
+        end_time = schedule.end_time
+    return {
+        "assignment_id": assignment_dict["id"], "schedule_id": schedule_id,
+        "camper_id": camper_id, "bunk_id": bunk_id,
+        "camper_name": assignment_dict.get("camper_name"),
+        "activity_name": activity_name, "date": sched_date,
+        "start_time": start_time, "end_time": end_time,
+        "message": "Camper assigned successfully",
+    }
+
+async def get_staff_weekly_schedule(
+    db: AsyncSession, *, organization_id: uuid.UUID,
+    staff_user_id: uuid.UUID, event_id: uuid.UUID, start_date: date,
+) -> Dict[str, Any] | None:
+    end_date = start_date + timedelta(days=6)
+    user_result = await db.execute(
+        select(User).where(User.id == staff_user_id).where(User.organization_id == organization_id)
+    )
+    user = user_result.scalar_one_or_none()
+    if user is None:
+        return None
+    query = (
+        select(Schedule).options(selectinload(Schedule.activity))
+        .where(Schedule.organization_id == organization_id)
+        .where(Schedule.event_id == event_id)
+        .where(Schedule.date >= start_date).where(Schedule.date <= end_date)
+        .where(Schedule.deleted_at.is_(None))
+        .order_by(Schedule.date, Schedule.start_time)
+    )
+    result = await db.execute(query)
+    all_schedules = result.scalars().all()
+    staff_id_str = str(staff_user_id)
+    slots = []
+    total_minutes = 0.0
+    for s in all_schedules:
+        if not s.staff_user_ids:
+            continue
+        if staff_id_str not in [str(uid) for uid in s.staff_user_ids]:
+            continue
+        activity = s.activity
+        slots.append({
+            "schedule_id": s.id, "activity_id": s.activity_id,
+            "activity_name": activity.name if activity else "Activity",
+            "activity_category": activity.category if activity else None,
+            "date": s.date, "start_time": s.start_time, "end_time": s.end_time,
+            "location": s.location, "is_cancelled": s.is_cancelled,
+        })
+        start_mins = s.start_time.hour * 60 + s.start_time.minute
+        end_mins = s.end_time.hour * 60 + s.end_time.minute
+        if end_mins > start_mins:
+            total_minutes += (end_mins - start_mins)
+    total_hours = round(total_minutes / 60.0, 1)
+    return {
+        "staff_user_id": staff_user_id, "first_name": user.first_name,
+        "last_name": user.last_name, "email": user.email,
+        "department": getattr(user, "department", None),
+        "week_start": start_date, "week_end": end_date,
+        "slots": slots, "total_hours": total_hours,
+    }
+
+async def get_camper_weekly_schedule(
+    db: AsyncSession, *, organization_id: uuid.UUID,
+    camper_id: uuid.UUID, event_id: uuid.UUID, start_date: date,
+) -> Dict[str, Any] | None:
+    end_date = start_date + timedelta(days=6)
+    cr = await db.execute(select(Camper).where(Camper.id == camper_id).where(Camper.organization_id == organization_id))
+    camper = cr.scalar_one_or_none()
+    if camper is None:
+        return None
+    query = (
+        select(ScheduleAssignment)
+        .join(Schedule, ScheduleAssignment.schedule_id == Schedule.id)
+        .options(
+            selectinload(ScheduleAssignment.schedule).selectinload(Schedule.activity),
+            selectinload(ScheduleAssignment.bunk),
+        )
+        .where(Schedule.organization_id == organization_id)
+        .where(Schedule.event_id == event_id)
+        .where(Schedule.date >= start_date).where(Schedule.date <= end_date)
+        .where(Schedule.deleted_at.is_(None))
+        .where(ScheduleAssignment.camper_id == camper_id)
+    )
+    result = await db.execute(query)
+    assignments = result.scalars().all()
+    slots = []
+    bunk_name = None
+    for a in assignments:
+        s = a.schedule
+        if s is None: continue
+        activity = s.activity
+        slots.append({"schedule_id": s.id, "activity_id": s.activity_id, "activity_name": activity.name if activity else "Activity", "activity_category": activity.category if activity else None, "date": s.date, "start_time": s.start_time, "end_time": s.end_time, "location": s.location, "is_cancelled": s.is_cancelled})
+        if a.bunk and bunk_name is None: bunk_name = a.bunk.name
+    slots.sort(key=lambda x: (x[chr(34)+chr(100)+chr(97)+chr(116)+chr(101)+chr(34)], x[chr(34)+chr(115)+chr(116)+chr(97)+chr(114)+chr(116)+chr(95)+chr(116)+chr(105)+chr(109)+chr(101)+chr(34)]))

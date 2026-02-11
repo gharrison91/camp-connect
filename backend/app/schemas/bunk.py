@@ -28,6 +28,7 @@ class BunkCreate(BaseModel):
     max_age: Optional[int] = Field(default=None, ge=0)
     location: Optional[str] = Field(default=None, max_length=255)
     counselor_user_id: Optional[uuid.UUID] = None
+    cabin_id: Optional[uuid.UUID] = None
 
 
 class BunkUpdate(BaseModel):
@@ -42,6 +43,7 @@ class BunkUpdate(BaseModel):
     max_age: Optional[int] = Field(default=None, ge=0)
     location: Optional[str] = Field(default=None, max_length=255)
     counselor_user_id: Optional[uuid.UUID] = None
+    cabin_id: Optional[uuid.UUID] = None
 
 
 class BunkResponse(BaseModel):
@@ -56,6 +58,8 @@ class BunkResponse(BaseModel):
     location: Optional[str] = None
     counselor_user_id: Optional[uuid.UUID] = None
     counselor_name: Optional[str] = None
+    cabin_id: Optional[uuid.UUID] = None
+    cabin_name: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -107,6 +111,8 @@ class BunkWithAssignmentsResponse(BaseModel):
     location: Optional[str] = None
     counselor_user_id: Optional[uuid.UUID] = None
     counselor_name: Optional[str] = None
+    cabin_id: Optional[uuid.UUID] = None
+    cabin_name: Optional[str] = None
     assignments: List[BunkAssignmentResponse] = []
     created_at: datetime
 

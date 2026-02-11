@@ -21,6 +21,14 @@ from app.schemas.schedule import (
     ScheduleResponse,
     ScheduleUpdate,
 )
+from app.schemas.schedule_assignment import (
+    CamperAssignmentCreate,
+    CamperAssignmentResponse,
+    CamperWeeklySchedule,
+    StaffAssignmentCreate,
+    StaffAssignmentResponse,
+    StaffWeeklySchedule,
+)
 from app.services import schedule_service
 
 router = APIRouter(prefix="/schedules", tags=["Schedules"])
@@ -117,6 +125,127 @@ async def get_staff_schedule_view(
         event_id=event_id,
         date=date,
     )
+
+
+
+# ---------------------------------------------------------------------------
+# Scheduling v2 — Staff & Camper Assignment Endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/assign-staff",
+    response_model=StaffAssignmentResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def assign_staff_to_activity(
+    body: StaffAssignmentCreate,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("scheduling.assignments.create")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Assign a staff member to an activity time slot by adding their user_id to staff_user_ids."""
+    try:
+        return await schedule_service.assign_staff_to_schedule(
+            db,
+            organization_id=current_user["organization_id"],
+            schedule_id=body.schedule_id,
+            staff_user_id=body.staff_user_id,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.post(
+    "/assign-camper",
+    response_model=CamperAssignmentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def assign_camper_to_activity(
+    body: CamperAssignmentCreate,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("scheduling.assignments.create")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Assign a camper to an activity or bunk time slot via ScheduleAssignment."""
+    try:
+        return await schedule_service.assign_camper_to_schedule(
+            db,
+            organization_id=current_user["organization_id"],
+            schedule_id=body.schedule_id,
+            camper_id=body.camper_id,
+            bunk_id=body.bunk_id,
+            assigned_by=current_user.get("user_id"),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.get(
+    "/staff/{staff_id}/weekly",
+    response_model=StaffWeeklySchedule,
+)
+async def get_staff_weekly_schedule(
+    staff_id: uuid.UUID,
+    event_id: uuid.UUID = Query(..., description="Event ID (required)"),
+    start_date: date = Query(..., description="Week start date (Monday)"),
+    current_user: Dict[str, Any] = Depends(
+        require_permission("scheduling.sessions.read")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a staff member's weekly schedule showing all assigned activities by day/time."""
+    result = await schedule_service.get_staff_weekly_schedule(
+        db,
+        organization_id=current_user["organization_id"],
+        staff_user_id=staff_id,
+        event_id=event_id,
+        start_date=start_date,
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Staff member not found",
+        )
+    return result
+
+
+@router.get(
+    "/camper/{camper_id}/weekly",
+    response_model=CamperWeeklySchedule,
+)
+async def get_camper_weekly_schedule(
+    camper_id: uuid.UUID,
+    event_id: uuid.UUID = Query(..., description="Event ID (required)"),
+    start_date: date = Query(..., description="Week start date (Monday)"),
+    current_user: Dict[str, Any] = Depends(
+        require_permission("scheduling.sessions.read")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a camper's weekly schedule showing all assigned activities by day/time."""
+    result = await schedule_service.get_camper_weekly_schedule(
+        db,
+        organization_id=current_user["organization_id"],
+        camper_id=camper_id,
+        event_id=event_id,
+        start_date=start_date,
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Camper not found",
+        )
+    return result
+
 
 @router.post(
     "/assignments",

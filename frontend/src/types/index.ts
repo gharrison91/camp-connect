@@ -451,6 +451,8 @@ export interface Bunk {
   location: string | null;
   counselor_user_id: string | null;
   counselor_name: string | null;
+  cabin_id: string | null;
+  cabin_name: string | null;
   created_at: string;
 }
 
@@ -476,6 +478,7 @@ export interface BunkCreate {
   max_age?: number | null;
   location?: string;
   counselor_user_id?: string | null;
+  cabin_id?: string | null;
 }
 
 export interface BunkUpdate extends Partial<BunkCreate> {}
@@ -1130,3 +1133,74 @@ export interface School {
 // Lead Enrichment
 export interface LeadEnrichmentSettings { api_key_set: boolean; enabled: boolean; auto_enrich: boolean; provider: string; }
 export interface EnrichedLead { name: string; email: string; phone: string | null; title: string; company: string; linkedin_url: string | null; location: string | null; }
+
+
+// --- Bunk Buddy v2 ---------------------------------------------------------
+
+export interface BuddySettings {
+  max_requests_per_camper: number
+  request_deadline: string | null
+  allow_portal_requests: boolean
+}
+
+export interface PortalBuddyRequest {
+  id: string
+  event_id: string
+  event_name: string | null
+  requester_camper_id: string
+  requester_name: string
+  requested_camper_id: string | null
+  requested_name: string
+  status: 'pending' | 'approved' | 'denied'
+  is_mutual: boolean
+  created_at: string
+}
+
+export interface PortalBuddyRequestsResponse {
+  requests: PortalBuddyRequest[]
+  settings: BuddySettings
+  camper_request_counts: Record<string, number>
+}
+
+
+// ---- Cabins (physical buildings containing bunks) ----
+
+export interface Cabin {
+  id: string;
+  name: string;
+  description: string | null;
+  location: string | null;
+  total_capacity: number;
+  gender_restriction: string;
+  is_active: boolean;
+  bunk_count: number;
+  created_at: string;
+}
+
+export interface CabinWithBunks extends Cabin {
+  bunks: CabinBunkSummary[];
+}
+
+export interface CabinBunkSummary {
+  id: string;
+  name: string;
+  capacity: number;
+  gender_restriction: string;
+  min_age: number | null;
+  max_age: number | null;
+  location: string | null;
+  counselor_user_id: string | null;
+  counselor_name: string | null;
+  created_at: string;
+}
+
+export interface CabinCreate {
+  name: string;
+  description?: string;
+  location?: string;
+  total_capacity?: number;
+  gender_restriction?: string;
+  is_active?: boolean;
+}
+
+export interface CabinUpdate extends Partial<CabinCreate> {}

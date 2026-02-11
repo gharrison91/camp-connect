@@ -1,6 +1,7 @@
 """
 Camp Connect - Bunk Buddy Request API Routes
 CRUD for bunk buddy requests with mutual detection.
+v2: Adds configurable settings (max requests, deadline) stored in org settings JSONB.
 """
 
 from __future__ import annotations
@@ -10,9 +11,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.api.deps import get_current_user, require_permission
@@ -20,13 +20,30 @@ from app.models.bunk_buddy import BunkBuddyRequest
 from app.models.camper import Camper
 from app.models.event import Event
 from app.models.contact import Contact
+from app.models.organization import Organization
 from app.schemas.bunk_buddy import (
     BuddyRequestCreate,
     BuddyRequestUpdate,
     BuddyRequestResponse,
+    BuddySettingsResponse,
+    BuddySettingsUpdate,
 )
 
 router = APIRouter(prefix="/bunks/buddy-requests", tags=["bunk-buddies"])
+
+# --- Helpers -----------------------------------------------------------------
+
+BUDDY_SETTINGS_KEY = "bunk_buddy_settings"
+
+
+def _get_buddy_settings(org: Organization) -> dict:
+    """Extract buddy settings from the org settings JSONB, with defaults."""
+    settings = (org.settings or {}).get(BUDDY_SETTINGS_KEY, {})
+    return {
+        "max_requests_per_camper": settings.get("max_requests_per_camper", 3),
+        "request_deadline": settings.get("request_deadline", None),
+        "allow_portal_requests": settings.get("allow_portal_requests", True),
+    }
 
 
 async def _request_to_dict(
@@ -35,7 +52,6 @@ async def _request_to_dict(
     org_id: uuid.UUID,
 ) -> Dict[str, Any]:
     """Convert a buddy request to response dict with mutual detection."""
-    # Load camper names
     requester = await db.get(Camper, req.requester_camper_id)
     requested = await db.get(Camper, req.requested_camper_id)
     event = await db.get(Event, req.event_id)
@@ -51,7 +67,6 @@ async def _request_to_dict(
     )
     is_mutual = mutual_result.scalar_one_or_none() is not None
 
-    # Contact name
     submitted_by_name = None
     if req.submitted_by_contact_id:
         contact = await db.get(Contact, req.submitted_by_contact_id)
@@ -79,6 +94,60 @@ async def _request_to_dict(
         "reviewed_at": req.reviewed_at,
         "created_at": req.created_at,
     }
+
+
+# --- Settings Endpoints (v2) ------------------------------------------------
+
+
+@router.get("/settings", response_model=BuddySettingsResponse)
+async def get_buddy_settings(
+    current_user: Dict[str, Any] = Depends(
+        require_permission("campers.bunks.read")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the organization's bunk buddy request settings."""
+    org = await db.get(Organization, current_user["organization_id"])
+    if org is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return _get_buddy_settings(org)
+
+
+@router.put("/settings", response_model=BuddySettingsResponse)
+async def update_buddy_settings(
+    body: BuddySettingsUpdate,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("campers.bunks.manage")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update the organization's bunk buddy request settings."""
+    org = await db.get(Organization, current_user["organization_id"])
+    if org is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    current_settings = dict(org.settings or {})
+    buddy = current_settings.get(BUDDY_SETTINGS_KEY, {})
+
+    if body.max_requests_per_camper is not None:
+        buddy["max_requests_per_camper"] = body.max_requests_per_camper
+    if body.request_deadline is not None:
+        buddy["request_deadline"] = body.request_deadline if body.request_deadline else None
+    if body.allow_portal_requests is not None:
+        buddy["allow_portal_requests"] = body.allow_portal_requests
+
+    current_settings[BUDDY_SETTINGS_KEY] = buddy
+    org.settings = current_settings
+    # Force SQLAlchemy to detect the JSONB mutation
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(org, "settings")
+
+    await db.commit()
+    await db.refresh(org)
+    return _get_buddy_settings(org)
+
+
+# --- CRUD Endpoints ----------------------------------------------------------
 
 
 @router.get("", response_model=List[BuddyRequestResponse])

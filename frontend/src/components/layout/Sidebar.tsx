@@ -147,7 +147,7 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
       >
         {/* Logo area */}
         <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/[0.08] px-4">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 transition-transform duration-200 hover:scale-105">
             <Tent className="h-5 w-5 text-emerald-400" />
           </div>
           <span
@@ -175,13 +175,16 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
               <div key={sectionIndex}>
                 {section.title && !isCollapsed && (
                   <div className="mb-2 px-3">
+                    <div className="mb-2 h-px bg-gradient-to-r from-white/[0.06] via-white/[0.04] to-transparent" />
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                       {section.title}
                     </p>
                   </div>
                 )}
                 {section.title && isCollapsed && (
-                  <div className="mx-auto mb-2 h-px w-6 bg-white/[0.08]" />
+                  <div className="mx-auto mb-2 w-6">
+                    <div className="h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent" />
+                  </div>
                 )}
                 <ul className="flex flex-col gap-0.5" role="list">
                   {section.items.map((item) => {
@@ -196,16 +199,16 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
                           to={item.path}
                           onClick={onClose}
                           className={cn(
-                            'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150',
+                            'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200',
                             isActive
                               ? 'bg-emerald-500/15 text-emerald-400'
-                              : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
+                              : 'text-slate-400 hover:bg-white/[0.06] hover:text-white hover:translate-x-0.5'
                           )}
                           title={isCollapsed ? item.label : undefined}
                         >
                           <Icon
                             className={cn(
-                              'h-[18px] w-[18px] shrink-0 transition-colors',
+                              'h-[18px] w-[18px] shrink-0 transition-all duration-200',
                               isActive
                                 ? 'text-emerald-400'
                                 : 'text-slate-500 group-hover:text-slate-300'
@@ -213,15 +216,21 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
                           />
                           <span
                             className={cn(
-                              'truncate transition-opacity duration-200',
+                              'truncate transition-all duration-200',
                               isCollapsed && 'lg:sr-only'
                             )}
                           >
                             {item.label}
                           </span>
 
+                          {/* Active indicator: bar on the left + dot on the right */}
                           {isActive && (
-                            <span className="absolute left-0 h-6 w-[3px] rounded-r-full bg-emerald-400" />
+                            <>
+                              <span className="absolute left-0 h-6 w-[3px] rounded-r-full bg-emerald-400" />
+                              {!isCollapsed && (
+                                <span className="absolute right-3 h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" />
+                              )}
+                            </>
                           )}
                         </Link>
                       </li>
@@ -237,14 +246,14 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
         <div className="shrink-0 border-t border-white/[0.08] px-3 py-3">
           <button
             onClick={onToggleCollapse}
-            className="hidden w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-500 transition-colors hover:bg-white/[0.06] hover:text-slate-300 lg:flex"
+            className="hidden w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-500 transition-all duration-200 hover:bg-white/[0.06] hover:text-slate-300 lg:flex"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {isCollapsed ? (
-              <ChevronsRight className="h-4 w-4 shrink-0" />
+              <ChevronsRight className="h-4 w-4 shrink-0 transition-transform duration-200 hover:translate-x-0.5" />
             ) : (
               <>
-                <ChevronsLeft className="h-4 w-4 shrink-0" />
+                <ChevronsLeft className="h-4 w-4 shrink-0 transition-transform duration-200 hover:-translate-x-0.5" />
                 <span className="truncate">Collapse</span>
               </>
             )}

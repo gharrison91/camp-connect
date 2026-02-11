@@ -1,9 +1,10 @@
 /**
  * Camp Connect - BunksPage
- * Drag-and-drop bunk assignment board.
+ * Drag-and-drop bunk assignment board with cabin grouping.
  *
  * Left panel: unassigned campers (droppable pool).
- * Right panel: bunk columns, each a droppable zone with assigned CamperCards.
+ * Right panel: bunk columns grouped by cabin, each a droppable zone with assigned CamperCards.
+ * Cabins are expandable/collapsible sections. Bunks without a cabin appear in "Unassigned" section.
  */
 
 import { useState, useMemo } from 'react'
@@ -28,6 +29,10 @@ import {
   Shield,
   X,
   Heart,
+  ChevronDown,
+  ChevronRight,
+  Building2,
+  Home,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEvents } from '@/hooks/useEvents'
@@ -43,6 +48,8 @@ import {
   useAssignCounselor,
 } from '@/hooks/useBunks'
 import type { Bunk, BunkAssignment } from '@/hooks/useBunks'
+import { useCabins } from '@/hooks/useCabins'
+import type { Cabin } from '@/hooks/useCabins'
 import { useToast } from '@/components/ui/Toast'
 import { CamperCard, CamperCardOverlay } from './CamperCard'
 import { CounselorCard, CounselorCardOverlay } from './CounselorCard'
@@ -50,7 +57,7 @@ import { BunkManageModal } from './BunkManageModal'
 import { EventBunkConfigModal } from './EventBunkConfigModal'
 import { BuddyRequestsTab } from './BuddyRequestsTab'
 
-// ─── Drag metadata stored during onDragStart ────────────────
+// ---- Drag metadata stored during onDragStart ----
 
 interface CamperDragData {
   type: 'camper'
@@ -76,7 +83,7 @@ interface CounselorDragData {
 
 type DragData = CamperDragData | CounselorDragData
 
-// ─── Droppable wrapper for bunk columns + unassigned pool ───
+// ---- Droppable wrapper for bunk columns + unassigned pool ----
 
 function DroppableZone({
   id,
@@ -101,7 +108,7 @@ function DroppableZone({
   )
 }
 
-// ─── Capacity bar helpers ───────────────────────────────────
+// ---- Capacity bar helpers ----
 
 function getCapacityBarColor(count: number, capacity: number): string {
   if (capacity === 0) return 'bg-gray-300'
@@ -130,7 +137,113 @@ function formatGenderRestriction(val: string | null): string {
   }
 }
 
-// ─── Main page component ────────────────────────────────────
+// ---- CabinSection: expandable section for a group of bunks ----
+
+interface CabinSectionProps {
+  cabin: Cabin | null
+  bunks: Bunk[]
+  assignmentsByBunk: Record<string, BunkAssignment[]>
+  activeDragCamperId: string | null
+  onRemoveCounselor: (bunkId: string) => void
+  defaultExpanded?: boolean
+}
+
+function CabinSection({
+  cabin,
+  bunks,
+  assignmentsByBunk,
+  activeDragCamperId,
+  onRemoveCounselor,
+  defaultExpanded = true,
+}: CabinSectionProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
+
+  // Compute aggregate stats
+  const totalCampers = bunks.reduce(
+    (sum, b) => sum + (assignmentsByBunk[b.id]?.length || 0),
+    0
+  )
+  const totalCapacity = bunks.reduce((sum, b) => sum + b.capacity, 0)
+
+  const isUnassigned = cabin === null
+  const sectionName = isUnassigned ? 'Unassigned Bunks' : cabin.name
+  const sectionIcon = isUnassigned ? (
+    <BedDouble className="h-4 w-4 text-gray-400" />
+  ) : (
+    <Building2 className="h-4 w-4 text-emerald-600" />
+  )
+
+  return (
+    <div className="mb-4">
+      {/* Section header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className={cn(
+          'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors',
+          isUnassigned
+            ? 'bg-gray-50 hover:bg-gray-100'
+            : 'bg-emerald-50 hover:bg-emerald-100'
+        )}
+      >
+        {expanded ? (
+          <ChevronDown className="h-4 w-4 text-gray-500" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-gray-500" />
+        )}
+        {sectionIcon}
+        <span className="text-sm font-semibold text-gray-900">
+          {sectionName}
+        </span>
+        {cabin?.description && (
+          <span className="ml-1 text-xs text-gray-500 truncate max-w-[200px]">
+            {cabin.description}
+          </span>
+        )}
+        <span className="ml-auto flex items-center gap-3 text-xs text-gray-500">
+          {cabin?.location && (
+            <span className="inline-flex items-center gap-0.5">
+              <MapPin className="h-3 w-3" />
+              {cabin.location}
+            </span>
+          )}
+          <span>
+            {bunks.length} bunk{bunks.length !== 1 ? 's' : ''}
+          </span>
+          <span className="font-medium">
+            {totalCampers}/{totalCapacity} campers
+          </span>
+        </span>
+      </button>
+
+      {/* Expandable bunk grid */}
+      {expanded && (
+        <div className="mt-2 grid auto-cols-[280px] grid-flow-col gap-4 overflow-x-auto pb-2 pl-6">
+          {bunks.length === 0 && (
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 py-10 col-span-full">
+              <Home className="h-6 w-6 text-gray-300" />
+              <p className="mt-1 text-xs text-gray-400">
+                {isUnassigned
+                  ? 'All bunks are assigned to cabins'
+                  : 'No bunks in this cabin yet'}
+              </p>
+            </div>
+          )}
+          {bunks.map((bunk) => (
+            <BunkColumn
+              key={bunk.id}
+              bunk={bunk}
+              assignments={assignmentsByBunk[bunk.id] || []}
+              activeDragCamperId={activeDragCamperId}
+              onRemoveCounselor={onRemoveCounselor}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---- Main page component ----
 
 type BunkTab = 'board' | 'buddy-requests'
 
@@ -145,7 +258,8 @@ export function BunksPage() {
     undefined
   )
 
-  // Bunks + assignments
+  // Cabins + Bunks + assignments
+  const { data: cabins = [], isLoading: cabinsLoading } = useCabins()
   const { data: bunks = [], isLoading: bunksLoading } = useBunks()
   const { data: assignments = [], isLoading: assignmentsLoading } =
     useBunkAssignments(selectedEventId)
@@ -198,12 +312,38 @@ export function BunksPage() {
     return map
   }, [assignments])
 
-  // ── Drag handlers ───────────────────────────────────────────
+  // Group bunks by cabin
+  const { cabinGroups, unassignedBunks } = useMemo(() => {
+    const cabinMap = new Map<string, Bunk[]>()
+    const noParent: Bunk[] = []
+
+    for (const bunk of bunks) {
+      if (bunk.cabin_id) {
+        if (!cabinMap.has(bunk.cabin_id)) cabinMap.set(bunk.cabin_id, [])
+        cabinMap.get(bunk.cabin_id)!.push(bunk)
+      } else {
+        noParent.push(bunk)
+      }
+    }
+
+    // Sort cabins to match the cabins list order
+    const groups: { cabin: Cabin; bunks: Bunk[] }[] = []
+    for (const cabin of cabins) {
+      groups.push({
+        cabin,
+        bunks: cabinMap.get(cabin.id) || [],
+      })
+    }
+
+    return { cabinGroups: groups, unassignedBunks: noParent }
+  }, [bunks, cabins])
+
+  // ---- Drag handlers ----
 
   function handleDragStart(event: DragStartEvent) {
     const dragId = String(event.active.id)
 
-    // Check if it's a counselor (prefixed with 'counselor-')
+    // Check if it is a counselor (prefixed with counselor-)
     if (dragId.startsWith('counselor-')) {
       const counselorId = dragId.replace('counselor-', '')
       const counselor = counselors.find((c) => c.id === counselorId)
@@ -219,7 +359,7 @@ export function BunksPage() {
       return
     }
 
-    // Check if it's an unassigned camper
+    // Check if it is an unassigned camper
     const camper = unassigned.find((c) => c.id === dragId)
     if (camper) {
       setActiveDragData({
@@ -233,7 +373,7 @@ export function BunksPage() {
       return
     }
 
-    // Otherwise it's an assignment id
+    // Otherwise it is an assignment id
     const assignment = assignments.find((a) => a.id === dragId)
     if (assignment) {
       setActiveDragData({
@@ -257,13 +397,12 @@ export function BunksPage() {
 
     const targetId = String(over.id)
 
-    // Dropped back where it came from — do nothing
+    // Dropped back where it came from
     if (targetId === dragData.source) return
 
     try {
       // Handle counselor drops
       if (dragData.type === 'counselor') {
-        // Counselors can only be dropped on bunks (not on unassigned or counselors panel)
         if (targetId !== 'unassigned' && targetId !== 'counselors') {
           await assignCounselor.mutateAsync({
             bunkId: targetId,
@@ -279,7 +418,6 @@ export function BunksPage() {
 
       // Handle camper drops
       if (dragData.source === 'unassigned' && targetId !== 'unassigned') {
-        // Assign unassigned camper to a bunk
         await assignCamper.mutateAsync({
           bunk_id: targetId,
           camper_id: dragData.camperId,
@@ -290,7 +428,6 @@ export function BunksPage() {
         dragData.source !== 'unassigned' &&
         targetId === 'unassigned'
       ) {
-        // Unassign from bunk back to pool
         if (dragData.assignmentId) {
           await unassignCamper.mutateAsync(dragData.assignmentId)
           toast({
@@ -302,7 +439,6 @@ export function BunksPage() {
         dragData.source !== 'unassigned' &&
         targetId !== 'unassigned'
       ) {
-        // Move between bunks
         if (dragData.assignmentId) {
           await moveCamper.mutateAsync({
             assignmentId: dragData.assignmentId,
@@ -316,7 +452,7 @@ export function BunksPage() {
     }
   }
 
-  // ── Counselor removal handler ────────────────────────────────
+  // ---- Counselor removal handler ----
 
   async function handleRemoveCounselor(bunkId: string) {
     try {
@@ -330,14 +466,15 @@ export function BunksPage() {
     }
   }
 
-  // ── Loading state ───────────────────────────────────────────
+  // ---- Loading state ----
 
   const isLoading =
     eventsLoading ||
     bunksLoading ||
+    cabinsLoading ||
     (selectedEventId && (assignmentsLoading || unassignedLoading))
 
-  // ── Render ──────────────────────────────────────────────────
+  // ---- Render ----
 
   return (
     <div className="flex h-full flex-col space-y-6">
@@ -447,7 +584,7 @@ export function BunksPage() {
           onDragEnd={handleDragEnd}
         >
           <div className="flex flex-1 gap-6 overflow-hidden">
-            {/* ── Left panel: Unassigned campers ── */}
+            {/* ---- Left panel: Unassigned campers ---- */}
             <div className="w-[300px] shrink-0">
               <DroppableZone
                 id="unassigned"
@@ -493,7 +630,7 @@ export function BunksPage() {
               </DroppableZone>
             </div>
 
-            {/* ── Middle panel: Counselors ── */}
+            {/* ---- Middle panel: Counselors ---- */}
             <div className="w-[260px] shrink-0">
               <div className="flex h-full flex-col rounded-xl border border-gray-100 bg-white shadow-sm transition-all">
                 {/* Panel header */}
@@ -537,35 +674,50 @@ export function BunksPage() {
               </div>
             </div>
 
-            {/* ── Right panel: Bunk columns ── */}
-            <div className="flex-1 overflow-x-auto">
-              {bunks.length === 0 && (
+            {/* ---- Right panel: Cabin-grouped Bunk columns ---- */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden">
+              {bunks.length === 0 && cabins.length === 0 && (
                 <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-20">
-                  <BedDouble className="h-10 w-10 text-gray-300" />
+                  <Building2 className="h-10 w-10 text-gray-300" />
                   <p className="mt-3 text-sm font-medium text-gray-900">
-                    No bunks created yet
+                    No cabins or bunks created yet
                   </p>
                   <p className="mt-1 text-sm text-gray-500">
-                    Use "Manage Bunks" to create bunk cabins.
+                    Use &quot;Manage Bunks&quot; to create cabins and bunk rooms.
                   </p>
                 </div>
               )}
 
-              <div className="grid auto-cols-[280px] grid-flow-col gap-4 pb-4">
-                {bunks.map((bunk) => (
-                  <BunkColumn
-                    key={bunk.id}
-                    bunk={bunk}
-                    assignments={assignmentsByBunk[bunk.id] || []}
-                    activeDragCamperId={
-                      activeDragData?.type === 'camper'
-                        ? activeDragData.camperId
-                        : null
-                    }
-                    onRemoveCounselor={handleRemoveCounselor}
-                  />
-                ))}
-              </div>
+              {/* Cabin sections */}
+              {cabinGroups.map(({ cabin, bunks: cabinBunks }) => (
+                <CabinSection
+                  key={cabin.id}
+                  cabin={cabin}
+                  bunks={cabinBunks}
+                  assignmentsByBunk={assignmentsByBunk}
+                  activeDragCamperId={
+                    activeDragData?.type === 'camper'
+                      ? activeDragData.camperId
+                      : null
+                  }
+                  onRemoveCounselor={handleRemoveCounselor}
+                />
+              ))}
+
+              {/* Unassigned bunks section */}
+              {unassignedBunks.length > 0 && (
+                <CabinSection
+                  cabin={null}
+                  bunks={unassignedBunks}
+                  assignmentsByBunk={assignmentsByBunk}
+                  activeDragCamperId={
+                    activeDragData?.type === 'camper'
+                      ? activeDragData.camperId
+                      : null
+                  }
+                  onRemoveCounselor={handleRemoveCounselor}
+                />
+              )}
             </div>
           </div>
 
@@ -604,7 +756,7 @@ export function BunksPage() {
   )
 }
 
-// ─── BunkColumn ─────────────────────────────────────────────
+// ---- BunkColumn ----
 
 function BunkColumn({
   bunk,

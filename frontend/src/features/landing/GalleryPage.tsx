@@ -1,6 +1,7 @@
 /**
  * Camp Connect - Photo Gallery Page
  * Masonry-style gallery with category filters and lightbox.
+ * Uses real camp-themed Unsplash images with captions and categories.
  */
 
 import { useState } from 'react';
@@ -12,6 +13,7 @@ interface GalleryImage {
   id: number;
   category: string;
   alt: string;
+  caption: string;
   src: string;
   color: string;
   aspect: 'square' | 'tall' | 'wide';
@@ -20,21 +22,168 @@ interface GalleryImage {
 const categories = ['All', 'Activities', 'Nature', 'Campers', 'Facilities', 'Events'];
 
 const images: GalleryImage[] = [
-  { id: 1, category: 'Activities', alt: 'Swimming at the lake', src: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=600&h=400&fit=crop', color: 'from-blue-500/30 to-cyan-500/30', aspect: 'wide' },
-  { id: 2, category: 'Nature', alt: 'Sunrise over the mountains', src: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=600&h=400&fit=crop', color: 'from-amber-500/30 to-orange-500/30', aspect: 'tall' },
-  { id: 3, category: 'Campers', alt: 'Campfire sing-along', src: 'https://images.unsplash.com/photo-1475483768296-6163e08872a1?w=600&h=400&fit=crop', color: 'from-red-500/30 to-amber-500/30', aspect: 'square' },
-  { id: 4, category: 'Facilities', alt: 'Main lodge exterior', src: 'https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=600&h=400&fit=crop', color: 'from-emerald-500/30 to-teal-500/30', aspect: 'square' },
-  { id: 5, category: 'Activities', alt: 'Arts and crafts session', src: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=600&h=400&fit=crop', color: 'from-purple-500/30 to-pink-500/30', aspect: 'tall' },
-  { id: 6, category: 'Events', alt: 'Color war opening ceremony', src: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&h=400&fit=crop', color: 'from-pink-500/30 to-rose-500/30', aspect: 'wide' },
-  { id: 7, category: 'Nature', alt: 'Trail through the forest', src: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&h=400&fit=crop', color: 'from-green-500/30 to-emerald-500/30', aspect: 'square' },
-  { id: 8, category: 'Activities', alt: 'Rock climbing wall', src: 'https://images.unsplash.com/photo-1522163182402-834f871fd851?w=600&h=400&fit=crop', color: 'from-indigo-500/30 to-blue-500/30', aspect: 'square' },
-  { id: 9, category: 'Campers', alt: 'Bunk group photo', src: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=600&h=400&fit=crop', color: 'from-yellow-500/30 to-amber-500/30', aspect: 'wide' },
-  { id: 10, category: 'Facilities', alt: 'Pool and waterslide', src: 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?w=600&h=400&fit=crop', color: 'from-cyan-500/30 to-blue-500/30', aspect: 'tall' },
-  { id: 11, category: 'Events', alt: 'Talent show performance', src: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&h=400&fit=crop', color: 'from-violet-500/30 to-purple-500/30', aspect: 'square' },
-  { id: 12, category: 'Nature', alt: 'Stargazing by the lake', src: 'https://images.unsplash.com/photo-1475274047050-1d0c55b0033b?w=600&h=400&fit=crop', color: 'from-slate-500/30 to-indigo-500/30', aspect: 'wide' },
-  { id: 13, category: 'Activities', alt: 'Archery range', src: 'https://images.unsplash.com/photo-1510925758641-869d353cecc7?w=600&h=400&fit=crop', color: 'from-teal-500/30 to-green-500/30', aspect: 'square' },
-  { id: 14, category: 'Campers', alt: 'Friendship bracelets', src: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=600&h=400&fit=crop', color: 'from-rose-500/30 to-pink-500/30', aspect: 'tall' },
-  { id: 15, category: 'Facilities', alt: 'Dining hall interior', src: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop', color: 'from-orange-500/30 to-red-500/30', aspect: 'square' },
+  {
+    id: 1,
+    category: 'Nature',
+    alt: 'Camping under the stars',
+    caption: 'Nothing beats sleeping under a canopy of stars on a clear summer night.',
+    src: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&h=400&fit=crop',
+    color: 'from-amber-500/30 to-orange-500/30',
+    aspect: 'wide',
+  },
+  {
+    id: 2,
+    category: 'Nature',
+    alt: 'Serene camp lake at dawn',
+    caption: 'Early morning mist rising over the lake \u2014 the most peaceful time of day at camp.',
+    src: 'https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=600&h=400&fit=crop',
+    color: 'from-blue-500/30 to-cyan-500/30',
+    aspect: 'tall',
+  },
+  {
+    id: 3,
+    category: 'Events',
+    alt: "Campfire stories and s'mores",
+    caption: 'The heart of every camp \u2014 gathering around the fire to share stories and laughter.',
+    src: 'https://images.unsplash.com/photo-1517164850305-99a3e65bb47e?w=600&h=400&fit=crop',
+    color: 'from-red-500/30 to-amber-500/30',
+    aspect: 'square',
+  },
+  {
+    id: 4,
+    category: 'Activities',
+    alt: 'Archery practice on the range',
+    caption: 'Campers build focus and confidence one bullseye at a time.',
+    src: 'https://images.unsplash.com/photo-1526401485004-46910ecc8e51?w=600&h=400&fit=crop',
+    color: 'from-emerald-500/30 to-teal-500/30',
+    aspect: 'square',
+  },
+  {
+    id: 5,
+    category: 'Activities',
+    alt: 'Kayaking adventure on the river',
+    caption: 'Paddling through calm waters \u2014 building teamwork and a love for the outdoors.',
+    src: 'https://images.unsplash.com/photo-1596464716127-f2a82984de30?w=600&h=400&fit=crop',
+    color: 'from-cyan-500/30 to-blue-500/30',
+    aspect: 'wide',
+  },
+  {
+    id: 6,
+    category: 'Nature',
+    alt: 'Hiking through mountain trails',
+    caption: 'Every trail leads to a new discovery and a sense of accomplishment.',
+    src: 'https://images.unsplash.com/photo-1472745942893-4b9f730c7668?w=600&h=400&fit=crop',
+    color: 'from-green-500/30 to-emerald-500/30',
+    aspect: 'tall',
+  },
+  {
+    id: 7,
+    category: 'Facilities',
+    alt: 'Rustic camp cabins in the woods',
+    caption: 'Home away from home \u2014 cozy cabins nestled among the pines.',
+    src: 'https://images.unsplash.com/photo-1445307806294-bff7f67ff225?w=600&h=400&fit=crop',
+    color: 'from-amber-500/30 to-yellow-500/30',
+    aspect: 'square',
+  },
+  {
+    id: 8,
+    category: 'Nature',
+    alt: 'Golden sunset over camp',
+    caption: 'Every day at camp ends with a breathtaking sunset that paints the sky.',
+    src: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=600&h=400&fit=crop',
+    color: 'from-orange-500/30 to-rose-500/30',
+    aspect: 'wide',
+  },
+  {
+    id: 9,
+    category: 'Activities',
+    alt: 'Swimming at the lake',
+    caption: 'Splashing, diving, and swimming \u2014 the highlight of every hot summer day.',
+    src: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=600&h=400&fit=crop',
+    color: 'from-blue-500/30 to-cyan-500/30',
+    aspect: 'square',
+  },
+  {
+    id: 10,
+    category: 'Nature',
+    alt: 'Sunrise over the mountains',
+    caption: 'Waking up early for a sunrise hike is worth every sleepy step.',
+    src: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=600&h=400&fit=crop',
+    color: 'from-amber-500/30 to-orange-500/30',
+    aspect: 'tall',
+  },
+  {
+    id: 11,
+    category: 'Events',
+    alt: 'Talent show night',
+    caption: 'The stage is set and the spotlight is on \u2014 every camper gets their moment to shine.',
+    src: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&h=400&fit=crop',
+    color: 'from-violet-500/30 to-purple-500/30',
+    aspect: 'square',
+  },
+  {
+    id: 12,
+    category: 'Nature',
+    alt: 'Stargazing by the lake',
+    caption: 'Away from city lights, the Milky Way puts on its nightly show.',
+    src: 'https://images.unsplash.com/photo-1475274047050-1d0c55b0033b?w=600&h=400&fit=crop',
+    color: 'from-slate-500/30 to-indigo-500/30',
+    aspect: 'wide',
+  },
+  {
+    id: 13,
+    category: 'Activities',
+    alt: 'Rock climbing wall',
+    caption: 'Conquering the climbing wall \u2014 building strength, grit, and determination.',
+    src: 'https://images.unsplash.com/photo-1522163182402-834f871fd851?w=600&h=400&fit=crop',
+    color: 'from-indigo-500/30 to-blue-500/30',
+    aspect: 'square',
+  },
+  {
+    id: 14,
+    category: 'Campers',
+    alt: 'Friends making memories together',
+    caption: 'The friendships forged at camp last a lifetime.',
+    src: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=600&h=400&fit=crop',
+    color: 'from-rose-500/30 to-pink-500/30',
+    aspect: 'tall',
+  },
+  {
+    id: 15,
+    category: 'Campers',
+    alt: 'Bunk group photo day',
+    caption: 'Smiles, laughter, and matching camp shirts \u2014 the classic group photo.',
+    src: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=600&h=400&fit=crop',
+    color: 'from-yellow-500/30 to-amber-500/30',
+    aspect: 'wide',
+  },
+  {
+    id: 16,
+    category: 'Nature',
+    alt: 'Forest trail through the pines',
+    caption: 'Sunlight filters through ancient trees on the nature trail.',
+    src: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&h=400&fit=crop',
+    color: 'from-green-500/30 to-emerald-500/30',
+    aspect: 'square',
+  },
+  {
+    id: 17,
+    category: 'Facilities',
+    alt: 'Dining hall gathering',
+    caption: 'Where camp songs echo and meals bring everyone together.',
+    src: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop',
+    color: 'from-orange-500/30 to-red-500/30',
+    aspect: 'square',
+  },
+  {
+    id: 18,
+    category: 'Campers',
+    alt: 'Campfire sing-along night',
+    caption: 'Voices rise together under the stars in the camp tradition.',
+    src: 'https://images.unsplash.com/photo-1475483768296-6163e08872a1?w=600&h=400&fit=crop',
+    color: 'from-red-500/30 to-amber-500/30',
+    aspect: 'square',
+  },
 ];
 
 export function GalleryPage() {
@@ -97,6 +246,9 @@ export function GalleryPage() {
               )}
             >
               {cat}
+              <span className="ml-1.5 text-xs opacity-60">
+                ({cat === 'All' ? images.length : images.filter(i => i.category === cat).length})
+              </span>
             </button>
           ))}
         </div>
@@ -137,10 +289,13 @@ export function GalleryPage() {
                       className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-300 flex items-end">
-                      <div className="p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <p className="text-sm font-medium text-white">{img.alt}</p>
-                        <p className="text-xs text-gray-300 mt-0.5">{img.category}</p>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors duration-300 flex flex-col justify-end">
+                      <div className="p-4 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                        <p className="text-sm font-semibold text-white">{img.alt}</p>
+                        <p className="text-xs text-gray-300 mt-1 line-clamp-2">{img.caption}</p>
+                        <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-medium text-white/80 uppercase tracking-wider">
+                          {img.category}
+                        </span>
                       </div>
                     </div>
                   </button>
@@ -184,13 +339,16 @@ export function GalleryPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <img
-                src={filtered[lightboxIdx]?.src}
+                src={filtered[lightboxIdx]?.src?.replace('w=600', 'w=1200')}
                 alt={filtered[lightboxIdx]?.alt}
                 className="w-full h-full object-contain bg-black/80"
               />
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
-                <p className="text-white font-medium">{filtered[lightboxIdx]?.alt}</p>
-                <p className="text-sm text-gray-300 mt-0.5">{filtered[lightboxIdx]?.category}</p>
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6">
+                <p className="text-white font-semibold text-lg">{filtered[lightboxIdx]?.alt}</p>
+                <p className="text-sm text-gray-300 mt-1">{filtered[lightboxIdx]?.caption}</p>
+                <span className="inline-block mt-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-xs font-medium text-emerald-400">
+                  {filtered[lightboxIdx]?.category}
+                </span>
               </div>
             </motion.div>
 

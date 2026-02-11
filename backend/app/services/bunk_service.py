@@ -13,7 +13,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.bunk import Bunk, BunkAssignment
+from app.models.bunk import Bunk, BunkAssignment, Cabin
 from app.models.camper import Camper
 from app.models.event import Event
 from app.models.registration import Registration
@@ -33,7 +33,7 @@ async def list_bunks(
     """List bunks for an organization."""
     query = (
         select(Bunk)
-        .options(selectinload(Bunk.counselor))
+        .options(selectinload(Bunk.counselor), selectinload(Bunk.cabin))
         .where(Bunk.organization_id == organization_id)
         .where(Bunk.deleted_at.is_(None))
         .order_by(Bunk.name)
@@ -55,6 +55,7 @@ async def get_bunk(
         select(Bunk)
         .options(
             selectinload(Bunk.counselor),
+            selectinload(Bunk.cabin),
             selectinload(Bunk.assignments).selectinload(BunkAssignment.camper),
         )
         .where(Bunk.id == bunk_id)
@@ -74,6 +75,18 @@ async def create_bunk(
     data: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Create a new bunk."""
+    # Validate cabin_id if provided
+    cabin_id = data.get("cabin_id")
+    if cabin_id is not None:
+        cabin_result = await db.execute(
+            select(Cabin)
+            .where(Cabin.id == cabin_id)
+            .where(Cabin.organization_id == organization_id)
+            .where(Cabin.deleted_at.is_(None))
+        )
+        if cabin_result.scalar_one_or_none() is None:
+            raise ValueError("Cabin not found")
+
     bunk = Bunk(
         id=uuid.uuid4(),
         organization_id=organization_id,
@@ -81,7 +94,7 @@ async def create_bunk(
     )
     db.add(bunk)
     await db.commit()
-    await db.refresh(bunk, ["counselor"])
+    await db.refresh(bunk, ["counselor", "cabin"])
     return _bunk_to_dict(bunk)
 
 
@@ -95,7 +108,7 @@ async def update_bunk(
     """Update an existing bunk."""
     result = await db.execute(
         select(Bunk)
-        .options(selectinload(Bunk.counselor))
+        .options(selectinload(Bunk.counselor), selectinload(Bunk.cabin))
         .where(Bunk.id == bunk_id)
         .where(Bunk.organization_id == organization_id)
         .where(Bunk.deleted_at.is_(None))
@@ -104,11 +117,22 @@ async def update_bunk(
     if bunk is None:
         return None
 
+    # Validate cabin_id if being changed
+    if "cabin_id" in data and data["cabin_id"] is not None:
+        cabin_result = await db.execute(
+            select(Cabin)
+            .where(Cabin.id == data["cabin_id"])
+            .where(Cabin.organization_id == organization_id)
+            .where(Cabin.deleted_at.is_(None))
+        )
+        if cabin_result.scalar_one_or_none() is None:
+            raise ValueError("Cabin not found")
+
     for key, value in data.items():
         setattr(bunk, key, value)
 
     await db.commit()
-    await db.refresh(bunk, ["counselor"])
+    await db.refresh(bunk, ["counselor", "cabin"])
     return _bunk_to_dict(bunk)
 
 
@@ -122,7 +146,7 @@ async def assign_counselor(
     """Assign or unassign a counselor (user) to a bunk."""
     result = await db.execute(
         select(Bunk)
-        .options(selectinload(Bunk.counselor))
+        .options(selectinload(Bunk.counselor), selectinload(Bunk.cabin))
         .where(Bunk.id == bunk_id)
         .where(Bunk.organization_id == organization_id)
         .where(Bunk.deleted_at.is_(None))
@@ -145,7 +169,7 @@ async def assign_counselor(
 
     bunk.counselor_user_id = counselor_user_id
     await db.commit()
-    await db.refresh(bunk, ["counselor"])
+    await db.refresh(bunk, ["counselor", "cabin"])
     return _bunk_to_dict(bunk)
 
 
@@ -476,6 +500,8 @@ def _bunk_to_dict(bunk: Bunk) -> Dict[str, Any]:
             if bunk.counselor
             else None
         ),
+        "cabin_id": bunk.cabin_id,
+        "cabin_name": bunk.cabin.name if bunk.cabin else None,
         "created_at": bunk.created_at,
     }
 

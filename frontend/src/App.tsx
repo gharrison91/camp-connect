@@ -73,6 +73,9 @@ const PortalPhotos = lazy(() => import('@/features/portal/PortalPhotos').then(m 
 const PortalInvoices = lazy(() => import('@/features/portal/PortalInvoices').then(m => ({ default: m.PortalInvoices })))
 const PortalMessages = lazy(() => import('@/features/portal/PortalMessages').then(m => ({ default: m.PortalMessages })))
 const PortalMedicine = lazy(() => import('@/features/portal/PortalMedicine').then(m => ({ default: m.PortalMedicine })))
+const PortalDocuments = lazy(() => import('@/features/portal/PortalDocuments').then(m => ({ default: m.PortalDocuments })))
+const PortalForms = lazy(() => import('@/features/portal/PortalForms').then(m => ({ default: m.PortalForms })))
+const PortalBunkBuddies = lazy(() => import('@/features/portal/PortalBunkBuddies').then(m => ({ default: m.PortalBunkBuddies })))
 
 // Phase 8: Form Builder, Workflows
 const FormsPage = lazy(() => import('@/features/forms/FormsPage').then(m => ({ default: m.FormsPage })))
@@ -108,8 +111,6 @@ const CampProfileSettings = lazy(() => import('@/features/admin/CampProfileSetti
 // Phase 15: Lead Enrichment, Portal enhancements
 const LeadEnrichmentPage = lazy(() => import('@/features/leads/LeadEnrichmentPage').then(m => ({ default: m.LeadEnrichmentPage })))
 const BrandingSettingsPage = lazy(() => import('@/features/admin/BrandingSettingsPage').then(m => ({ default: m.BrandingSettingsPage })))
-const PortalDocuments = lazy(() => import('@/features/portal/PortalDocuments').then(m => ({ default: m.PortalDocuments })))
-const PortalForms = lazy(() => import('@/features/portal/PortalForms').then(m => ({ default: m.PortalForms })))
 
 
 function LoadingSpinner() {
@@ -258,6 +259,7 @@ function App() {
               <Route path="medicine" element={<PortalMedicine />} />
               <Route path="documents" element={<PortalDocuments />} />
               <Route path="forms" element={<PortalForms />} />
+              <Route path="bunk-buddies" element={<PortalBunkBuddies />} />
             </Route>
 
             {/* Legacy redirects - old routes to new /app prefix */}

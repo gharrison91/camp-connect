@@ -18,6 +18,8 @@ export interface Bunk {
   location: string | null
   counselor_user_id: string | null
   counselor_name: string | null
+  cabin_id: string | null
+  cabin_name: string | null
   created_at: string
 }
 
@@ -58,6 +60,7 @@ export interface BunkCreate {
   max_age?: number | null
   location?: string
   counselor_user_id?: string | null
+  cabin_id?: string | null
 }
 
 export interface BunkUpdate extends Partial<BunkCreate> {}
