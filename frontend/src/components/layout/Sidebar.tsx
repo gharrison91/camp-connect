@@ -54,6 +54,10 @@ Hash,
   Stethoscope,
   CalendarRange,
   FileSignature,
+  DollarSign,
+  Building2,
+  PackageOpen,
+  Users2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -130,6 +134,9 @@ const navSections: NavSection[] = [
       { label: 'Parent Log', icon: PhoneCall, path: '/app/parent-logs', permission: null },
       { label: 'Emergency Plans', icon: Shield, path: '/app/emergency', permission: null },
       { label: 'Maintenance', icon: Wrench, path: '/app/maintenance', permission: null },
+      { label: 'Resources', icon: Building2, path: '/app/resource-booking', permission: null },
+      { label: 'Supply Requests', icon: PackageOpen, path: '/app/supply-requests', permission: null },
+      { label: 'Alumni', icon: Users2, path: '/app/alumni', permission: null },
     ],
   },
   {
@@ -140,6 +147,7 @@ const navSections: NavSection[] = [
       { label: 'Lists', icon: ListChecks, path: '/app/lists', permission: null },
       { label: 'Alerts', icon: Bell, path: '/app/alerts', permission: null },
       { label: 'Audit Log', icon: Shield, path: '/app/audit-log', permission: null },
+      { label: 'Surveys', icon: ClipboardList, path: '/app/surveys', permission: null },
     ],
   },
   {
@@ -153,6 +161,7 @@ const navSections: NavSection[] = [
       { label: 'Documents', icon: FolderOpen, path: '/app/documents', permission: null },
       { label: 'Deals', icon: Target, path: '/app/deals', permission: null },
       { label: 'Lead Gen', icon: Radar, path: '/app/leads', permission: null },
+      { label: 'Budget', icon: DollarSign, path: '/app/budget', permission: null },
       { label: 'Settings', icon: Settings, path: '/app/settings', permission: null },
     ],
   },

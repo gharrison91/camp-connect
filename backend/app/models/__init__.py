@@ -87,6 +87,12 @@ from app.models.background_check import BackgroundCheck
 # Phase 15: Staff Marketplace / Job Board
 from app.models.job_listing import JobListing, JobApplication
 
+# Phase 16: Budget Tracker
+from app.models.budget import Budget, BudgetCategory, BudgetExpense
+
+
+# Phase 16: Resource Bookings
+from app.models.resource_booking import Resource, ResourceBooking
 
 __all__ = [
     "Base",
@@ -173,4 +179,11 @@ __all__ = [
     "JobApplication",
     # Camp Directory
     "CampProfile",
+    # Phase 16: Budget Tracker
+    "Budget",
+    "BudgetCategory",
+    "BudgetExpense",
+    # Phase 16: Resource Bookings
+    "Resource",
+    "ResourceBooking",
 ]

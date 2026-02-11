@@ -181,6 +181,14 @@ from app.api.v1.permission_slips import router as permission_slips_router
 
 # Camp Sessions
 from app.api.v1.camp_sessions import router as camp_sessions_router
+
+# Phase 23: Budget, Alumni, Surveys, Resource Booking, Supply Requests
+from app.api.v1.budget import router as budget_router
+from app.api.v1.alumni import router as alumni_router
+from app.api.v1.surveys import router as surveys_router
+from app.api.v1.resource_bookings import router as resource_bookings_router
+from app.api.v1.supply_requests import router as supply_requests_router
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
@@ -389,6 +397,13 @@ app.include_router(permission_slips_router, prefix=settings.api_v1_prefix)
 
 # Camp Sessions
 app.include_router(camp_sessions_router, prefix=settings.api_v1_prefix)
+
+# Phase 23: Budget, Alumni, Surveys, Resource Booking, Supply Requests
+app.include_router(budget_router, prefix=settings.api_v1_prefix)
+app.include_router(alumni_router, prefix=settings.api_v1_prefix)
+app.include_router(surveys_router, prefix=settings.api_v1_prefix)
+app.include_router(resource_bookings_router, prefix=settings.api_v1_prefix)
+app.include_router(supply_requests_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

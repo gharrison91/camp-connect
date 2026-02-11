@@ -186,6 +186,13 @@ const CampSessionsPage = lazy(() => import('@/features/events/CampSessionsPage')
 // Permission Slips
 const PermissionSlipsPage = lazy(() => import('@/features/forms/PermissionSlipsPage').then(m => ({ default: m.PermissionSlipsPage })))
 
+// Phase 23
+const BudgetTrackerPage = lazy(() => import('@/features/budget/BudgetTrackerPage').then(m => ({ default: m.BudgetTrackerPage })))
+const AlumniNetworkPage = lazy(() => import('@/features/alumni/AlumniNetworkPage').then(m => ({ default: m.AlumniNetworkPage })))
+const SurveysPage = lazy(() => import('@/features/surveys/SurveysPage').then(m => ({ default: m.SurveysPage })))
+const ResourceBookingPage = lazy(() => import('@/features/resources/ResourceBookingPage').then(m => ({ default: m.ResourceBookingPage })))
+const SupplyRequestsPage = lazy(() => import('@/features/supplies/SupplyRequestsPage').then(m => ({ default: m.SupplyRequestsPage })))
+
 
 function LoadingSpinner() {
   return (
@@ -324,6 +331,13 @@ function App() {
 
               {/* Permission Slips */}
               <Route path="permission-slips" element={<PermissionSlipsPage />} />
+
+              {/* Phase 23 */}
+              <Route path="budget" element={<BudgetTrackerPage />} />
+              <Route path="alumni" element={<AlumniNetworkPage />} />
+              <Route path="surveys" element={<SurveysPage />} />
+              <Route path="resource-booking" element={<ResourceBookingPage />} />
+              <Route path="supply-requests" element={<SupplyRequestsPage />} />
 
               {/* Parent Communication Log */}
               <Route path="parent-logs" element={<ParentLogsPage />} />
