@@ -128,6 +128,9 @@ const TransportationPage = lazy(() => import('@/features/transportation/Transpor
 // Parent Communication Log
 const ParentLogsPage = lazy(() => import('@/features/parent-logs/ParentLogsPage').then(m => ({ default: m.ParentLogsPage })))
 
+// Volunteer Management
+const VolunteersPage = lazy(() => import('@/features/volunteers/VolunteersPage').then(m => ({ default: m.VolunteersPage })))
+
 // Emergency Action Plans & Drills
 const EmergencyPage = lazy(() => import('@/features/emergency/EmergencyPage').then(m => ({ default: m.EmergencyPage })))
 
@@ -139,6 +142,18 @@ const WeatherPage = lazy(() => import('@/features/weather/WeatherPage').then(m =
 
 // Document Management
 const DocumentsPage = lazy(() => import('@/features/documents/DocumentsPage').then(m => ({ default: m.DocumentsPage })))
+
+// Visitor Management
+const VisitorsPage = lazy(() => import('@/features/visitors/VisitorsPage').then(m => ({ default: m.VisitorsPage })))
+
+// Attendance Tracking
+const AttendancePage = lazy(() => import('@/features/attendance/AttendancePage').then(m => ({ default: m.AttendancePage })))
+
+// Team Chat
+const TeamChatPage = lazy(() => import('@/features/chat/TeamChatPage').then(m => ({ default: m.TeamChatPage })))
+
+// Skill Tracking
+const SkillTrackingPage = lazy(() => import('@/features/skills/SkillTrackingPage').then(m => ({ default: m.SkillTrackingPage })))
 
 
 function LoadingSpinner() {
@@ -267,6 +282,9 @@ function App() {
               {/* Parent Communication Log */}
               <Route path="parent-logs" element={<ParentLogsPage />} />
 
+              {/* Volunteer Management */}
+              <Route path="volunteers" element={<VolunteersPage />} />
+
               {/* Emergency Action Plans & Drills */}
               <Route path="emergency" element={<EmergencyPage />} />
 
@@ -278,6 +296,18 @@ function App() {
 
               {/* Document Management */}
               <Route path="documents" element={<DocumentsPage />} />
+
+              {/* Visitor Management */}
+              <Route path="visitors" element={<VisitorsPage />} />
+
+              {/* Attendance Tracking */}
+              <Route path="attendance" element={<AttendancePage />} />
+
+              {/* Team Chat */}
+              <Route path="team-chat" element={<TeamChatPage />} />
+
+              {/* Skill Tracking */}
+              <Route path="skills" element={<SkillTrackingPage />} />
 
               {/* Settings (nested routes) */}
               <Route path="settings" element={<SettingsLayout />}>

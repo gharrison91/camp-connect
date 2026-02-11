@@ -138,6 +138,21 @@ from app.api.v1.documents import router as documents_router
 
 # Parent Communication Log & Check-Ins
 from app.api.v1.parent_logs import router as parent_logs_router
+
+# Visitor Management
+from app.api.v1.visitors import router as visitors_router
+
+# Skill Tracking
+from app.api.v1.skill_tracking import router as skill_tracking_router
+
+# Team Chat
+from app.api.v1.team_chat import router as team_chat_router
+
+# Attendance Tracking
+from app.api.v1.attendance import router as attendance_router
+
+# Volunteer Management
+from app.api.v1.volunteers import router as volunteers_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
@@ -303,6 +318,21 @@ app.include_router(documents_router, prefix=settings.api_v1_prefix)
 
 # Parent Communication Log & Check-Ins
 app.include_router(parent_logs_router, prefix=settings.api_v1_prefix)
+
+# Visitor Management
+app.include_router(visitors_router, prefix=settings.api_v1_prefix)
+
+# Skill Tracking
+app.include_router(skill_tracking_router, prefix=settings.api_v1_prefix)
+
+# Team Chat
+app.include_router(team_chat_router, prefix=settings.api_v1_prefix)
+
+# Attendance Tracking
+app.include_router(attendance_router, prefix=settings.api_v1_prefix)
+
+# Volunteer Management
+app.include_router(volunteers_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

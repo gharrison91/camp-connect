@@ -1590,3 +1590,255 @@ export interface CamperCheckIn {
   shared_with_parents: boolean;
   created_at: string;
 }
+
+
+// Volunteer Management
+
+export interface Volunteer {
+  id: string;
+  org_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  status: 'active' | 'inactive' | 'pending';
+  skills: string[];
+  availability: string[];
+  background_check_status: 'pending' | 'cleared' | 'failed';
+  hours_logged: number;
+  start_date: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface VolunteerShift {
+  id: string;
+  org_id: string;
+  volunteer_id: string;
+  volunteer_name: string;
+  activity: string;
+  location: string | null;
+  date: string;
+  start_time: string;
+  end_time: string;
+  hours: number;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+  notes: string | null;
+  created_at: string;
+}
+
+
+// ─── Attendance ──────────────────────────────────────────────
+
+export interface AttendanceRecord {
+  id: string;
+  org_id: string;
+  camper_id: string;
+  camper_name: string;
+  activity_id: string;
+  activity_name: string;
+  date: string;
+  status: 'present' | 'absent' | 'late' | 'excused';
+  check_in_time: string | null;
+  check_out_time: string | null;
+  checked_in_by: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface AttendanceSession {
+  id: string;
+  org_id: string;
+  activity_id: string;
+  activity_name: string;
+  date: string;
+  period: string | null;
+  total_expected: number;
+  total_present: number;
+  total_absent: number;
+  total_late: number;
+}
+
+export interface AttendanceStats {
+  attendance_rate: number;
+  total_sessions: number;
+  perfect_attendance_count: number;
+  frequent_absences: {
+    camper_id: string;
+    camper_name: string;
+    absence_count: number;
+  }[];
+}
+
+export interface AttendanceDailyReport {
+  date: string;
+  total_records: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  by_activity: {
+    activity_id: string;
+    activity_name: string;
+    total: number;
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+  }[];
+}
+
+
+// Team Chat / Staff Group Messaging
+
+export interface ChatAttachment {
+  url: string;
+  name: string;
+  type: string;
+}
+
+export interface ChatReaction {
+  emoji: string;
+  user_ids: string[];
+}
+
+export interface ChatChannel {
+  id: string;
+  org_id: string;
+  name: string;
+  description: string;
+  channel_type: 'general' | 'cabin' | 'activity' | 'staff' | 'announcement';
+  members: string[];
+  created_by: string;
+  is_archived: boolean;
+  created_at: string;
+  last_message_at: string | null;
+  last_message_preview: string | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  channel_id: string;
+  sender_id: string;
+  sender_name: string;
+  sender_avatar: string | null;
+  content: string;
+  message_type: 'text' | 'image' | 'file' | 'system';
+  attachments: ChatAttachment[];
+  reactions: ChatReaction[];
+  is_pinned: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ChatUnreadCount {
+  channel_id: string;
+  count: number;
+}
+
+
+// ---- Skill Tracking ----
+
+export interface SkillLevel {
+  level: number;
+  name: string;
+  description: string;
+  criteria: string;
+}
+
+export interface SkillCategory {
+  id: string;
+  org_id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  icon: string;
+  sort_order: number;
+  skill_count: number;
+  created_at: string;
+}
+
+export interface Skill {
+  id: string;
+  org_id: string;
+  category_id: string;
+  category_name: string;
+  name: string;
+  description: string | null;
+  levels: SkillLevel[];
+  max_level: number;
+  created_at: string;
+}
+
+export interface EvaluationEntry {
+  date: string;
+  evaluator: string;
+  level: number;
+  notes: string;
+}
+
+export interface CamperSkillProgress {
+  id: string;
+  camper_id: string;
+  camper_name: string;
+  skill_id: string;
+  skill_name: string;
+  category_name: string;
+  current_level: number;
+  target_level: number;
+  evaluations: EvaluationEntry[];
+  started_at: string;
+  last_evaluated: string | null;
+}
+
+export interface SkillLeaderboardEntry {
+  camper_id: string;
+  camper_name: string;
+  total_levels: number;
+  skills_count: number;
+  avg_level: number;
+}
+
+export interface SkillCategoryStats {
+  category_id: string;
+  category_name: string;
+  color: string;
+  total_skills: number;
+  total_evaluations: number;
+  avg_level: number;
+}
+
+
+// ─── Visitor Management ──────────────────────────────────────
+
+export interface Visitor {
+  id: string;
+  org_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  company: string;
+  visitor_type: 'parent' | 'vendor' | 'inspector' | 'guest' | 'contractor';
+  purpose: string;
+  visiting_camper_id: string | null;
+  visiting_camper_name: string;
+  host_staff_id: string | null;
+  host_staff_name: string;
+  check_in_time: string | null;
+  check_out_time: string | null;
+  badge_number: string;
+  photo_url: string;
+  vehicle_info: string;
+  id_verified: boolean;
+  status: 'pre_registered' | 'checked_in' | 'checked_out' | 'denied';
+  notes: string;
+  created_at: string;
+}
+
+export interface VisitorStats {
+  checked_in_today: number;
+  total_today: number;
+  most_common_type: string;
+  avg_visit_duration: number;
+}

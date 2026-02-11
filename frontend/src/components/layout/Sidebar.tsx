@@ -41,6 +41,11 @@ import {
   Wrench,
   PhoneCall,
   FolderOpen,
+  UserPlus,
+  HandHeart,
+Hash,
+  ClipboardCheck,
+  GraduationCap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -81,6 +86,8 @@ const navSections: NavSection[] = [
       { label: 'Registrations', icon: ClipboardList, path: '/app/registrations', permission: 'core.registrations.read' },
       { label: 'Families', icon: UsersRound, path: '/app/families', permission: 'core.families.read' },
       { label: 'Activities', icon: Tent, path: '/app/activities', permission: 'core.activities.read' },
+      { label: 'Attendance', icon: ClipboardCheck, path: '/app/attendance', permission: 'core.activities.read' },
+      { label: 'Skills', icon: GraduationCap, path: '/app/skills', permission: null },
       { label: 'Awards', icon: Award, path: '/app/awards', permission: null },
       { label: 'Bunks', icon: BedDouble, path: '/app/bunks', permission: 'core.bunks.read' },
       { label: 'Meals', icon: Utensils, path: '/app/meals', permission: 'core.settings.manage' },
@@ -92,8 +99,10 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Schedule', icon: CalendarDays, path: '/app/schedule', permission: 'scheduling.sessions.read' },
       { label: 'Staff', icon: UserCog, path: '/app/staff', permission: 'staff.employees.read' },
+      { label: 'Volunteers', icon: HandHeart, path: '/app/volunteers', permission: null },
       { label: 'Background Checks', icon: ShieldCheck, path: '/app/background-checks', permission: 'staff.employees.read' },
       { label: 'Communications', icon: MessageSquare, path: '/app/communications', permission: 'comms.messages.read' },
+      { label: 'Team Chat', icon: Hash, path: '/app/team-chat', permission: null },
       { label: 'Camper Messages', icon: MessageCircle, path: '/app/camper-messages', permission: null },
       { label: 'Nurse Schedule', icon: Heart, path: '/app/nurse-schedule', permission: null },
       { label: 'Photos', icon: Camera, path: '/app/photos', permission: 'photos.media.view' },
@@ -101,6 +110,7 @@ const navSections: NavSection[] = [
       { label: 'Inventory', icon: Package, path: '/app/inventory', permission: null },
       { label: 'Incidents', icon: AlertTriangle, path: '/app/incidents', permission: null },
       { label: 'Transportation', icon: Bus, path: '/app/transportation', permission: null },
+      { label: 'Visitors', icon: UserPlus, path: '/app/visitors', permission: null },
       { label: 'Parent Log', icon: PhoneCall, path: '/app/parent-logs', permission: null },
       { label: 'Emergency Plans', icon: Shield, path: '/app/emergency', permission: null },
       { label: 'Maintenance', icon: Wrench, path: '/app/maintenance', permission: null },

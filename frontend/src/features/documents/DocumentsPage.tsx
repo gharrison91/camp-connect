@@ -1,21 +1,42 @@
+/**
+ * Camp Connect – Document Management System
+ * Two-panel: folder tree + document grid/list
+ */
+
 import { useState } from 'react'
 import {
   FileText,
-  Download,
-  Archive,
-  PenTool,
-  Trash2,
-  X,
-  Loader2,
   File,
   Image,
   Sheet,
-  MoreHorizontal,
-  Pencil,
+  Plus,
+  FolderPlus,
+  Search,
+  Grid3X3,
+  List,
+  AlertTriangle,
+  Clock,
+  FolderOpen,
+  ChevronRight,
+  ChevronDown,
+  Loader2,
+  X,
+  Upload,
+  Archive,
+  Trash2,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import type { CampDocument } from '@/types'
-
+import { useToast } from '@/components/ui/Toast'
+import type { CampDocument, DocumentFolder } from '@/types'
+import {
+  useDocuments,
+  useCreateDocument,
+  useDeleteDocument,
+  useArchiveDocument,
+  useDocumentFolders,
+  useCreateFolder,
+  useExpiringDocuments,
+  useDocumentStats,
+} from '@/hooks/useDocuments'
 
 const CATEGORIES = [
   { value: 'policy', label: 'Policy', color: 'bg-blue-100 text-blue-700' },
@@ -28,10 +49,8 @@ const CATEGORIES = [
   { value: 'other', label: 'Other', color: 'bg-gray-100 text-gray-700' },
 ] as const
 
-const ROLES = ['admin', 'director', 'counselor', 'nurse', 'parent'] as const
-
 function getCategoryInfo(cat: string) {
-  return CATEGORIES.find((c) => c.value === cat) || CATEGORIES[CATEGORIES.length - 1]
+  return CATEGORIES.find(c => c.value === cat) || CATEGORIES[CATEGORIES.length - 1]
 }
 
 function getFileIcon(fileType: string) {
@@ -44,7 +63,7 @@ function getFileIcon(fileType: string) {
   }
 }
 
-function formatFileSize(bytes: number): string {
+function formatFileSize(bytes: number) {
   if (bytes === 0) return '0 B'
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB']
@@ -52,302 +71,329 @@ function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+// ─── Upload Document Modal ─────────────────────────────────────
+function UploadModal({ folderId, onClose }: { folderId: string | null; onClose: () => void }) {
+  const { toast } = useToast()
+  const createDoc = useCreateDocument()
+  const [form, setForm] = useState({
+    name: '', description: '', file_url: '', file_type: 'pdf' as CampDocument['file_type'],
+    file_size: 0, category: 'other' as CampDocument['category'],
+    tags: [] as string[], requires_signature: false, expiry_date: '',
+    shared_with: [] as string[], folder_id: folderId,
   })
-}
+  const [tagInput, setTagInput] = useState('')
 
-// Upload/Edit Modal
-export function DocumentModal({
-  doc,
-  onClose,
-  onSave,
-  isSaving,
-}: {
-  doc: CampDocument | null
-  onClose: () => void
-  onSave: (data: Record<string, unknown>) => void
-  isSaving: boolean
-}) {
-  const [name, setName] = useState(doc?.name || '')
-  const [description, setDescription] = useState(doc?.description || '')
-  const [category, setCategory] = useState<string>(doc?.category || 'other')
-  const [fileType, setFileType] = useState<string>(doc?.file_type || 'pdf')
-  const [fileSize, setFileSize] = useState(doc?.file_size || 0)
-  const [tags, setTags] = useState(doc?.tags?.join(', ') || '')
-  const [requiresSignature, setRequiresSignature] = useState(doc?.requires_signature || false)
-  const [expiryDate, setExpiryDate] = useState(doc?.expiry_date || '')
-  const [sharedWith, setSharedWith] = useState<string[]>(doc?.shared_with || [])
+  const addTag = () => {
+    if (tagInput.trim() && !form.tags.includes(tagInput.trim())) {
+      setForm(f => ({ ...f, tags: [...f.tags, tagInput.trim()] }))
+      setTagInput('')
+    }
+  }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSave({
-      name,
-      description: description || undefined,
-      category,
-      file_type: fileType,
-      file_size: fileSize,
-      tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
-      requires_signature: requiresSignature,
-      expiry_date: expiryDate || null,
-      shared_with: sharedWith,
+  const submit = () => {
+    if (!form.name.trim()) return
+    createDoc.mutate(form as any, {
+      onSuccess: () => { toast({ message: 'Document uploaded', type: 'success' }); onClose() },
+      onError: () => toast({ message: 'Failed to upload', type: 'error' }),
     })
   }
 
-  const toggleRole = (role: string) => {
-    setSharedWith((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
-    )
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl max-h-[85vh] overflow-y-auto">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Upload Document</h2>
+          <button onClick={onClose} className="rounded p-1 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="space-y-3">
+          <input className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="Document name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+          <textarea className="w-full rounded-lg border px-3 py-2 text-sm" rows={2} placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-3">
+            <select className="rounded-lg border px-3 py-2 text-sm" value={form.file_type} onChange={e => setForm(f => ({ ...f, file_type: e.target.value as any }))}>
+              <option value="pdf">PDF</option>
+              <option value="doc">Document</option>
+              <option value="image">Image</option>
+              <option value="spreadsheet">Spreadsheet</option>
+              <option value="other">Other</option>
+            </select>
+            <select className="rounded-lg border px-3 py-2 text-sm" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value as any }))}>
+              {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <Upload className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+            <p className="text-sm text-slate-500">File upload coming soon</p>
+            <p className="text-xs text-slate-400">Enter metadata below for now</p>
+          </div>
+          <input className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="File URL (placeholder)" value={form.file_url} onChange={e => setForm(f => ({ ...f, file_url: e.target.value }))} />
+          <div>
+            <label className="mb-1 block text-xs text-slate-500">Tags</label>
+            <div className="flex gap-2">
+              <input className="flex-1 rounded-lg border px-3 py-1.5 text-sm" placeholder="Add tag…" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())} />
+              <button onClick={addTag} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-slate-50">Add</button>
+            </div>
+            {form.tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {form.tags.map(t => (
+                  <span key={t} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs">
+                    {t}
+                    <button onClick={() => setForm(f => ({ ...f, tags: f.tags.filter(x => x !== t) }))} className="hover:text-red-500">&times;</button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.requires_signature} onChange={e => setForm(f => ({ ...f, requires_signature: e.target.checked }))} className="rounded" />
+              Requires signature
+            </label>
+            <input type="date" className="rounded-lg border px-3 py-1.5 text-sm" placeholder="Expiry date" value={form.expiry_date} onChange={e => setForm(f => ({ ...f, expiry_date: e.target.value }))} />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-lg border px-4 py-2 text-sm hover:bg-slate-50">Cancel</button>
+          <button onClick={submit} disabled={createDoc.isPending} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
+            {createDoc.isPending ? 'Uploading…' : 'Upload'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Create Folder Modal ───────────────────────────────────────
+function CreateFolderModal({ onClose }: { onClose: () => void }) {
+  const { toast } = useToast()
+  const createFolder = useCreateFolder()
+  const [name, setName] = useState('')
+
+  const submit = () => {
+    if (!name.trim()) return
+    createFolder.mutate({ name } as any, {
+      onSuccess: () => { toast({ message: 'Folder created', type: 'success' }); onClose() },
+      onError: () => toast({ message: 'Failed to create folder', type: 'error' }),
+    })
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
-        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
-          <X className="h-5 w-5" />
-        </button>
-        <h2 className="mb-5 text-lg font-semibold text-gray-900">
-          {doc ? 'Edit Document' : 'Upload Document'}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Name *</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="Document name" />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="Brief description..." />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                {CATEGORIES.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">File Type</label>
-              <select value={fileType} onChange={(e) => setFileType(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                <option value="pdf">PDF</option>
-                <option value="doc">Document</option>
-                <option value="image">Image</option>
-                <option value="spreadsheet">Spreadsheet</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">File Size (bytes)</label>
-            <input type="number" value={fileSize} onChange={(e) => setFileSize(Number(e.target.value))} min={0} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Tags (comma-separated)</label>
-            <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="safety, 2026, required" />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Expiry Date</label>
-            <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="requires-sig" checked={requiresSignature} onChange={(e) => setRequiresSignature(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
-            <label htmlFor="requires-sig" className="text-sm font-medium text-gray-700">Requires Signature</label>
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Share With</label>
-            <div className="flex flex-wrap gap-2">
-              {ROLES.map((role) => (
-                <button key={role} type="button" onClick={() => toggleRole(role)} className={cn('rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors', sharedWith.includes(role) ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')}>
-                  {role}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
-            <button type="submit" disabled={!name.trim() || isSaving} className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
-              {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {doc ? 'Update' : 'Create'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-
-// New Folder Modal
-export function NewFolderModal({
-  onClose,
-  onSave,
-  isSaving,
-}: {
-  onClose: () => void
-  onSave: (name: string) => void
-  isSaving: boolean
-}) {
-  const [name, setName] = useState('')
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl">
-        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
-          <X className="h-5 w-5" />
-        </button>
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">New Folder</h2>
-        <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) onSave(name.trim()) }} className="space-y-4">
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Folder name" autoFocus className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-          <div className="flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
-            <button type="submit" disabled={!name.trim() || isSaving} className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
-              {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-              Create
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-
-// Document Card (Grid View)
-export function DocumentCard({
-  doc,
-  onEdit,
-  onArchive,
-  onDelete,
-}: {
-  doc: CampDocument
-  onEdit: () => void
-  onArchive: () => void
-  onDelete: () => void
-}) {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const catInfo = getCategoryInfo(doc.category)
-
-  return (
-    <div className="group relative rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
-      <div className="absolute right-3 top-3">
-        <button onClick={() => setMenuOpen(!menuOpen)} className="rounded-md p-1 text-gray-400 opacity-0 transition-opacity hover:bg-gray-100 hover:text-gray-600 group-hover:opacity-100">
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
-        {menuOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-            <div className="absolute right-0 z-20 mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-              {doc.file_url && (
-                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>
-                  <Download className="h-3.5 w-3.5" /> Download
-                </a>
-              )}
-              <button onClick={() => { onEdit(); setMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                <Pencil className="h-3.5 w-3.5" /> Edit
-              </button>
-              {doc.status === 'active' && (
-                <button onClick={() => { onArchive(); setMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                  <Archive className="h-3.5 w-3.5" /> Archive
-                </button>
-              )}
-              <button onClick={() => { onDelete(); setMenuOpen(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">
-                <Trash2 className="h-3.5 w-3.5" /> Delete
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-lg bg-gray-50">
-        {getFileIcon(doc.file_type)}
-      </div>
-      <h3 className="mb-1 truncate text-sm font-semibold text-gray-900">{doc.name}</h3>
-      {doc.description && <p className="mb-2 line-clamp-2 text-xs text-gray-500">{doc.description}</p>}
-      <span className={cn('inline-block rounded-full px-2 py-0.5 text-[10px] font-medium', catInfo.color)}>{catInfo.label}</span>
-      <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-        <span className="text-xs text-gray-400">{formatFileSize(doc.file_size)}</span>
-        <span className="text-xs text-gray-400">{formatDate(doc.created_at)}</span>
-      </div>
-      {doc.requires_signature && (
-        <div className="mt-2 flex items-center gap-1">
-          <PenTool className="h-3 w-3 text-amber-500" />
-          <span className="text-[10px] font-medium text-amber-600">
-            {doc.signed_by.length > 0 ? doc.signed_by.length + ' signed' : 'Pending signature'}
-          </span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+        <h2 className="mb-4 text-lg font-semibold">New Folder</h2>
+        <input className="mb-4 w-full rounded-lg border px-3 py-2 text-sm" placeholder="Folder name" value={name} onChange={e => setName(e.target.value)} />
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-lg border px-4 py-2 text-sm hover:bg-slate-50">Cancel</button>
+          <button onClick={submit} disabled={createFolder.isPending} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">Create</button>
         </div>
-      )}
-      {doc.status !== 'active' && (
-        <div className={cn('mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium', doc.status === 'archived' ? 'bg-gray-100 text-gray-500' : 'bg-red-100 text-red-600')}>
-          {doc.status}
-        </div>
-      )}
-    </div>
-  )
-}
-
-
-// Document Row (List View)
-export function DocumentRow({
-  doc,
-  onEdit,
-  onArchive,
-  onDelete,
-}: {
-  doc: CampDocument
-  onEdit: () => void
-  onArchive: () => void
-  onDelete: () => void
-}) {
-  const catInfo = getCategoryInfo(doc.category)
-
-  return (
-    <div className="group flex items-center gap-4 border-b border-gray-100 px-4 py-3 transition-colors hover:bg-gray-50">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50">
-        {getFileIcon(doc.file_type)}
-      </div>
-      <div className="min-w-0 flex-1">
-        <h3 className="truncate text-sm font-medium text-gray-900">{doc.name}</h3>
-        <p className="truncate text-xs text-gray-500">{doc.uploaded_by_name || 'Unknown'} &middot; {formatDate(doc.created_at)}</p>
-      </div>
-      <span className={cn('hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium sm:inline-block', catInfo.color)}>{catInfo.label}</span>
-      <span className="hidden w-16 shrink-0 text-right text-xs text-gray-400 md:block">{formatFileSize(doc.file_size)}</span>
-      {doc.requires_signature && <PenTool className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
-      {doc.status !== 'active' && (
-        <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium', doc.status === 'archived' ? 'bg-gray-100 text-gray-500' : 'bg-red-100 text-red-600')}>{doc.status}</span>
-      )}
-      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-        {doc.file_url && (
-          <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="rounded-md p-1.5 text-gray-400 hover:bg-gray-200 hover:text-gray-600" title="Download">
-            <Download className="h-3.5 w-3.5" />
-          </a>
-        )}
-        <button onClick={onEdit} className="rounded-md p-1.5 text-gray-400 hover:bg-gray-200 hover:text-gray-600" title="Edit">
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
-        {doc.status === 'active' && (
-          <button onClick={onArchive} className="rounded-md p-1.5 text-gray-400 hover:bg-gray-200 hover:text-gray-600" title="Archive">
-            <Archive className="h-3.5 w-3.5" />
-          </button>
-        )}
-        <button onClick={onDelete} className="rounded-md p-1.5 text-gray-400 hover:bg-red-100 hover:text-red-600" title="Delete">
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
       </div>
     </div>
   )
 }
 
-
+// ─── Main Page ─────────────────────────────────────────────────
 export function DocumentsPage() {
+  const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showFolderModal, setShowFolderModal] = useState(false)
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+
+  const { data: documents = [], isLoading } = useDocuments({ category: categoryFilter || undefined, search: search || undefined, folder_id: selectedFolder || undefined, status: statusFilter || undefined })
+  const { data: folders = [] } = useDocumentFolders()
+  const { data: expiring = [] } = useExpiringDocuments(30)
+  const { data: stats } = useDocumentStats()
+  const deleteDoc = useDeleteDocument()
+  const archiveDoc = useArchiveDocument()
+  const { toast } = useToast()
+
+  const handleDelete = (doc: CampDocument) => {
+    if (!confirm(`Delete "${doc.name}"?`)) return
+    deleteDoc.mutate(doc.id, {
+      onSuccess: () => toast({ message: 'Document deleted', type: 'success' }),
+      onError: () => toast({ message: 'Failed to delete', type: 'error' }),
+    })
+  }
+
+  const handleArchive = (doc: CampDocument) => {
+    archiveDoc.mutate(doc.id, {
+      onSuccess: () => toast({ message: 'Document archived', type: 'success' }),
+      onError: () => toast({ message: 'Failed to archive', type: 'error' }),
+    })
+  }
+
+  const toggleFolder = (id: string) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Documents</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Document management coming soon</p>
+    <div className="min-h-screen bg-slate-50 p-6">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Documents</h1>
+          <p className="text-sm text-slate-500">Manage policies, waivers, forms, and more</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => setShowFolderModal(true)} className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-slate-50">
+            <FolderPlus className="h-4 w-4" /> New Folder
+          </button>
+          <button onClick={() => setShowUploadModal(true)} className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+            <Plus className="h-4 w-4" /> Upload Document
+          </button>
+        </div>
       </div>
+
+      {/* Expiring Alert */}
+      {expiring.length > 0 && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600" />
+          <span className="text-sm text-amber-800">{expiring.length} document{expiring.length > 1 ? 's' : ''} expiring within 30 days</span>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="mb-6 grid grid-cols-4 gap-4">
+        {[
+          { label: 'Total Documents', value: stats?.total_documents ?? 0, icon: FileText, bg: 'bg-blue-50', color: 'text-blue-600' },
+          { label: 'Pending Signatures', value: stats?.pending_signatures ?? 0, icon: Clock, bg: 'bg-amber-50', color: 'text-amber-600' },
+          { label: 'Expiring Soon', value: stats?.expiring_soon ?? 0, icon: AlertTriangle, bg: 'bg-red-50', color: 'text-red-600' },
+          { label: 'Folders', value: folders.length, icon: FolderOpen, bg: 'bg-purple-50', color: 'text-purple-600' },
+        ].map(s => (
+          <div key={s.label} className="rounded-xl bg-white p-4 shadow-sm border">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${s.bg}`}><s.icon className={`h-5 w-5 ${s.color}`} /></div>
+              <div><p className="text-2xl font-bold">{s.value}</p><p className="text-xs text-slate-500">{s.label}</p></div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-6">
+        {/* Folder Sidebar */}
+        <div className="w-56 shrink-0">
+          <div className="rounded-xl border bg-white p-3 shadow-sm">
+            <button onClick={() => setSelectedFolder(null)} className={`mb-1 w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition ${!selectedFolder ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50'}`}>
+              All Documents
+            </button>
+            {folders.map((f: DocumentFolder) => (
+              <div key={f.id}>
+                <button
+                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${selectedFolder === f.id ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                  onClick={() => { setSelectedFolder(f.id); toggleFolder(f.id) }}
+                >
+                  {expandedFolders.has(f.id) ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  <FolderOpen className="h-4 w-4" />
+                  <span className="flex-1 truncate">{f.name}</span>
+                  <span className="text-xs text-slate-400">{f.document_count}</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1">
+          {/* Filter Bar */}
+          <div className="mb-4 flex items-center gap-3">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input className="w-full rounded-lg border pl-9 pr-3 py-2 text-sm" placeholder="Search documents…" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <select className="rounded-lg border px-3 py-2 text-sm" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+              <option value="">All Categories</option>
+              {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+            <select className="rounded-lg border px-3 py-2 text-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="archived">Archived</option>
+              <option value="expired">Expired</option>
+            </select>
+            <div className="flex rounded-lg border">
+              <button onClick={() => setViewMode('grid')} className={`p-2 ${viewMode === 'grid' ? 'bg-slate-100' : ''}`}><Grid3X3 className="h-4 w-4" /></button>
+              <button onClick={() => setViewMode('list')} className={`p-2 ${viewMode === 'list' ? 'bg-slate-100' : ''}`}><List className="h-4 w-4" /></button>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+          ) : documents.length === 0 ? (
+            <div className="rounded-xl border bg-white p-12 text-center">
+              <FileText className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+              <p className="text-sm text-slate-500">No documents found</p>
+              <button onClick={() => setShowUploadModal(true)} className="mt-3 text-sm font-medium text-emerald-600 hover:text-emerald-700">+ Upload Document</button>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+              {documents.map((doc: CampDocument) => {
+                const cat = getCategoryInfo(doc.category)
+                return (
+                  <div key={doc.id} className="rounded-xl border bg-white p-4 shadow-sm hover:shadow-md transition">
+                    <div className="mb-3 flex items-start justify-between">
+                      {getFileIcon(doc.file_type)}
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${cat.color}`}>{cat.label}</span>
+                    </div>
+                    <p className="mb-1 font-medium text-sm truncate">{doc.name}</p>
+                    <p className="mb-2 text-xs text-slate-500 line-clamp-2">{doc.description || 'No description'}</p>
+                    <div className="mb-3 flex items-center gap-2 text-xs text-slate-400">
+                      <span>{formatFileSize(doc.file_size)}</span>
+                      <span>·</span>
+                      <span>v{doc.version}</span>
+                      {doc.requires_signature && <span className="text-amber-500">✍ Signature required</span>}
+                    </div>
+                    {doc.tags.length > 0 && (
+                      <div className="mb-3 flex flex-wrap gap-1">
+                        {doc.tags.slice(0, 3).map(t => (
+                          <span key={t} className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">{t}</span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-1 border-t pt-3">
+                      <button onClick={() => handleArchive(doc)} className="flex-1 rounded-lg border px-2 py-1 text-xs text-slate-600 hover:bg-slate-50">
+                        <Archive className="mr-1 inline h-3 w-3" /> Archive
+                      </button>
+                      <button onClick={() => handleDelete(doc)} className="rounded-lg border px-2 py-1 text-xs text-red-500 hover:bg-red-50">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="rounded-xl border bg-white shadow-sm divide-y">
+              {documents.map((doc: CampDocument) => {
+                const cat = getCategoryInfo(doc.category)
+                return (
+                  <div key={doc.id} className="flex items-center gap-4 px-4 py-3">
+                    <div className="shrink-0">{getFileIcon(doc.file_type)}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{doc.name}</p>
+                      <p className="text-xs text-slate-500">{formatFileSize(doc.file_size)} · v{doc.version} · {doc.uploaded_by_name}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${cat.color}`}>{cat.label}</span>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${doc.status === 'active' ? 'bg-green-100 text-green-700' : doc.status === 'archived' ? 'bg-slate-100 text-slate-500' : 'bg-red-100 text-red-700'}`}>{doc.status}</span>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => handleArchive(doc)} className="rounded p-1 text-slate-400 hover:text-slate-600"><Archive className="h-4 w-4" /></button>
+                      <button onClick={() => handleDelete(doc)} className="rounded p-1 text-slate-400 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showUploadModal && <UploadModal folderId={selectedFolder} onClose={() => setShowUploadModal(false)} />}
+      {showFolderModal && <CreateFolderModal onClose={() => setShowFolderModal(false)} />}
     </div>
   )
 }
