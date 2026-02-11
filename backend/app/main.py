@@ -118,6 +118,9 @@ from app.api.v1.inventory import router as inventory_router
 # Transportation
 from app.api.v1.transportation import router as transportation_router
 
+# Spending Accounts
+from app.api.v1.spending_accounts import router as spending_accounts_router
+
 # Meal Planning
 from app.api.v1.meals import router as meals_router
 
@@ -164,8 +167,20 @@ from app.api.v1.search import router as search_router
 # Medical Dashboard
 from app.api.v1.medical_dashboard import router as medical_dashboard_router
 
+# Medical Logs
+from app.api.v1.medical_logs import router as medical_logs_router
+
 # Audit Logs
 from app.api.v1.audit_logs import router as audit_logs_router
+
+# Packing Lists
+from app.api.v1.packing_lists import router as packing_lists_router
+
+# Permission Slips
+from app.api.v1.permission_slips import router as permission_slips_router
+
+# Camp Sessions
+from app.api.v1.camp_sessions import router as camp_sessions_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
@@ -357,8 +372,23 @@ app.include_router(search_router, prefix=settings.api_v1_prefix)
 # Medical Dashboard
 app.include_router(medical_dashboard_router, prefix=settings.api_v1_prefix)
 
+# Medical Logs
+app.include_router(medical_logs_router, prefix=settings.api_v1_prefix)
+
 # Audit Logs
 app.include_router(audit_logs_router, prefix=settings.api_v1_prefix)
+
+# Packing Lists
+app.include_router(packing_lists_router, prefix=settings.api_v1_prefix)
+
+# Spending Accounts
+app.include_router(spending_accounts_router, prefix=settings.api_v1_prefix)
+
+# Permission Slips
+app.include_router(permission_slips_router, prefix=settings.api_v1_prefix)
+
+# Camp Sessions
+app.include_router(camp_sessions_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

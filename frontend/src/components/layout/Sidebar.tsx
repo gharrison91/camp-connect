@@ -33,6 +33,7 @@ import {
   Briefcase,
   Radar,
   Package,
+  PackageCheck,
   Utensils,
   AlertTriangle,
   Award,
@@ -49,6 +50,10 @@ Hash,
   ScanFace,
   ListOrdered,
   Activity,
+  Wallet,
+  Stethoscope,
+  CalendarRange,
+  FileSignature,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -96,6 +101,9 @@ const navSections: NavSection[] = [
       { label: 'Meals', icon: Utensils, path: '/app/meals', permission: 'core.settings.manage' },
       { label: 'Weather', icon: CloudSun, path: '/app/weather', permission: null },
       { label: 'Waitlist', icon: ListOrdered, path: '/app/waitlist', permission: null },
+      { label: 'Packing Lists', icon: PackageCheck, path: '/app/packing-lists', permission: null },
+      { label: 'Sessions', icon: CalendarRange, path: '/app/sessions', permission: null },
+      { label: 'Permission Slips', icon: FileSignature, path: '/app/permission-slips', permission: null },
     ],
   },
   {
@@ -111,6 +119,7 @@ const navSections: NavSection[] = [
       { label: 'Camper Messages', icon: MessageCircle, path: '/app/camper-messages', permission: null },
       { label: 'Nurse Schedule', icon: Heart, path: '/app/nurse-schedule', permission: null },
       { label: 'Medical Dashboard', icon: Activity, path: '/app/medical-dashboard', permission: null },
+      { label: 'Medical Log', icon: Stethoscope, path: '/app/medical-log', permission: null },
       { label: 'Photos', icon: Camera, path: '/app/photos', permission: 'photos.media.view' },
       { label: 'Face Tagging', icon: ScanFace, path: '/app/face-tagging', permission: null },
       { label: 'Job Board', icon: Briefcase, path: '/app/jobs', permission: null },
@@ -138,6 +147,7 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Payments', icon: CreditCard, path: '/app/payments', permission: 'payments.invoices.read' },
       { label: 'Store', icon: ShoppingBag, path: '/app/store', permission: 'store.manage.manage' },
+      { label: 'Spending', icon: Wallet, path: '/app/spending-accounts', permission: null },
       { label: 'Forms', icon: FileText, path: '/app/forms', permission: null },
       { label: 'Workflows', icon: Workflow, path: '/app/workflows', permission: null },
       { label: 'Documents', icon: FolderOpen, path: '/app/documents', permission: null },

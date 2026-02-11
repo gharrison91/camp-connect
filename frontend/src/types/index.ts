@@ -1943,3 +1943,262 @@ export interface FaceTagStats {
   dismissed: number
   accuracy_rate: number
 }
+
+
+// ─── Spending Accounts ───────────────────────────────────────
+
+export interface SpendingAccountData {
+  id: string
+  camper_id: string
+  camper_name: string
+  balance: number
+  daily_limit: number | null
+  is_active: boolean
+  last_transaction_at: string | null
+  created_at: string
+}
+
+export interface SpendingTransactionData {
+  id: string
+  account_id: string
+  camper_name: string
+  amount: number
+  type: 'deposit' | 'purchase' | 'refund' | 'adjustment'
+  description: string | null
+  staff_name: string | null
+  created_at: string
+}
+
+export interface SpendingSummary {
+  total_accounts: number
+  active_accounts: number
+  total_balance: number
+  transactions_today: number
+  average_balance: number
+}
+
+
+// --- Packing Lists ---
+
+export interface PackingListItem {
+  name: string
+  category: 'Clothing' | 'Toiletries' | 'Bedding' | 'Equipment' | 'Personal' | 'Other'
+  required: boolean
+  quantity: number
+}
+
+export interface PackingListTemplate {
+  id: string
+  organization_id: string
+  name: string
+  description: string
+  event_id?: string | null
+  items: PackingListItem[]
+  created_at: string
+}
+
+export interface PackingListAssignment {
+  id: string
+  template_id: string
+  template_name: string
+  camper_id: string
+  camper_name: string
+  event_name: string
+  items: PackingListItem[]
+  items_checked: string[]
+  status: 'not_started' | 'in_progress' | 'complete'
+  created_at: string
+}
+
+export interface PackingListStats {
+  total_templates: number
+  active_assignments: number
+  completion_rate: number
+  fully_packed: number
+}
+
+
+// ─── Medical Log ─────────────────────────────────────────────
+
+
+
+
+
+export interface MedicalLogVitals {
+
+
+  temperature?: string | null
+
+
+  blood_pressure?: string | null
+
+
+  pulse?: string | null
+
+
+  respiratory_rate?: string | null
+
+
+}
+
+
+
+
+
+export interface MedicalLogMedication {
+
+
+  name: string
+
+
+  dose: string
+
+
+  time: string
+
+
+}
+
+
+
+
+
+export interface MedicalLogEntry {
+
+
+  id: string
+
+
+  organization_id: string
+
+
+  camper_id: string
+
+
+  camper_name: string
+
+
+  staff_id: string
+
+
+  staff_name: string
+
+
+  visit_type: string
+
+
+  chief_complaint: string
+
+
+  description: string
+
+
+  vitals: MedicalLogVitals | null
+
+
+  medications_given: MedicalLogMedication[]
+
+
+  treatment_notes: string
+
+
+  follow_up_required: boolean
+
+
+  follow_up_date: string | null
+
+
+  disposition: string
+
+
+  parent_notified: boolean
+
+
+  created_at: string
+
+
+  updated_at: string
+
+
+}
+
+
+
+
+
+export interface MedicalLogStats {
+
+
+  total_visits: number
+
+
+  visits_today: number
+
+
+  medications_given_today: number
+
+
+  follow_ups_pending: number
+
+
+}
+
+
+// ─── Permission Slips ────────────────────────────────────────
+
+export interface PermissionSlip {
+  id: string
+  organization_id: string
+  title: string
+  description: string | null
+  event_id: string | null
+  activity_name: string | null
+  required_by: string
+  terms_text: string
+  created_by: string | null
+  created_at: string
+  total_assignments: number
+  signed_count: number
+  pending_count: number
+  declined_count: number
+  expired_count: number
+}
+
+export interface PermissionSlipCreate {
+  title: string
+  description?: string
+  event_id?: string
+  activity_name?: string
+  required_by: string
+  terms_text: string
+}
+
+export interface PermissionSlipUpdate {
+  title?: string
+  description?: string
+  event_id?: string
+  activity_name?: string
+  required_by?: string
+  terms_text?: string
+}
+
+export interface PermissionSlipAssignment {
+  id: string
+  slip_id: string
+  camper_id: string
+  camper_name: string
+  parent_name: string | null
+  status: 'pending' | 'signed' | 'declined' | 'expired'
+  signed_at: string | null
+  signature_text: string | null
+  ip_address: string | null
+  reminder_sent_at: string | null
+  created_at: string
+}
+
+export interface SlipStats {
+  total_slips: number
+  pending_signatures: number
+  signed_count: number
+  compliance_rate: number
+}

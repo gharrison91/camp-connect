@@ -64,6 +64,7 @@ const SchedulePage = lazy(() => import('@/features/schedule/SchedulePage').then(
 const PaymentsPage = lazy(() => import('@/features/payments/PaymentsPage').then(m => ({ default: m.PaymentsPage })))
 const ReportsPage = lazy(() => import('@/features/reports/ReportsPage').then(m => ({ default: m.ReportsPage })))
 const StoreManagementPage = lazy(() => import('@/features/store/StoreManagementPage').then(m => ({ default: m.StoreManagementPage })))
+const SpendingAccountsPage = lazy(() => import('@/features/store/SpendingAccountsPage').then(m => ({ default: m.SpendingAccountsPage })))
 
 // Phase 7: Portal
 const PortalLayout = lazy(() => import('@/features/portal/PortalLayout').then(m => ({ default: m.PortalLayout })))
@@ -125,6 +126,9 @@ const MealsPage = lazy(() => import('@/features/meals/MealsPage').then(m => ({ d
 // Transportation
 const TransportationPage = lazy(() => import('@/features/transportation/TransportationPage').then(m => ({ default: m.TransportationPage })))
 
+// Packing Lists
+const PackingListsPage = lazy(() => import('@/features/events/PackingListsPage').then(m => ({ default: m.PackingListsPage })))
+
 // Parent Communication Log
 const ParentLogsPage = lazy(() => import('@/features/parent-logs/ParentLogsPage').then(m => ({ default: m.ParentLogsPage })))
 
@@ -170,8 +174,17 @@ const WaitlistPage = lazy(() => import('@/features/waitlist/WaitlistPage').then(
 // Medical Dashboard
 const MedicalDashboardPage = lazy(() => import('@/features/health/MedicalDashboardPage').then(m => ({ default: m.MedicalDashboardPage })))
 
+// Medical Log
+const MedicalLogPage = lazy(() => import('@/features/health/MedicalLogPage').then(m => ({ default: m.MedicalLogPage })))
+
 // Camp Directory (public)
 const CampDirectoryPage = lazy(() => import('@/features/directory/CampDirectoryPage').then(m => ({ default: m.CampDirectoryPage })))
+
+// Camp Sessions
+const CampSessionsPage = lazy(() => import('@/features/events/CampSessionsPage').then(m => ({ default: m.CampSessionsPage })))
+
+// Permission Slips
+const PermissionSlipsPage = lazy(() => import('@/features/forms/PermissionSlipsPage').then(m => ({ default: m.PermissionSlipsPage })))
 
 
 function LoadingSpinner() {
@@ -256,6 +269,7 @@ function App() {
               <Route path="payments" element={<PaymentsPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="store" element={<StoreManagementPage />} />
+              <Route path="spending-accounts" element={<SpendingAccountsPage />} />
 
               {/* Phase 8: Form Builder, Workflows */}
               <Route path="forms" element={<FormsPage />} />
@@ -285,6 +299,7 @@ function App() {
               <Route path="incidents" element={<IncidentsPage />} />
               <Route path="waitlist" element={<WaitlistPage />} />
               <Route path="medical-dashboard" element={<MedicalDashboardPage />} />
+              <Route path="medical-log" element={<MedicalLogPage />} />
 
               {/* Phase 16: Lead Enrichment */}
               <Route path="leads" element={<LeadEnrichmentPage />} />
@@ -300,6 +315,15 @@ function App() {
 
               {/* Transportation */}
               <Route path="transportation" element={<TransportationPage />} />
+
+              {/* Packing Lists */}
+              <Route path="packing-lists" element={<PackingListsPage />} />
+
+              {/* Camp Sessions */}
+              <Route path="sessions" element={<CampSessionsPage />} />
+
+              {/* Permission Slips */}
+              <Route path="permission-slips" element={<PermissionSlipsPage />} />
 
               {/* Parent Communication Log */}
               <Route path="parent-logs" element={<ParentLogsPage />} />
