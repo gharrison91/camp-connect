@@ -123,6 +123,21 @@ from app.api.v1.meals import router as meals_router
 # Incident & Safety Reporting
 from app.api.v1.incidents import router as incidents_router
 
+# Emergency Action Plans & Drills
+from app.api.v1.emergency import router as emergency_router
+
+# Facility Maintenance
+from app.api.v1.maintenance import router as maintenance_router
+
+# Weather Monitoring
+from app.api.v1.weather import router as weather_router
+
+# Document Management
+from app.api.v1.documents import router as documents_router
+
+
+# Parent Communication Log & Check-Ins
+from app.api.v1.parent_logs import router as parent_logs_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
@@ -200,6 +215,7 @@ app.include_router(families_router, prefix=settings.api_v1_prefix)
 app.include_router(portal_router, prefix=settings.api_v1_prefix)
 app.include_router(portal_documents_router, prefix=settings.api_v1_prefix)
 
+
 # Phase 7: Scheduling, Payments, Notifications, Reports, Store
 app.include_router(schedules_router, prefix=settings.api_v1_prefix)
 app.include_router(payments_router, prefix=settings.api_v1_prefix)
@@ -272,6 +288,21 @@ app.include_router(meals_router, prefix=settings.api_v1_prefix)
 
 # Incident & Safety Reporting
 app.include_router(incidents_router, prefix=settings.api_v1_prefix)
+
+# Emergency Action Plans & Drills
+app.include_router(emergency_router, prefix=settings.api_v1_prefix)
+
+# Facility Maintenance
+app.include_router(maintenance_router, prefix=settings.api_v1_prefix)
+
+# Weather Monitoring
+app.include_router(weather_router, prefix=settings.api_v1_prefix)
+
+# Document Management
+app.include_router(documents_router, prefix=settings.api_v1_prefix)
+
+# Parent Communication Log & Check-Ins
+app.include_router(parent_logs_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

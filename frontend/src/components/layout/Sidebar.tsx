@@ -28,6 +28,7 @@ import {
   Heart,
   Bell,
   Target,
+  Shield,
   ShieldCheck,
   Briefcase,
   Radar,
@@ -36,6 +37,10 @@ import {
   AlertTriangle,
   Award,
   Bus,
+  CloudSun,
+  Wrench,
+  PhoneCall,
+  FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -79,6 +84,7 @@ const navSections: NavSection[] = [
       { label: 'Awards', icon: Award, path: '/app/awards', permission: null },
       { label: 'Bunks', icon: BedDouble, path: '/app/bunks', permission: 'core.bunks.read' },
       { label: 'Meals', icon: Utensils, path: '/app/meals', permission: 'core.settings.manage' },
+      { label: 'Weather', icon: CloudSun, path: '/app/weather', permission: null },
     ],
   },
   {
@@ -95,6 +101,9 @@ const navSections: NavSection[] = [
       { label: 'Inventory', icon: Package, path: '/app/inventory', permission: null },
       { label: 'Incidents', icon: AlertTriangle, path: '/app/incidents', permission: null },
       { label: 'Transportation', icon: Bus, path: '/app/transportation', permission: null },
+      { label: 'Parent Log', icon: PhoneCall, path: '/app/parent-logs', permission: null },
+      { label: 'Emergency Plans', icon: Shield, path: '/app/emergency', permission: null },
+      { label: 'Maintenance', icon: Wrench, path: '/app/maintenance', permission: null },
     ],
   },
   {
@@ -113,6 +122,7 @@ const navSections: NavSection[] = [
       { label: 'Store', icon: ShoppingBag, path: '/app/store', permission: 'store.manage.manage' },
       { label: 'Forms', icon: FileText, path: '/app/forms', permission: null },
       { label: 'Workflows', icon: Workflow, path: '/app/workflows', permission: null },
+      { label: 'Documents', icon: FolderOpen, path: '/app/documents', permission: null },
       { label: 'Deals', icon: Target, path: '/app/deals', permission: null },
       { label: 'Lead Gen', icon: Radar, path: '/app/leads', permission: null },
       { label: 'Settings', icon: Settings, path: '/app/settings', permission: null },

@@ -125,6 +125,21 @@ const MealsPage = lazy(() => import('@/features/meals/MealsPage').then(m => ({ d
 // Transportation
 const TransportationPage = lazy(() => import('@/features/transportation/TransportationPage').then(m => ({ default: m.TransportationPage })))
 
+// Parent Communication Log
+const ParentLogsPage = lazy(() => import('@/features/parent-logs/ParentLogsPage').then(m => ({ default: m.ParentLogsPage })))
+
+// Emergency Action Plans & Drills
+const EmergencyPage = lazy(() => import('@/features/emergency/EmergencyPage').then(m => ({ default: m.EmergencyPage })))
+
+// Facility Maintenance
+const MaintenancePage = lazy(() => import('@/features/maintenance/MaintenancePage').then(m => ({ default: m.MaintenancePage })))
+
+// Weather Monitoring
+const WeatherPage = lazy(() => import('@/features/weather/WeatherPage').then(m => ({ default: m.WeatherPage })))
+
+// Document Management
+const DocumentsPage = lazy(() => import('@/features/documents/DocumentsPage').then(m => ({ default: m.DocumentsPage })))
+
 
 function LoadingSpinner() {
   return (
@@ -248,6 +263,21 @@ function App() {
 
               {/* Transportation */}
               <Route path="transportation" element={<TransportationPage />} />
+
+              {/* Parent Communication Log */}
+              <Route path="parent-logs" element={<ParentLogsPage />} />
+
+              {/* Emergency Action Plans & Drills */}
+              <Route path="emergency" element={<EmergencyPage />} />
+
+              {/* Facility Maintenance */}
+              <Route path="maintenance" element={<MaintenancePage />} />
+
+              {/* Weather Monitoring */}
+              <Route path="weather" element={<WeatherPage />} />
+
+              {/* Document Management */}
+              <Route path="documents" element={<DocumentsPage />} />
 
               {/* Settings (nested routes) */}
               <Route path="settings" element={<SettingsLayout />}>

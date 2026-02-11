@@ -1393,3 +1393,200 @@ export interface LeaderboardEntry {
   total_points: number;
   badge_count: number;
 }
+
+
+// ---- Weather Monitoring ----
+
+export interface WeatherAlert {
+  id: string;
+  org_id: string;
+  alert_type: 'severe_storm' | 'lightning' | 'heat' | 'cold' | 'flood' | 'tornado' | 'hurricane' | 'other';
+  severity: 'advisory' | 'watch' | 'warning' | 'emergency';
+  title: string;
+  description: string;
+  source: string;
+  starts_at: string;
+  expires_at: string;
+  affected_areas: string[];
+  recommended_actions: string[];
+  status: 'active' | 'expired' | 'dismissed';
+  acknowledged_by: string[];
+  created_at: string;
+}
+
+export interface WeatherCondition {
+  temperature: number;
+  feels_like: number;
+  humidity: number;
+  wind_speed: number;
+  wind_direction: string;
+  conditions: 'sunny' | 'cloudy' | 'rainy' | 'stormy' | 'snowy';
+  uv_index: number;
+  precipitation_chance: number;
+}
+
+export interface WeatherForecast {
+  date: string;
+  day: string;
+  high: number;
+  low: number;
+  conditions: string;
+  precipitation_chance: number;
+  icon: string;
+}
+
+
+// ---- Document Management ----
+
+export interface CampDocument {
+  id: string;
+  org_id: string;
+  name: string;
+  description: string;
+  file_url: string;
+  file_type: 'pdf' | 'doc' | 'image' | 'spreadsheet' | 'other';
+  file_size: number;
+  category: 'policy' | 'waiver' | 'medical_form' | 'emergency_plan' | 'training' | 'permit' | 'insurance' | 'other';
+  tags: string[];
+  uploaded_by: string;
+  uploaded_by_name: string;
+  version: number;
+  requires_signature: boolean;
+  signed_by: Array<{ user_id: string; name: string; signed_at: string }>;
+  expiry_date: string | null;
+  status: 'active' | 'archived' | 'expired';
+  shared_with: string[];
+  folder_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentFolder {
+  id: string;
+  org_id: string;
+  name: string;
+  parent_id: string | null;
+  document_count: number;
+}
+
+
+// ---- Facility Maintenance Requests ----
+
+export interface MaintenanceRequest {
+  id: string;
+  org_id: string;
+  title: string;
+  description: string;
+  category: 'plumbing' | 'electrical' | 'structural' | 'hvac' | 'grounds' | 'furniture' | 'other';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'open' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
+  location: string;
+  reported_by: string;
+  reported_by_name: string;
+  assigned_to: string;
+  assigned_to_name: string;
+  estimated_cost: number;
+  actual_cost: number;
+  scheduled_date: string;
+  completed_date: string;
+  photos: string[];
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+
+// Emergency Action Plans & Drills
+
+export interface EmergencyPlanStep {
+  step_number: number;
+  title: string;
+  description: string;
+  responsible_role: string;
+  estimated_time: string;
+}
+
+export interface AssemblyPoint {
+  name: string;
+  location: string;
+  capacity: number;
+}
+
+export interface EmergencyPlanContact {
+  name: string;
+  role: string;
+  phone: string;
+  email: string;
+}
+
+export interface EmergencyPlan {
+  id: string;
+  org_id: string;
+  name: string;
+  plan_type: "fire" | "weather" | "medical" | "lockdown" | "evacuation" | "missing_person" | "other";
+  description: string;
+  steps: EmergencyPlanStep[];
+  assembly_points: AssemblyPoint[];
+  emergency_contacts: EmergencyPlanContact[];
+  status: "active" | "draft" | "archived";
+  last_reviewed: string;
+  next_review_date: string;
+  version: number;
+  created_at: string;
+}
+
+export interface DrillRecord {
+  id: string;
+  org_id: string;
+  plan_id: string;
+  plan_name: string;
+  drill_date: string;
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  participants_count: number;
+  evaluator: string;
+  score: number;
+  observations: string;
+  improvements_needed: string[];
+  status: "scheduled" | "completed" | "cancelled";
+  created_at: string;
+}
+
+
+export interface ParentLogEntry {
+  id: string;
+  org_id: string;
+  parent_id: string;
+  parent_name: string;
+  camper_id: string;
+  camper_name: string;
+  staff_id: string;
+  staff_name: string;
+  log_type: 'phone_call' | 'email' | 'in_person' | 'portal_message' | 'emergency' | 'note';
+  direction: 'inbound' | 'outbound';
+  subject: string;
+  notes: string;
+  sentiment: 'positive' | 'neutral' | 'concerned' | 'urgent';
+  follow_up_required: boolean;
+  follow_up_date: string | null;
+  follow_up_completed: boolean;
+  tags: string[];
+  created_at: string;
+}
+
+export interface CamperCheckIn {
+  id: string;
+  org_id: string;
+  camper_id: string;
+  camper_name: string;
+  check_in_type: 'daily' | 'weekly' | 'custom';
+  date: string;
+  mood: 'great' | 'good' | 'okay' | 'struggling';
+  activities_participated: string[];
+  meals_eaten: 'all' | 'most' | 'some' | 'few';
+  health_notes: string;
+  staff_notes: string;
+  shared_with_parents: boolean;
+  created_at: string;
+}
