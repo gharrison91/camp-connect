@@ -67,7 +67,6 @@ const StoreManagementPage = lazy(() => import('@/features/store/StoreManagementP
 
 // Phase 7: Portal
 const PortalLayout = lazy(() => import('@/features/portal/PortalLayout').then(m => ({ default: m.PortalLayout })))
-const PortalDashboard = lazy(() => import('@/features/portal/PortalDashboard').then(m => ({ default: m.PortalDashboard })))
 const PortalCamperView = lazy(() => import('@/features/portal/PortalCamperView').then(m => ({ default: m.PortalCamperView })))
 const PortalPhotos = lazy(() => import('@/features/portal/PortalPhotos').then(m => ({ default: m.PortalPhotos })))
 const PortalInvoices = lazy(() => import('@/features/portal/PortalInvoices').then(m => ({ default: m.PortalInvoices })))
@@ -76,6 +75,7 @@ const PortalMedicine = lazy(() => import('@/features/portal/PortalMedicine').the
 const PortalDocuments = lazy(() => import('@/features/portal/PortalDocuments').then(m => ({ default: m.PortalDocuments })))
 const PortalForms = lazy(() => import('@/features/portal/PortalForms').then(m => ({ default: m.PortalForms })))
 const PortalBunkBuddies = lazy(() => import('@/features/portal/PortalBunkBuddies').then(m => ({ default: m.PortalBunkBuddies })))
+const PortalDashboardPage = lazy(() => import('@/features/portal/PortalDashboardPage').then(m => ({ default: m.PortalDashboardPage })))
 
 // Phase 8: Form Builder, Workflows
 const FormsPage = lazy(() => import('@/features/forms/FormsPage').then(m => ({ default: m.FormsPage })))
@@ -154,6 +154,12 @@ const TeamChatPage = lazy(() => import('@/features/chat/TeamChatPage').then(m =>
 
 // Skill Tracking
 const SkillTrackingPage = lazy(() => import('@/features/skills/SkillTrackingPage').then(m => ({ default: m.SkillTrackingPage })))
+
+// Notification Preferences
+const NotificationPreferencesPage = lazy(() => import('@/features/admin/NotificationPreferencesPage').then(m => ({ default: m.NotificationPreferencesPage })))
+
+// Audit Log
+const AuditLogPage = lazy(() => import('@/features/audit/AuditLogPage').then(m => ({ default: m.AuditLogPage })))
 
 
 function LoadingSpinner() {
@@ -309,6 +315,12 @@ function App() {
               {/* Skill Tracking */}
               <Route path="skills" element={<SkillTrackingPage />} />
 
+              {/* Notification Preferences */}
+              <Route path="notification-preferences" element={<NotificationPreferencesPage />} />
+
+              {/* Audit Log */}
+              <Route path="audit-log" element={<AuditLogPage />} />
+
               {/* Settings (nested routes) */}
               <Route path="settings" element={<SettingsLayout />}>
                 <Route index element={<Navigate to="/app/settings/profile" replace />} />
@@ -337,7 +349,7 @@ function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<PortalDashboard />} />
+              <Route index element={<PortalDashboardPage />} />
               <Route path="campers/:id" element={<PortalCamperView />} />
               <Route path="photos" element={<PortalPhotos />} />
               <Route path="invoices" element={<PortalInvoices />} />

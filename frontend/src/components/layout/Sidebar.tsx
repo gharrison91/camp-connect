@@ -123,6 +123,7 @@ const navSections: NavSection[] = [
       { label: 'Reports', icon: FileBarChart, path: '/app/reports', permission: 'reports.export.read' },
       { label: 'Lists', icon: ListChecks, path: '/app/lists', permission: null },
       { label: 'Alerts', icon: Bell, path: '/app/alerts', permission: null },
+      { label: 'Audit Log', icon: Shield, path: '/app/audit-log', permission: null },
     ],
   },
   {

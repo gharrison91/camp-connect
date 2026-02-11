@@ -5,7 +5,8 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Bell, Mail, Phone, Save, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { Bell, Mail, Phone, Save, Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { useToast } from '@/components/ui/Toast'
@@ -329,6 +330,25 @@ export function NotificationSettingsPage() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Personal Notification Preferences */}
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Personal Notification Preferences</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              Manage your personal notification channels, quiet hours, and digest frequency.
+            </p>
+          </div>
+          <Link
+            to="/app/notification-preferences"
+            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700"
+          >
+            Manage personal notification preferences
+            <ExternalLink className="h-4 w-4" />
+          </Link>
         </div>
       </div>
 

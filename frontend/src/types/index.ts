@@ -1842,3 +1842,48 @@ export interface VisitorStats {
   most_common_type: string;
   avg_visit_duration: number;
 }
+
+
+// Audit Logs
+export interface AuditLogEntry {
+  id: string
+  organization_id: string
+  user_id: string
+  user_name: string
+  action: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'export' | 'view' | 'send' | 'approve' | 'reject'
+  resource_type: string
+  resource_id?: string
+  resource_name?: string
+  details?: string
+  ip_address?: string
+  created_at: string
+}
+
+export interface AuditLogStats {
+  action: string
+  count: number
+}
+
+
+// Notification Preferences
+export interface NotificationChannelConfig {
+  email: boolean
+  in_app: boolean
+  push: boolean
+}
+
+export interface NotificationPreference {
+  category: string
+  label: string
+  description: string
+  channels: NotificationChannelConfig
+}
+
+export interface NotificationPreferences {
+  user_id: string
+  preferences: NotificationPreference[]
+  quiet_hours_enabled: boolean
+  quiet_hours_start: string | null
+  quiet_hours_end: string | null
+  digest_frequency: 'instant' | 'hourly' | 'daily'
+}

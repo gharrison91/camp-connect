@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { CommandPalette } from '@/components/ui/CommandPalette';
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() =>
@@ -50,6 +51,7 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <CommandPalette />
       <Sidebar
         isOpen={mobileOpen}
         isCollapsed={collapsed}

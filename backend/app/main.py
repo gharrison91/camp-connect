@@ -52,6 +52,7 @@ from app.api.v1.families import router as families_router
 # Phase 6: Parent Portal
 from app.api.v1.portal import router as portal_router
 from app.api.v1.portal_documents import router as portal_documents_router
+from app.api.v1.portal_dashboard import router as portal_dashboard_router
 
 # Phase 7: Scheduling, Payments, Notifications, Reports, Store
 from app.api.v1.schedules import router as schedules_router
@@ -153,6 +154,15 @@ from app.api.v1.attendance import router as attendance_router
 
 # Volunteer Management
 from app.api.v1.volunteers import router as volunteers_router
+
+# Notification Preferences
+from app.api.v1.notification_preferences import router as notification_prefs_router
+
+# Global Search
+from app.api.v1.search import router as search_router
+
+# Audit Logs
+from app.api.v1.audit_logs import router as audit_logs_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
@@ -229,6 +239,7 @@ app.include_router(families_router, prefix=settings.api_v1_prefix)
 # Phase 6: Parent Portal
 app.include_router(portal_router, prefix=settings.api_v1_prefix)
 app.include_router(portal_documents_router, prefix=settings.api_v1_prefix)
+app.include_router(portal_dashboard_router, prefix=settings.api_v1_prefix)
 
 
 # Phase 7: Scheduling, Payments, Notifications, Reports, Store
@@ -333,6 +344,15 @@ app.include_router(attendance_router, prefix=settings.api_v1_prefix)
 
 # Volunteer Management
 app.include_router(volunteers_router, prefix=settings.api_v1_prefix)
+
+# Notification Preferences
+app.include_router(notification_prefs_router, prefix=settings.api_v1_prefix)
+
+# Global Search
+app.include_router(search_router, prefix=settings.api_v1_prefix)
+
+# Audit Logs
+app.include_router(audit_logs_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
