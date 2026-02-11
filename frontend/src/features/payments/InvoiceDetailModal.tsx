@@ -1,11 +1,11 @@
 /**
  * Camp Connect - InvoiceDetailModal
- * Shows invoice details, line items, and payment actions.
+ * Shows invoice details, line items, and payment actions including ACH.
  */
 
-import { X, Loader2, CheckCircle, Send } from 'lucide-react'
+import { X, Loader2, CheckCircle, Send, Building2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useMarkInvoicePaid, useUpdateInvoice, usePayments } from '@/hooks/usePayments'
+import { useMarkInvoicePaid, useUpdateInvoice, usePayments, useACHSetup } from '@/hooks/usePayments'
 import { useToast } from '@/components/ui/Toast'
 import type { Invoice } from '@/types'
 
@@ -29,6 +29,7 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
   const { toast } = useToast()
   const markPaid = useMarkInvoicePaid()
   const updateInvoice = useUpdateInvoice()
+  const achSetup = useACHSetup()
   const { data: payments = [] } = usePayments({ invoice_id: invoice.id })
 
   async function handleMarkPaid() {
@@ -48,6 +49,18 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
       onClose()
     } catch {
       toast({ type: 'error', message: 'Failed to send invoice.' })
+    }
+  }
+
+  async function handleACH() {
+    try {
+      const result = await achSetup.mutateAsync({
+        invoice_id: invoice.id,
+        return_url: window.location.href,
+      })
+      window.location.href = result.checkout_url
+    } catch {
+      toast({ type: 'error', message: 'Failed to set up ACH payment. Make sure Stripe is configured.' })
     }
   }
 
@@ -140,7 +153,7 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
                     ${Number(p.amount).toFixed(2)} via {p.payment_method || 'unknown'}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {p.paid_at ? new Date(p.paid_at).toLocaleDateString() : '—'}
+                    {p.paid_at ? new Date(p.paid_at).toLocaleDateString() : '\u2014'}
                   </div>
                 </div>
               ))}
@@ -158,7 +171,7 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
 
         {/* Actions */}
         {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-          <div className="mt-6 flex justify-end gap-3">
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
             {invoice.status === 'draft' && (
               <button
                 onClick={handleSend}
@@ -169,6 +182,14 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
                 Send to Parent
               </button>
             )}
+            <button
+              onClick={handleACH}
+              disabled={achSetup.isPending}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              {achSetup.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
+              Pay via Bank Transfer (ACH)
+            </button>
             <button
               onClick={handleMarkPaid}
               disabled={markPaid.isPending}

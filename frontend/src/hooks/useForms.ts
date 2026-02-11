@@ -49,6 +49,7 @@ export interface FormTemplateListItem {
   submission_count: number
   created_at: string
   updated_at: string
+  deleted_at?: string | null
 }
 
 export interface FormTemplateCreate {
@@ -104,7 +105,7 @@ export function useFormTemplate(id: string | undefined) {
   return useQuery<FormTemplate>({
     queryKey: ['form-templates', id],
     queryFn: () => api.get(`/forms/templates/${id}`).then((r) => r.data),
-    enabled: !!id,
+    enabled: !!id && id !== 'new',
   })
 }
 
@@ -136,6 +137,7 @@ export function useDeleteFormTemplate() {
     mutationFn: (id: string) => api.delete(`/forms/templates/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['form-templates'] })
+      queryClient.invalidateQueries({ queryKey: ['form-templates-trash'] })
     },
   })
 }
@@ -147,6 +149,40 @@ export function useDuplicateFormTemplate() {
       api.post(`/forms/templates/${id}/duplicate`).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['form-templates'] })
+    },
+  })
+}
+
+
+// ─── Trash Hooks ────────────────────────────────────────────
+
+export function useTrashedForms() {
+  return useQuery<FormTemplateListItem[]>({
+    queryKey: ['form-templates-trash'],
+    queryFn: () =>
+      api.get('/forms/templates/trash').then((r) => r.data),
+  })
+}
+
+export function useRestoreFormTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post(`/forms/templates/${id}/restore`).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['form-templates'] })
+      queryClient.invalidateQueries({ queryKey: ['form-templates-trash'] })
+    },
+  })
+}
+
+export function usePermanentDeleteFormTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.delete(`/forms/templates/${id}/permanent`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['form-templates-trash'] })
     },
   })
 }

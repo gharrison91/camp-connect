@@ -1,16 +1,18 @@
 /**
  * Camp Connect - PaymentsPage
- * Invoice list with status filters and payment history.
+ * Invoice list with status filters, quotes, payment plans, and payment history.
  */
 
 import { useState } from 'react'
-import { CreditCard, FileText, Loader2, DollarSign } from 'lucide-react'
+import { CreditCard, FileText, Loader2, DollarSign, ClipboardList, CalendarRange } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useInvoices, usePayments } from '@/hooks/usePayments'
 import type { Invoice } from '@/types'
 import { InvoiceDetailModal } from './InvoiceDetailModal'
+import { QuotesTab } from './QuotesTab'
+import { PaymentPlansTab } from './PaymentPlansTab'
 
-type Tab = 'invoices' | 'payments'
+type Tab = 'invoices' | 'quotes' | 'plans' | 'payments'
 
 const STATUS_FILTERS = [
   { value: '', label: 'All' },
@@ -46,6 +48,13 @@ export function PaymentsPage() {
   )
   const { data: payments = [], isLoading: paymentsLoading } = usePayments()
 
+  const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
+    { key: 'invoices', label: 'Invoices', icon: FileText },
+    { key: 'quotes', label: 'Quotes', icon: ClipboardList },
+    { key: 'plans', label: 'Payment Plans', icon: CalendarRange },
+    { key: 'payments', label: 'Transactions', icon: CreditCard },
+  ]
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -55,30 +64,24 @@ export function PaymentsPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
-        <button
-          onClick={() => setTab('invoices')}
-          className={cn(
-            'flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors',
-            tab === 'invoices'
-              ? 'border-blue-500 text-blue-600'
-              : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-          )}
-        >
-          <FileText className="h-4 w-4" />
-          Invoices
-        </button>
-        <button
-          onClick={() => setTab('payments')}
-          className={cn(
-            'flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors',
-            tab === 'payments'
-              ? 'border-blue-500 text-blue-600'
-              : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-          )}
-        >
-          <CreditCard className="h-4 w-4" />
-          Payment History
-        </button>
+        {tabs.map((t) => {
+          const Icon = t.icon
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={cn(
+                'flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors',
+                tab === t.key
+                  ? 'border-emerald-500 text-emerald-600'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {t.label}
+            </button>
+          )
+        })}
       </div>
 
       {/* Invoices Tab */}
@@ -93,7 +96,7 @@ export function PaymentsPage() {
                 className={cn(
                   'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                   statusFilter === f.value
-                    ? 'bg-blue-100 text-blue-700'
+                    ? 'bg-emerald-100 text-emerald-700'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 )}
               >
@@ -104,7 +107,7 @@ export function PaymentsPage() {
 
           {invoicesLoading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
             </div>
           ) : invoices.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-16">
@@ -132,7 +135,7 @@ export function PaymentsPage() {
                       className="cursor-pointer transition-colors hover:bg-gray-50/50"
                     >
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        {invoice.contact_name || invoice.family_name || '—'}
+                        {invoice.contact_name || invoice.family_name || '\u2014'}
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-gray-900">
                         ${Number(invoice.total).toFixed(2)}
@@ -146,7 +149,7 @@ export function PaymentsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">
-                        {invoice.due_date || '—'}
+                        {invoice.due_date || '\u2014'}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">
                         {new Date(invoice.created_at).toLocaleDateString()}
@@ -160,12 +163,18 @@ export function PaymentsPage() {
         </div>
       )}
 
-      {/* Payments Tab */}
+      {/* Quotes Tab */}
+      {tab === 'quotes' && <QuotesTab />}
+
+      {/* Payment Plans Tab */}
+      {tab === 'plans' && <PaymentPlansTab />}
+
+      {/* Transactions Tab */}
       {tab === 'payments' && (
         <div>
           {paymentsLoading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
             </div>
           ) : payments.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-16">
@@ -193,7 +202,7 @@ export function PaymentsPage() {
                         ${Number(payment.amount).toFixed(2)}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500 capitalize">
-                        {payment.payment_method || '—'}
+                        {payment.payment_method || '\u2014'}
                       </td>
                       <td className="px-4 py-3">
                         <span className={cn(

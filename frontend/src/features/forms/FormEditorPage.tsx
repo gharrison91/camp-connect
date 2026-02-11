@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useMemo } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft,
   Save,
@@ -36,7 +36,7 @@ import {
   Eye,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useFormTemplate, useUpdateFormTemplate } from '@/hooks/useForms'
+import { useFormTemplate, useUpdateFormTemplate, useCreateFormTemplate } from '@/hooks/useForms'
 import type { FormFieldDef, FormTemplateUpdate } from '@/hooks/useForms'
 import { useToast } from '@/components/ui/Toast'
 
@@ -804,10 +804,14 @@ function FieldPreview({
 
 export function FormEditorPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { toast } = useToast()
+
+  const isNewForm = id === 'new'
 
   const { data: template, isLoading, error } = useFormTemplate(id)
   const updateTemplate = useUpdateFormTemplate()
+  const createTemplate = useCreateFormTemplate()
 
   const [fields, setFields] = useState<FormFieldDef[]>([])
   const [formName, setFormName] = useState('')
@@ -823,7 +827,19 @@ export function FormEditorPage() {
   const [editorMode, setEditorMode] = useState<'visual' | 'code'>('visual')
   const [formCustomCss, setFormCustomCss] = useState('')
 
-  // Initialize from loaded template
+  // Initialize for new form
+  if (isNewForm && !initialized) {
+    setFormName('Untitled Form')
+    setFormDescription('')
+    setFormCategory('other')
+    setFormStatus('draft')
+    setRequireSignature(false)
+    setFields([])
+    setFormCustomCss('')
+    setInitialized(true)
+  }
+
+  // Initialize from loaded template (existing form)
   if (template && !initialized) {
     setFields(template.fields || [])
     setFormName(template.name)
@@ -905,6 +921,28 @@ export function FormEditorPage() {
 
   // ─── Save ─────────────────────────────────────────────────
   const handleSave = async () => {
+    if (isNewForm) {
+      // First save: create the template on the server, then navigate to real ID
+      try {
+        const result = await createTemplate.mutateAsync({
+          name: formName,
+          description: formDescription || undefined,
+          category: formCategory,
+          status: formStatus,
+          require_signature: requireSignature || fields.some((f) => f.type === 'signature'),
+          fields: fields.map((f, i) => ({ ...f, order: i })),
+          settings: {
+            custom_css: formCustomCss || undefined,
+          },
+        })
+        toast({ type: 'success', message: 'Form created successfully' })
+        navigate(`/app/forms/${result.id}`, { replace: true })
+      } catch {
+        toast({ type: 'error', message: 'Failed to create form' })
+      }
+      return
+    }
+
     if (!id) return
     try {
       const existingSettings = (template?.settings || {}) as Record<string, unknown>
@@ -946,8 +984,11 @@ export function FormEditorPage() {
     }
   }
 
+  const isSaving = isNewForm ? createTemplate.isPending : updateTemplate.isPending
+  const formVersion = isNewForm ? 1 : (template?.version ?? 1)
+
   // ─── Loading / Error States ────────────────────────────────
-  if (isLoading) {
+  if (!isNewForm && isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -955,7 +996,7 @@ export function FormEditorPage() {
     )
   }
 
-  if (error || !template) {
+  if (!isNewForm && (error || !template)) {
     return (
       <div className="space-y-4">
         <Link
@@ -1041,10 +1082,10 @@ export function FormEditorPage() {
           </button>
           <button
             onClick={handleSave}
-            disabled={updateTemplate.isPending}
+            disabled={isSaving}
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
           >
-            {updateTemplate.isPending ? (
+            {isSaving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Save className="h-4 w-4" />
@@ -1140,7 +1181,7 @@ export function FormEditorPage() {
                   </p>
                 </div>
                 <p className="text-xs text-gray-400">
-                  Fields: {fields.length} &middot; Version: {template.version}
+                  Fields: {fields.length} &middot; Version: {formVersion}
                 </p>
               </div>
             </div>
@@ -1337,7 +1378,7 @@ export function FormEditorPage() {
                 </div>
 
                 <p className="text-xs text-gray-400">
-                  Fields: {fields.length} &middot; Version: {template.version}
+                  Fields: {fields.length} &middot; Version: {formVersion}
                 </p>
               </div>
             </div>

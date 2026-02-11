@@ -6,7 +6,7 @@ CRUD for form templates and submissions.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -74,6 +74,50 @@ async def list_form_templates(
                 submission_count=sub_count.scalar() or 0,
                 created_at=t.created_at,
                 updated_at=t.updated_at,
+            )
+        )
+    return items
+
+
+
+
+@router.get("/templates/trash", response_model=List[FormTemplateListItem])
+async def list_trashed_forms(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List soft-deleted form templates (trash bin). Only shows forms deleted within last 30 days."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    query = (
+        select(FormTemplate)
+        .where(FormTemplate.organization_id == current_user["organization_id"])
+        .where(FormTemplate.deleted_at.isnot(None))
+        .where(FormTemplate.deleted_at > cutoff)
+        .order_by(FormTemplate.deleted_at.desc())
+    )
+    result = await db.execute(query)
+    templates = result.scalars().all()
+
+    items = []
+    for t in templates:
+        sub_count = await db.execute(
+            select(func.count(FormSubmission.id)).where(
+                FormSubmission.template_id == t.id
+            )
+        )
+        items.append(
+            FormTemplateListItem(
+                id=t.id,
+                name=t.name,
+                description=t.description,
+                category=t.category,
+                status=t.status,
+                require_signature=t.require_signature,
+                field_count=len(t.fields) if isinstance(t.fields, list) else 0,
+                submission_count=sub_count.scalar() or 0,
+                created_at=t.created_at,
+                updated_at=t.updated_at,
+                deleted_at=t.deleted_at,
             )
         )
     return items
@@ -215,6 +259,48 @@ async def duplicate_form_template(
     await db.commit()
     await db.refresh(duplicate)
     return duplicate
+
+
+@router.post("/templates/{template_id}/restore", response_model=FormTemplateResponse)
+async def restore_form_template(
+    template_id: uuid.UUID,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Restore a soft-deleted form template from trash."""
+    result = await db.execute(
+        select(FormTemplate)
+        .where(FormTemplate.id == template_id)
+        .where(FormTemplate.organization_id == current_user["organization_id"])
+        .where(FormTemplate.deleted_at.isnot(None))
+    )
+    template = result.scalar_one_or_none()
+    if not template:
+        raise HTTPException(status_code=404, detail="Trashed form template not found")
+    template.deleted_at = None
+    await db.commit()
+    await db.refresh(template)
+    return template
+
+
+@router.delete("/templates/{template_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+async def permanently_delete_form_template(
+    template_id: uuid.UUID,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Permanently delete a form template (must already be in trash)."""
+    result = await db.execute(
+        select(FormTemplate)
+        .where(FormTemplate.id == template_id)
+        .where(FormTemplate.organization_id == current_user["organization_id"])
+        .where(FormTemplate.deleted_at.isnot(None))
+    )
+    template = result.scalar_one_or_none()
+    if not template:
+        raise HTTPException(status_code=404, detail="Trashed form template not found")
+    await db.delete(template)
+    await db.commit()
 
 
 # ─── Submissions ─────────────────────────────────────────────

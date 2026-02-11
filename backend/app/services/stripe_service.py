@@ -94,6 +94,65 @@ async def create_checkout_session(
     }
 
 
+
+
+async def create_ach_checkout_session(
+    *,
+    organization_id: Any,
+    invoice_id: Any,
+    line_items: List[Dict[str, Any]],
+    return_url: str,
+) -> Dict[str, Any]:
+    """
+    Create a Stripe Checkout Session for ACH / US bank account payments.
+
+    Args:
+        organization_id: The tenant org ID (stored in metadata).
+        invoice_id: The internal invoice ID (stored in metadata).
+        line_items: List of dicts with {name, amount (cents), quantity}.
+        return_url: URL to redirect after payment completion.
+
+    Returns:
+        Dict with "session_id" and "checkout_url".
+    """
+    _ensure_stripe()
+
+    stripe_line_items = [
+        {
+            "price_data": {
+                "currency": "usd",
+                "product_data": {"name": item["name"]},
+                "unit_amount": item["amount"],
+            },
+            "quantity": item.get("quantity", 1),
+        }
+        for item in line_items
+    ]
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=["us_bank_account"],
+        mode="payment",
+        line_items=stripe_line_items,
+        success_url=return_url + "?payment=success",
+        cancel_url=return_url + "?payment=cancelled",
+        metadata={
+            "organization_id": str(organization_id),
+            "invoice_id": str(invoice_id),
+            "payment_method": "ach",
+        },
+    )
+
+    logger.info(
+        "Created Stripe ACH Checkout session %s for invoice %s",
+        session.id,
+        invoice_id,
+    )
+
+    return {
+        "session_id": session.id,
+        "checkout_url": session.url,
+    }
+
 async def process_webhook(
     *,
     payload: bytes,

@@ -96,6 +96,7 @@ class FormTemplateListItem(BaseModel):
     submission_count: int = 0
     created_at: datetime
     updated_at: datetime
+    deleted_at: Optional[datetime] = None
 
 
 # ─── Form Submission ─────────────────────────────────────────

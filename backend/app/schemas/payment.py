@@ -86,7 +86,7 @@ class PaymentCreate(BaseModel):
     amount: Decimal = Field(..., gt=0)
     payment_method: str = Field(
         default="stripe",
-        pattern="^(stripe|cash|check|other)$",
+        pattern="^(stripe|cash|check|ach|other)$",
     )
     stripe_payment_intent_id: Optional[str] = None
 
@@ -144,3 +144,18 @@ class GenerateInvoiceRequest(BaseModel):
     registration_ids: List[uuid.UUID] = Field(..., min_length=1)
     contact_id: Optional[uuid.UUID] = None
     family_id: Optional[uuid.UUID] = None
+
+
+# ─── ACH Checkout Schemas ──────────────────────────────────
+
+
+class ACHSetupRequest(BaseModel):
+    """Request to create a Stripe Checkout session for ACH/bank transfer."""
+    invoice_id: uuid.UUID
+    return_url: str
+
+
+class ACHSetupResponse(BaseModel):
+    """Response with the Stripe ACH Checkout session URL."""
+    session_id: str
+    checkout_url: str

@@ -5,9 +5,10 @@ Business logic for daily activity scheduling and camper/bunk assignments.
 
 from __future__ import annotations
 
+import calendar
 import uuid
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import and_, select
@@ -230,6 +231,102 @@ async def delete_schedule(
 
 
 # ---------------------------------------------------------------------------
+# Month Overview & Week View
+# ---------------------------------------------------------------------------
+
+
+async def get_month_overview(
+    db: AsyncSession,
+    *,
+    organization_id: uuid.UUID,
+    event_id: uuid.UUID,
+    year: int,
+    month: int,
+) -> Dict[str, Any]:
+    """
+    Return session counts and activity names per day for a given month.
+    """
+    first_day = date(year, month, 1)
+    last_day_num = calendar.monthrange(year, month)[1]
+    last_day = date(year, month, last_day_num)
+
+    query = (
+        select(Schedule)
+        .options(selectinload(Schedule.activity))
+        .where(Schedule.organization_id == organization_id)
+        .where(Schedule.event_id == event_id)
+        .where(Schedule.date >= first_day)
+        .where(Schedule.date <= last_day)
+        .where(Schedule.deleted_at.is_(None))
+        .order_by(Schedule.date, Schedule.start_time)
+    )
+    result = await db.execute(query)
+    schedules = result.scalars().all()
+
+    days: Dict[str, Dict[str, Any]] = {}
+    for s in schedules:
+        date_str = s.date.isoformat()
+        if date_str not in days:
+            days[date_str] = {"count": 0, "activities": []}
+        days[date_str]["count"] += 1
+        activity_name = s.activity.name if s.activity else "Activity"
+        if activity_name not in days[date_str]["activities"]:
+            days[date_str]["activities"].append(activity_name)
+
+    return {
+        "year": year,
+        "month": month,
+        "days": days,
+    }
+
+
+async def get_week_view(
+    db: AsyncSession,
+    *,
+    organization_id: uuid.UUID,
+    event_id: uuid.UUID,
+    start_date: date,
+) -> List[Dict[str, Any]]:
+    """
+    Return all sessions for a 7-day range starting from start_date.
+    """
+    end_date = start_date + timedelta(days=6)
+
+    query = (
+        select(Schedule)
+        .options(
+            selectinload(Schedule.activity),
+            selectinload(Schedule.assignments).selectinload(ScheduleAssignment.camper),
+            selectinload(Schedule.assignments).selectinload(ScheduleAssignment.bunk),
+        )
+        .where(Schedule.organization_id == organization_id)
+        .where(Schedule.event_id == event_id)
+        .where(Schedule.date >= start_date)
+        .where(Schedule.date <= end_date)
+        .where(Schedule.deleted_at.is_(None))
+        .order_by(Schedule.date, Schedule.start_time)
+    )
+    result = await db.execute(query)
+    schedules = result.scalars().all()
+
+    sessions_by_date: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for s in schedules:
+        date_str = s.date.isoformat()
+        sessions_by_date[date_str].append(_schedule_to_dict(s))
+
+    days = []
+    for i in range(7):
+        d = start_date + timedelta(days=i)
+        date_str = d.isoformat()
+        days.append({
+            "date": date_str,
+            "sessions": sessions_by_date.get(date_str, []),
+        })
+
+    return days
+
+
+# ---------------------------------------------------------------------------
 # Assignment logic
 # ---------------------------------------------------------------------------
 
@@ -345,6 +442,7 @@ def _schedule_to_dict(schedule: Schedule) -> Dict[str, Any]:
         "event_id": schedule.event_id,
         "activity_id": schedule.activity_id,
         "activity_name": activity.name if activity else None,
+        "activity_category": activity.category if activity else None,
         "date": schedule.date,
         "start_time": schedule.start_time,
         "end_time": schedule.end_time,

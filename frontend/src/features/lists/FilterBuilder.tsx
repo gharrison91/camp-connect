@@ -4,10 +4,12 @@
  */
 
 import { useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   Plus, Trash2, X, ChevronDown, Layers, Filter, Eye, Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { api } from '@/lib/api'
 
 export interface FilterCondition { field: string; operator: string; value: string }
 export interface FilterGroup { operator: 'AND' | 'OR'; filters: FilterCondition[] }
@@ -22,35 +24,21 @@ interface FilterBuilderProps {
   isPreviewLoading?: boolean
 }
 
-interface FieldDef { value: string; label: string; type: 'string' | 'date' | 'number' }
+interface FieldDef { value: string; label: string; type: 'string' | 'date' | 'number' | 'boolean' }
 
-const CONTACT_FIELDS: FieldDef[] = [
+// Fallback fields used while the API response is loading
+const FALLBACK_FIELDS: FieldDef[] = [
   { value: 'first_name', label: 'First Name', type: 'string' },
   { value: 'last_name', label: 'Last Name', type: 'string' },
-  { value: 'email', label: 'Email', type: 'string' },
-  { value: 'phone', label: 'Phone', type: 'string' },
-  { value: 'address', label: 'Address', type: 'string' },
-  { value: 'city', label: 'City', type: 'string' },
-  { value: 'state', label: 'State', type: 'string' },
-  { value: 'zip_code', label: 'Zip Code', type: 'string' },
-  { value: 'relationship_type', label: 'Relationship Type', type: 'string' },
-  { value: 'account_status', label: 'Account Status', type: 'string' },
-  { value: 'created_at', label: 'Created At', type: 'date' },
-  { value: 'updated_at', label: 'Updated At', type: 'date' },
 ]
 
-const CAMPER_FIELDS: FieldDef[] = [
-  { value: 'first_name', label: 'First Name', type: 'string' },
-  { value: 'last_name', label: 'Last Name', type: 'string' },
-  { value: 'date_of_birth', label: 'Date of Birth', type: 'date' },
-  { value: 'gender', label: 'Gender', type: 'string' },
-  { value: 'grade', label: 'Grade', type: 'string' },
-  { value: 'school', label: 'School', type: 'string' },
-  { value: 'city', label: 'City', type: 'string' },
-  { value: 'state', label: 'State', type: 'string' },
-  { value: 'created_at', label: 'Created At', type: 'date' },
-  { value: 'updated_at', label: 'Updated At', type: 'date' },
-]
+function useFilterableFields(entityType: string) {
+  return useQuery<FieldDef[]>({
+    queryKey: ['filterable-fields', entityType],
+    queryFn: () => api.get('/lists/filterable-fields', { params: { entity_type: entityType } }).then(r => r.data),
+    staleTime: 5 * 60 * 1000, // cache for 5 minutes
+  })
+}
 
 interface OperatorDef { value: string; label: string; needsValue: boolean }
 
@@ -82,18 +70,20 @@ const NUM_OPS: OperatorDef[] = [
   { value: 'is_not_empty', label: 'is not empty', needsValue: false },
 ]
 
-function fieldsFor(et: string): FieldDef[] {
-  return et === 'camper' ? CAMPER_FIELDS : CONTACT_FIELDS
-}
+const BOOL_OPS: OperatorDef[] = [
+  { value: 'equals', label: 'is', needsValue: true },
+  { value: 'is_empty', label: 'is empty', needsValue: false },
+]
 
 function opsFor(ft: string): OperatorDef[] {
   if (ft === 'date') return DATE_OPS
   if (ft === 'number') return NUM_OPS
+  if (ft === 'boolean') return BOOL_OPS
   return STRING_OPS
 }
 
-function fieldType(et: string, fn: string): string {
-  return fieldsFor(et).find((f) => f.value === fn)?.type || 'string'
+function fieldType(fields: FieldDef[], fn: string): string {
+  return fields.find((f) => f.value === fn)?.type || 'string'
 }
 
 export function createEmptyCriteria(): FilterCriteria {
@@ -104,7 +94,8 @@ export function createEmptyCriteria(): FilterCriteria {
 }
 
 export function FilterBuilder({ entityType, criteria, onChange, onPreview, previewCount, isPreviewLoading }: FilterBuilderProps) {
-  const fields = fieldsFor(entityType)
+  const { data: dynamicFields } = useFilterableFields(entityType)
+  const fields = dynamicFields && dynamicFields.length > 0 ? dynamicFields : FALLBACK_FIELDS
 
   const updateGroup = useCallback((gi: number, fn: (g: FilterGroup) => FilterGroup) => {
     onChange({ ...criteria, groups: criteria.groups.map((g, i) => i === gi ? fn({ ...g }) : g) })
@@ -133,11 +124,11 @@ export function FilterBuilder({ entityType, criteria, onChange, onPreview, previ
   }, [criteria, onChange, fields])
 
   const handleFieldChange = useCallback((gi: number, fi: number, nf: string) => {
-    const ft = fieldType(entityType, nf)
+    const ft = fieldType(fields, nf)
     const ops = opsFor(ft)
     const cur = criteria.groups[gi].filters[fi].operator
     updateFilter(gi, fi, { field: nf, operator: ops.some((o) => o.value === cur) ? cur : ops[0].value, value: '' })
-  }, [entityType, criteria, updateFilter])
+  }, [fields, criteria, updateFilter])
 
   return (
     <div className="space-y-4">
@@ -176,7 +167,7 @@ export function FilterBuilder({ entityType, criteria, onChange, onPreview, previ
             </div>
             <div className="divide-y divide-gray-50 p-3">
               {group.filters.map((filter, fi) => {
-                const ft = fieldType(entityType, filter.field)
+                const ft = fieldType(fields, filter.field)
                 const ops = opsFor(ft)
                 const opDef = ops.find((o) => o.value === filter.operator)
                 const needsVal = opDef?.needsValue ?? true
@@ -205,10 +196,22 @@ export function FilterBuilder({ entityType, criteria, onChange, onPreview, previ
                       </div>
                       {needsVal && (
                         <div className="flex-1 min-w-0">
-                          <input type={ft === 'date' ? 'date' : 'text'} value={filter.value}
-                            onChange={(e) => updateFilter(gi, fi, { value: e.target.value })}
-                            placeholder={filter.operator === 'in_list' ? 'value1, value2, ...' : 'Enter value...'}
-                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                          {ft === 'boolean' ? (
+                            <div className="relative">
+                              <select value={filter.value} onChange={(e) => updateFilter(gi, fi, { value: e.target.value })}
+                                className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-3 py-2 pr-8 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                <option value="">Select...</option>
+                                <option value="true">True</option>
+                                <option value="false">False</option>
+                              </select>
+                              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                            </div>
+                          ) : (
+                            <input type={ft === 'date' ? 'date' : 'text'} value={filter.value}
+                              onChange={(e) => updateFilter(gi, fi, { value: e.target.value })}
+                              placeholder={filter.operator === 'in_list' ? 'value1, value2, ...' : 'Enter value...'}
+                              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                          )}
                         </div>
                       )}
                       <button type="button" onClick={() => removeFilter(gi, fi)}

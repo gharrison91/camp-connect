@@ -116,6 +116,59 @@ export function useDeleteAssignment() {
   })
 }
 
+// ─── Month Overview Query ────────────────────────────────────
+
+export interface MonthOverviewDay {
+  count: number
+  activities: string[]
+}
+
+export interface MonthOverviewData {
+  year: number
+  month: number
+  days: Record<string, MonthOverviewDay>
+}
+
+export function useMonthOverview(
+  eventId: string | undefined,
+  year: number,
+  month: number
+) {
+  return useQuery<MonthOverviewData>({
+    queryKey: ['schedules', 'month-overview', eventId, year, month],
+    queryFn: () =>
+      api
+        .get('/schedules/month-overview', {
+          params: { event_id: eventId, year, month },
+        })
+        .then((r) => r.data),
+    enabled: !!eventId,
+  })
+}
+
+// ─── Week View Query ────────────────────────────────────────
+
+export interface WeekViewDay {
+  date: string
+  sessions: Schedule[]
+}
+
+export function useWeekView(
+  eventId: string | undefined,
+  startDate: string | undefined
+) {
+  return useQuery<WeekViewDay[]>({
+    queryKey: ['schedules', 'week-view', eventId, startDate],
+    queryFn: () =>
+      api
+        .get('/schedules/week-view', {
+          params: { event_id: eventId, start_date: startDate },
+        })
+        .then((r) => r.data),
+    enabled: !!eventId && !!startDate,
+  })
+}
+
 // ─── Staff Schedule View Query ──────────────────────────────
 
 export function useStaffScheduleView(

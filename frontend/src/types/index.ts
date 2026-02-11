@@ -561,6 +561,7 @@ export interface Schedule {
   event_id: string;
   activity_id: string;
   activity_name?: string;
+  activity_category?: string;
   date: string;
   start_time: string;
   end_time: string;

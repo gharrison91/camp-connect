@@ -68,6 +68,10 @@ from app.models.medicine_schedule import MedicineSchedule, MedicineAdministratio
 from app.models.school import School
 from app.models.contact_alert import ContactAlert
 
+# Phase 12: Financial Features
+from app.models.quote import Quote
+from app.models.payment_plan import PaymentPlan, PaymentPlanInstallment
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -137,4 +141,8 @@ __all__ = [
     "MedicineAdministration",
     "School",
     "ContactAlert",
+    # Phase 12
+    "Quote",
+    "PaymentPlan",
+    "PaymentPlanInstallment",
 ]

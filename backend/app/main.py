@@ -77,6 +77,10 @@ from app.api.v1.schools import router as schools_router
 from app.api.v1.alerts import router as alerts_router
 from app.api.v1.photo_albums import router as photo_albums_router
 
+# Phase 12: Financial Features
+from app.api.v1.quotes import router as quotes_router
+from app.api.v1.payment_plans import router as payment_plans_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -180,6 +184,10 @@ app.include_router(medicine_router, prefix=settings.api_v1_prefix)
 app.include_router(schools_router, prefix=settings.api_v1_prefix)
 app.include_router(alerts_router, prefix=settings.api_v1_prefix)
 app.include_router(photo_albums_router, prefix=settings.api_v1_prefix)
+
+# Phase 12: Financial Features
+app.include_router(quotes_router, prefix=settings.api_v1_prefix)
+app.include_router(payment_plans_router, prefix=settings.api_v1_prefix)
 
 
 @app.exception_handler(Exception)

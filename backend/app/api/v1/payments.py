@@ -15,6 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_permission
 from app.database import get_db
 from app.schemas.payment import (
+    ACHSetupRequest,
+    ACHSetupResponse,
     CheckoutRequest,
     CheckoutResponse,
     GenerateInvoiceRequest,
@@ -294,6 +296,66 @@ async def create_checkout_session(
             line_items=line_items,
             success_url=body.success_url,
             cancel_url=body.cancel_url,
+        )
+        return result
+    except (RuntimeError, ValueError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+# ─── ACH / Bank Transfer Checkout ─────────────────────────────
+
+
+@router.post(
+    "/ach-setup",
+    response_model=ACHSetupResponse,
+)
+async def create_ach_setup(
+    body: ACHSetupRequest,
+    current_user: Dict[str, Any] = Depends(
+        require_permission("payments.transactions.create")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a Stripe Checkout session for ACH/bank transfer."""
+    # Verify the invoice exists
+    invoice = await invoice_service.get_invoice(
+        db,
+        organization_id=current_user["organization_id"],
+        invoice_id=body.invoice_id,
+    )
+    if invoice is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found",
+        )
+
+    try:
+        # Create Stripe Checkout session with us_bank_account payment method
+        line_items = []
+        if invoice.get("line_items"):
+            for item in invoice["line_items"]:
+                amount_cents = int(float(item.get("amount", 0)) * 100 * int(item.get("quantity", 1)))
+                line_items.append({
+                    "name": item.get("description", "Camp Fee"),
+                    "amount": amount_cents,
+                    "quantity": 1,
+                })
+        else:
+            # Fallback to total
+            line_items.append({
+                "name": "Invoice Payment",
+                "amount": int(float(invoice["total"]) * 100),
+                "quantity": 1,
+            })
+
+        result = await stripe_service.create_ach_checkout_session(
+            organization_id=current_user["organization_id"],
+            invoice_id=body.invoice_id,
+            line_items=line_items,
+            return_url=body.return_url,
         )
         return result
     except (RuntimeError, ValueError) as e:

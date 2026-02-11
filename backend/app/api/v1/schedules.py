@@ -55,6 +55,50 @@ async def get_daily_view(
 
 
 @router.get(
+    "/month-overview",
+    response_model=None,
+)
+async def get_month_overview(
+    event_id: uuid.UUID = Query(..., description="Event ID (required)"),
+    year: int = Query(..., description="Year (e.g. 2026)"),
+    month: int = Query(..., ge=1, le=12, description="Month (1-12)"),
+    current_user: Dict[str, Any] = Depends(
+        require_permission("scheduling.sessions.read")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return session counts per day for a given month."""
+    return await schedule_service.get_month_overview(
+        db,
+        organization_id=current_user["organization_id"],
+        event_id=event_id,
+        year=year,
+        month=month,
+    )
+
+
+@router.get(
+    "/week-view",
+    response_model=None,
+)
+async def get_week_view(
+    event_id: uuid.UUID = Query(..., description="Event ID (required)"),
+    start_date: date = Query(..., description="Start date (Monday of the week)"),
+    current_user: Dict[str, Any] = Depends(
+        require_permission("scheduling.sessions.read")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return all sessions for a 7-day range."""
+    return await schedule_service.get_week_view(
+        db,
+        organization_id=current_user["organization_id"],
+        event_id=event_id,
+        start_date=start_date,
+    )
+
+
+@router.get(
     "/staff-view",
     response_model=None,
 )

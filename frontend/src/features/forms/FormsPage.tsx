@@ -1,7 +1,7 @@
 /**
  * Camp Connect - Form Builder List Page
  * Lists all form templates with category sub-tabs, filtering, creation,
- * and safe delete confirmation (type DELETE to confirm).
+ * trash/recycle bin, and safe delete confirmation (type DELETE to confirm).
  */
 
 import { useState, useEffect } from 'react'
@@ -20,13 +20,17 @@ import {
   ClipboardList,
   AlertTriangle,
   X,
+  RotateCcw,
+  Clock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   useFormTemplates,
-  useCreateFormTemplate,
   useDuplicateFormTemplate,
   useDeleteFormTemplate,
+  useTrashedForms,
+  useRestoreFormTemplate,
+  usePermanentDeleteFormTemplate,
 } from '@/hooks/useForms'
 import { useToast } from '@/components/ui/Toast'
 import { useOrgSettings } from '@/hooks/useOrganization'
@@ -67,12 +71,14 @@ function DeleteConfirmModal({
   isDeleting,
   onConfirm,
   onCancel,
+  permanent,
 }: {
   formName: string
   isOpen: boolean
   isDeleting: boolean
   onConfirm: () => void
   onCancel: () => void
+  permanent?: boolean
 }) {
   const [confirmText, setConfirmText] = useState('')
 
@@ -103,11 +109,23 @@ function DeleteConfirmModal({
             <AlertTriangle className="h-6 w-6 text-red-600" />
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900">Delete Form</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {permanent ? 'Permanently Delete Form' : 'Delete Form'}
+            </h3>
             <p className="mt-1 text-sm text-gray-500">
-              This will permanently delete{' '}
-              <span className="font-semibold text-gray-900">{formName}</span>{' '}
-              and all of its submissions. This action cannot be undone.
+              {permanent ? (
+                <>
+                  This will <span className="font-semibold text-red-600">permanently delete</span>{' '}
+                  <span className="font-semibold text-gray-900">{formName}</span>{' '}
+                  and all of its submissions. This action cannot be undone.
+                </>
+              ) : (
+                <>
+                  This will move{' '}
+                  <span className="font-semibold text-gray-900">{formName}</span>{' '}
+                  to the trash. You can restore it within 30 days.
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -143,12 +161,20 @@ function DeleteConfirmModal({
             ) : (
               <Trash2 className="h-4 w-4" />
             )}
-            {isDeleting ? 'Deleting...' : 'Delete Form'}
+            {isDeleting ? 'Deleting...' : permanent ? 'Delete Permanently' : 'Move to Trash'}
           </button>
         </div>
       </div>
     </div>
   )
+}
+
+// --- Trash days remaining helper ---
+function daysUntilPermanentDelete(deletedAt: string): number {
+  const deleted = new Date(deletedAt)
+  const expiry = new Date(deleted.getTime() + 30 * 24 * 60 * 60 * 1000)
+  const now = new Date()
+  return Math.max(0, Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
 }
 
 // --- Main Component ---
@@ -166,6 +192,7 @@ export function FormsPage() {
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string
     name: string
+    permanent?: boolean
   } | null>(null)
 
   // Category from URL params or default to 'all'
@@ -187,36 +214,39 @@ export function FormsPage() {
       ? (rawCategories as { key: string; label: string }[])
       : DEFAULT_CATEGORIES
 
+  const isTrashView = statusFilter === 'trash'
+
   const {
     data: templates = [],
     isLoading,
     error,
   } = useFormTemplates({
-    status: statusFilter !== 'all' ? statusFilter : undefined,
+    status: statusFilter !== 'all' && statusFilter !== 'trash' ? statusFilter : undefined,
     category: categoryFilter !== 'all' ? categoryFilter : undefined,
   })
 
-  const createTemplate = useCreateFormTemplate()
+  const {
+    data: trashedTemplates = [],
+    isLoading: isLoadingTrash,
+    error: trashError,
+  } = useTrashedForms()
+
   const duplicateTemplate = useDuplicateFormTemplate()
   const deleteTemplate = useDeleteFormTemplate()
+  const restoreTemplate = useRestoreFormTemplate()
+  const permanentDeleteTemplate = usePermanentDeleteFormTemplate()
 
-  const filteredTemplates = templates.filter((t) =>
+  const displayedTemplates = isTrashView ? trashedTemplates : templates
+  const filteredTemplates = displayedTemplates.filter((t) =>
     t.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const handleCreate = async () => {
-    try {
-      const result = await createTemplate.mutateAsync({
-        name: 'Untitled Form',
-        description: '',
-        category: categoryFilter !== 'all' ? categoryFilter : 'other',
-        status: 'draft',
-        fields: [],
-      })
-      navigate(`/app/forms/${result.id}`)
-    } catch {
-      toast({ type: 'error', message: 'Failed to create form' })
-    }
+  const currentLoading = isTrashView ? isLoadingTrash : isLoading
+  const currentError = isTrashView ? trashError : error
+
+  // Issue 1 fix: just navigate to the editor with `new` id - no API call
+  const handleCreate = () => {
+    navigate('/app/forms/new')
   }
 
   const handleDuplicate = async (id: string) => {
@@ -232,12 +262,27 @@ export function FormsPage() {
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return
     try {
-      await deleteTemplate.mutateAsync(deleteTarget.id)
-      toast({ type: 'success', message: 'Form deleted' })
+      if (deleteTarget.permanent) {
+        await permanentDeleteTemplate.mutateAsync(deleteTarget.id)
+        toast({ type: 'success', message: 'Form permanently deleted' })
+      } else {
+        await deleteTemplate.mutateAsync(deleteTarget.id)
+        toast({ type: 'success', message: 'Form moved to trash' })
+      }
       setDeleteTarget(null)
       setOpenMenuId(null)
     } catch {
       toast({ type: 'error', message: 'Failed to delete form' })
+    }
+  }
+
+  const handleRestore = async (id: string) => {
+    try {
+      await restoreTemplate.mutateAsync(id)
+      toast({ type: 'success', message: 'Form restored' })
+      setOpenMenuId(null)
+    } catch {
+      toast({ type: 'error', message: 'Failed to restore form' })
     }
   }
 
@@ -260,7 +305,6 @@ export function FormsPage() {
         </div>
         <button
           onClick={handleCreate}
-          disabled={createTemplate.isPending}
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
@@ -318,54 +362,83 @@ export function FormsPage() {
           <option value="draft">Draft</option>
           <option value="published">Published</option>
           <option value="archived">Archived</option>
+          <option value="trash">Trash</option>
         </select>
       </div>
 
+      {/* Trash banner */}
+      {isTrashView && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <Trash2 className="h-5 w-5 text-amber-600" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-800">
+              Trash
+            </p>
+            <p className="text-xs text-amber-600">
+              Items in the trash are automatically permanently deleted after 30 days.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Loading */}
-      {isLoading && (
+      {currentLoading && (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
         </div>
       )}
 
       {/* Error */}
-      {error && (
+      {currentError && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           Failed to load forms. Please try again.
         </div>
       )}
 
       {/* Forms Grid */}
-      {!isLoading && !error && (
+      {!currentLoading && !currentError && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredTemplates.map((template) => {
             const status = statusConfig[template.status] ?? statusConfig.draft
+            const isTrashed = isTrashView
 
             return (
               <div
                 key={template.id}
-                className="group relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:border-gray-200 hover:shadow-md"
+                className={cn(
+                  'group relative rounded-xl border bg-white shadow-sm transition-all hover:shadow-md',
+                  isTrashed
+                    ? 'border-gray-200 opacity-75 hover:opacity-100'
+                    : 'border-gray-100 hover:border-gray-200'
+                )}
               >
                 <div className="p-5">
                   {/* Header Row */}
                   <div className="flex items-start justify-between gap-3">
                     <div
                       className="flex-1 cursor-pointer"
-                      onClick={() => navigate(`/app/forms/${template.id}`)}
+                      onClick={() => !isTrashed && navigate(`/app/forms/${template.id}`)}
                     >
-                      <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600">
+                      <h3 className={cn(
+                        'text-base font-semibold',
+                        isTrashed
+                          ? 'text-gray-500'
+                          : 'text-gray-900 group-hover:text-blue-600'
+                      )}>
                         {template.name}
                       </h3>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          'inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
-                          status.className
-                        )}
-                      >
-                        {status.label}
-                      </span>
+                      {!isTrashed && (
+                        <span
+                          className={cn(
+                            'inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
+                            status.className
+                          )}
+                        >
+                          {status.label}
+                        </span>
+                      )}
                       {/* Actions menu */}
                       <div className="relative">
                         <button
@@ -379,37 +452,65 @@ export function FormsPage() {
                           <MoreHorizontal className="h-4 w-4" />
                         </button>
                         {openMenuId === template.id && (
-                          <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                            <button
-                              onClick={() => {
-                                navigate(`/app/forms/${template.id}`)
-                                setOpenMenuId(null)
-                              }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                              <Edit className="h-3.5 w-3.5" />
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDuplicate(template.id)}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                              Duplicate
-                            </button>
-                            <button
-                              onClick={() => {
-                                setDeleteTarget({
-                                  id: template.id,
-                                  name: template.name,
-                                })
-                                setOpenMenuId(null)
-                              }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              Delete
-                            </button>
+                          <div className="absolute right-0 z-50 mt-1 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                            {isTrashed ? (
+                              <>
+                                <button
+                                  onClick={() => handleRestore(template.id)}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                  Restore
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setDeleteTarget({
+                                      id: template.id,
+                                      name: template.name,
+                                      permanent: true,
+                                    })
+                                    setOpenMenuId(null)
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Delete Permanently
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    navigate(`/app/forms/${template.id}`)
+                                    setOpenMenuId(null)
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDuplicate(template.id)}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                  Duplicate
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setDeleteTarget({
+                                      id: template.id,
+                                      name: template.name,
+                                    })
+                                    setOpenMenuId(null)
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Delete
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
@@ -421,6 +522,14 @@ export function FormsPage() {
                     <p className="mt-1.5 text-sm text-gray-500 line-clamp-2">
                       {template.description}
                     </p>
+                  )}
+
+                  {/* Trash info */}
+                  {isTrashed && template.deleted_at && (
+                    <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600">
+                      <Clock className="h-3.5 w-3.5" />
+                      {daysUntilPermanentDelete(template.deleted_at)} days until permanent deletion
+                    </div>
                   )}
 
                   {/* Meta */}
@@ -458,17 +567,31 @@ export function FormsPage() {
       )}
 
       {/* Empty State */}
-      {!isLoading && !error && filteredTemplates.length === 0 && (
+      {!currentLoading && !currentError && filteredTemplates.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-16">
-          <FileText className="h-10 w-10 text-gray-300" />
-          <p className="mt-3 text-sm font-medium text-gray-900">
-            No forms found
-          </p>
-          <p className="mt-1 text-sm text-gray-500">
-            {searchQuery || statusFilter !== 'all' || categoryFilter !== 'all'
-              ? 'Try adjusting your search or filter criteria.'
-              : 'Create your first form to get started.'}
-          </p>
+          {isTrashView ? (
+            <>
+              <Trash2 className="h-10 w-10 text-gray-300" />
+              <p className="mt-3 text-sm font-medium text-gray-900">
+                Trash is empty
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                Deleted forms will appear here for 30 days before being permanently removed.
+              </p>
+            </>
+          ) : (
+            <>
+              <FileText className="h-10 w-10 text-gray-300" />
+              <p className="mt-3 text-sm font-medium text-gray-900">
+                No forms found
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                {searchQuery || statusFilter !== 'all' || categoryFilter !== 'all'
+                  ? 'Try adjusting your search or filter criteria.'
+                  : 'Create your first form to get started.'}
+              </p>
+            </>
+          )}
         </div>
       )}
 
@@ -476,9 +599,10 @@ export function FormsPage() {
       <DeleteConfirmModal
         formName={deleteTarget?.name ?? ''}
         isOpen={deleteTarget !== null}
-        isDeleting={deleteTemplate.isPending}
+        isDeleting={deleteTemplate.isPending || permanentDeleteTemplate.isPending}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteTarget(null)}
+        permanent={deleteTarget?.permanent}
       />
     </div>
   )

@@ -10,7 +10,10 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import String as SAString, and_, cast, func, or_, select
+from sqlalchemy import Boolean as SABoolean, Date as SADate, DateTime as SADateTime
+from sqlalchemy import Integer as SAInteger, Numeric as SANumeric
+from sqlalchemy import String as SAString, and_, cast, func, inspect, or_, select
+from sqlalchemy.dialects.postgresql import JSONB as SAJSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -57,17 +60,62 @@ async def _resolve_entity(
     return None, None
 
 
+# ─── Fields excluded from filtering (internal fields) ────────
+EXCLUDED_FIELDS = {
+    "id", "organization_id", "deleted_at", "is_deleted",
+    "user_id", "portal_token", "reference_photo_url",
+}
+
+
+def _snake_to_title(name: str) -> str:
+    """Convert snake_case to Title Case (e.g. 'first_name' -> 'First Name')."""
+    return " ".join(word.capitalize() for word in name.split("_"))
+
+
+def _col_type_to_field_type(col_type) -> str:
+    """Map a SQLAlchemy column type to a filter field type string."""
+    if isinstance(col_type, (SADate, SADateTime)):
+        return "date"
+    if isinstance(col_type, (SAInteger, SANumeric)):
+        return "number"
+    if isinstance(col_type, SABoolean):
+        return "boolean"
+    # JSONB, String, and everything else -> "string"
+    return "string"
+
+
+def _get_filterable_fields_for_model(model) -> list[dict]:
+    """Introspect a SQLAlchemy model and return filterable field definitions."""
+    mapper = inspect(model)
+    fields = []
+    for attr in mapper.column_attrs:
+        col_name = attr.key
+        if col_name in EXCLUDED_FIELDS:
+            continue
+        col = attr.columns[0]
+        field_type = _col_type_to_field_type(col.type)
+        fields.append({
+            "value": col_name,
+            "label": _snake_to_title(col_name),
+            "type": field_type,
+        })
+    return fields
+
+
 # ─── Allowed filterable fields per entity type ────────────────
 
 CONTACT_FIELDS = {
     "first_name", "last_name", "email", "phone", "address",
     "city", "state", "zip_code", "relationship_type",
-    "account_status", "created_at", "updated_at",
+    "notification_preferences", "account_status",
+    "communication_preference", "family_id", "portal_access",
+    "created_at", "updated_at",
 }
 CAMPER_FIELDS = {
     "first_name", "last_name", "date_of_birth", "gender",
     "grade", "school", "city", "state",
-    "created_at", "updated_at",
+    "allergies", "dietary_restrictions", "custom_fields",
+    "family_id", "created_at", "updated_at",
 }
 
 
@@ -208,6 +256,30 @@ async def _execute_preview(
         results=results,
         entity_type=entity_type,
     )
+
+
+# ─── Filterable Fields Endpoint ──────────────────────────────
+
+
+@router.get("/filterable-fields")
+async def get_filterable_fields(
+    entity_type: str = Query(...),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return available filterable fields for an entity type, introspected from the model."""
+    if entity_type == "camper":
+        model = Camper
+    elif entity_type == "contact":
+        model = Contact
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported entity type: {entity_type}",
+        )
+
+    fields = _get_filterable_fields_for_model(model)
+    return fields
 
 
 # ─── Preview Endpoints ───────────────────────────────────────

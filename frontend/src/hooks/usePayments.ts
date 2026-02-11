@@ -114,3 +114,10 @@ export function useRefundPayment() {
     },
   })
 }
+
+export function useACHSetup() {
+  return useMutation({
+    mutationFn: (data: { invoice_id: string; return_url: string }) =>
+      api.post('/payments/ach-setup', data).then((r) => r.data),
+  })
+}
