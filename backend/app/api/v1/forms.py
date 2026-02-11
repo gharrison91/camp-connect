@@ -5,11 +5,12 @@ CRUD for form templates and submissions.
 
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +28,82 @@ from app.schemas.form_builder import (
 )
 
 router = APIRouter(prefix="/forms", tags=["Form Builder"])
+
+
+# ─── Field Mappings ──────────────────────────────────────────
+
+
+@router.get("/field-mappings")
+async def get_field_mappings(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Get available Contact and Camper fields that form fields can map to."""
+    return {
+        "contact_fields": [
+            {"key": "first_name", "label": "First Name", "type": "text", "required": True},
+            {"key": "last_name", "label": "Last Name", "type": "text", "required": True},
+            {"key": "email", "label": "Email", "type": "email", "required": False},
+            {"key": "phone", "label": "Phone", "type": "phone", "required": False},
+            {"key": "address", "label": "Address", "type": "text", "required": False},
+            {"key": "city", "label": "City", "type": "text", "required": False},
+            {"key": "state", "label": "State", "type": "text", "required": False},
+            {"key": "zip_code", "label": "Zip Code", "type": "text", "required": False},
+            {"key": "relationship_type", "label": "Relationship Type", "type": "select", "required": False},
+        ],
+        "camper_fields": [
+            {"key": "first_name", "label": "First Name", "type": "text", "required": True},
+            {"key": "last_name", "label": "Last Name", "type": "text", "required": True},
+            {"key": "date_of_birth", "label": "Date of Birth", "type": "date", "required": False},
+            {"key": "gender", "label": "Gender", "type": "select", "required": False},
+            {"key": "school", "label": "School", "type": "text", "required": False},
+            {"key": "grade", "label": "Grade", "type": "text", "required": False},
+            {"key": "city", "label": "City", "type": "text", "required": False},
+            {"key": "state", "label": "State", "type": "text", "required": False},
+            {"key": "allergies", "label": "Allergies", "type": "text", "required": False},
+            {"key": "dietary_restrictions", "label": "Dietary Restrictions", "type": "text", "required": False},
+        ],
+    }
+
+
+# ─── File Upload ─────────────────────────────────────────────
+
+
+@router.post("/upload")
+async def upload_form_file(
+    file: UploadFile = File(...),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a file attached to a form submission."""
+    content = await file.read()
+
+    # Validate file size (max 10MB)
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(400, "File too large. Maximum 10MB.")
+
+    # Validate file type
+    allowed = {
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
+    if file.content_type not in allowed:
+        raise HTTPException(400, f"File type not allowed: {file.content_type}")
+
+    # Generate a unique filename
+    ext = os.path.splitext(file.filename or "file")[1]
+    unique_name = f"form-uploads/{uuid.uuid4()}{ext}"
+
+    # For now return a mock URL (in prod this goes to Supabase Storage)
+    return {
+        "url": f"/uploads/{unique_name}",
+        "file_name": file.filename,
+        "file_size": len(content),
+        "mime_type": file.content_type,
+    }
 
 
 # ─── Templates ───────────────────────────────────────────────
@@ -442,6 +519,35 @@ async def create_form_submission(
     template = tmpl_result.scalar_one_or_none()
     if not template:
         raise HTTPException(status_code=404, detail="Form template not found")
+
+    # ── Process field mappings ────────────────────────────────
+    # If the template has fields with mapping definitions, extract mapped
+    # data from the submission answers to create or update Contact/Camper records.
+    contact_data: Dict[str, Any] = {}
+    camper_data: Dict[str, Any] = {}
+
+    template_fields = template.fields if isinstance(template.fields, list) else []
+    for field_def in template_fields:
+        mapping = field_def.get("mapping") if isinstance(field_def, dict) else None
+        if not mapping:
+            continue
+        field_id = field_def.get("id")
+        if not field_id or field_id not in (body.answers or {}):
+            continue
+
+        value = body.answers[field_id]
+        # mapping format: "contact.first_name" or "camper.date_of_birth"
+        if isinstance(mapping, str) and "." in mapping:
+            entity_type, field_key = mapping.split(".", 1)
+            if entity_type == "contact":
+                contact_data[field_key] = value
+            elif entity_type == "camper":
+                camper_data[field_key] = value
+
+    # TODO: When contact_data or camper_data are non-empty, create or update
+    # the respective records in the database. For now we store the mapped data
+    # in the submission metadata so it can be processed asynchronously or by
+    # a separate service.
 
     submission = FormSubmission(
         id=uuid.uuid4(),

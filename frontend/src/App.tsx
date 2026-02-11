@@ -29,6 +29,7 @@ const GeneralSettingsPage = lazy(() => import('@/features/admin/GeneralSettingsP
 const NotificationSettingsPage = lazy(() => import('@/features/admin/NotificationSettingsPage').then(m => ({ default: m.NotificationSettingsPage })))
 const CertificationsSettingsPage = lazy(() => import('@/features/admin/CertificationsSettingsPage').then(m => ({ default: m.CertificationsSettingsPage })))
 const JobTitlesSettingsPage = lazy(() => import('@/features/admin/JobTitlesSettingsPage').then(m => ({ default: m.JobTitlesSettingsPage })))
+const DeveloperReferencePage = lazy(() => import('@/features/admin/DeveloperReferencePage').then(m => ({ default: m.DeveloperReferencePage })))
 
 // Phase 3
 const PhotosPage = lazy(() => import('@/features/photos/PhotosPage').then(m => ({ default: m.PhotosPage })))
@@ -91,6 +92,11 @@ const CamperMessagingPage = lazy(() => import('@/features/messaging/CamperMessag
 const NurseSchedulePage = lazy(() => import('@/features/health/NurseSchedulePage').then(m => ({ default: m.NurseSchedulePage })))
 const AlertsPage = lazy(() => import('@/features/alerts/AlertsPage').then(m => ({ default: m.AlertsPage })))
 
+// Phase 13: CRM / Deals, Embeddable Forms, Invoice Template
+const DealsPage = lazy(() => import('@/features/deals/DealsPage').then(m => ({ default: m.DealsPage })))
+const PublicFormPage = lazy(() => import('@/features/forms/PublicFormPage').then(m => ({ default: m.PublicFormPage })))
+const InvoiceTemplateSettings = lazy(() => import('@/features/admin/InvoiceTemplateSettings').then(m => ({ default: m.InvoiceTemplateSettings })))
+
 function LoadingSpinner() {
   return (
     <div className="flex min-h-screen items-center justify-center">
@@ -117,6 +123,9 @@ function App() {
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/map" element={<MapPage />} />
             </Route>
+
+            {/* Public embeddable forms */}
+            <Route path="/embed/form/:id" element={<PublicFormPage />} />
 
             {/* Public auth routes */}
             <Route path="/login" element={<LoginPage />} />
@@ -184,6 +193,9 @@ function App() {
               <Route path="nurse-schedule" element={<NurseSchedulePage />} />
               <Route path="alerts" element={<AlertsPage />} />
 
+              {/* Phase 13: CRM / Deals */}
+              <Route path="deals" element={<DealsPage />} />
+
               {/* Settings (nested routes) */}
               <Route path="settings" element={<SettingsLayout />}>
                 <Route index element={<Navigate to="/app/settings/profile" replace />} />
@@ -195,6 +207,8 @@ function App() {
                 <Route path="notifications" element={<NotificationSettingsPage />} />
                 <Route path="certifications" element={<CertificationsSettingsPage />} />
                 <Route path="job-titles" element={<JobTitlesSettingsPage />} />
+                <Route path="developer" element={<DeveloperReferencePage />} />
+                <Route path="invoice-template" element={<InvoiceTemplateSettings />} />
               </Route>
             </Route>
 

@@ -1,6 +1,7 @@
 /**
  * Camp Connect - Store React Query Hooks
- * CRUD for store items, spending accounts, purchases, and transactions.
+ * CRUD for store items, spending accounts, purchases, transactions,
+ * and e-commerce integration settings.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -14,7 +15,7 @@ import type {
   StoreTransaction,
 } from '../types'
 
-// ─── Item Queries ───────────────────────────────────────────
+// --- Item Queries ---
 
 export function useStoreItems(filters?: { category?: string; is_active?: boolean }) {
   return useQuery<StoreItem[]>({
@@ -32,7 +33,7 @@ export function useStoreItem(itemId: string | undefined) {
   })
 }
 
-// ─── Item Mutations ─────────────────────────────────────────
+// --- Item Mutations ---
 
 export function useCreateStoreItem() {
   const queryClient = useQueryClient()
@@ -66,7 +67,7 @@ export function useDeleteStoreItem() {
   })
 }
 
-// ─── Spending Account ───────────────────────────────────────
+// --- Spending Account ---
 
 export function useSpendingAccount(camperId: string | undefined) {
   return useQuery<SpendingAccount>({
@@ -87,7 +88,7 @@ export function useUpdateSpendingAccount() {
   })
 }
 
-// ─── Purchases ──────────────────────────────────────────────
+// --- Purchases ---
 
 export function usePurchaseItem() {
   const queryClient = useQueryClient()
@@ -102,7 +103,7 @@ export function usePurchaseItem() {
   })
 }
 
-// ─── Transactions ───────────────────────────────────────────
+// --- Transactions ---
 
 export function useStoreTransactions(camperId?: string) {
   return useQuery<StoreTransaction[]>({
@@ -111,5 +112,73 @@ export function useStoreTransactions(camperId?: string) {
       api
         .get('/store/transactions', { params: camperId ? { camper_id: camperId } : undefined })
         .then((r) => r.data),
+  })
+}
+
+// --- E-Commerce Integration ---
+
+export interface StoreIntegration {
+  provider: 'none' | 'shopify' | 'woocommerce' | 'square'
+  api_key: string
+  api_secret: string
+  store_url: string
+  sync_enabled: boolean
+  last_sync: string | null
+}
+
+export interface StoreIntegrationUpdate {
+  provider: string
+  api_key: string
+  api_secret: string
+  store_url: string
+  sync_enabled: boolean
+}
+
+export interface TestConnectionResult {
+  success: boolean
+  message: string
+  product_count: number | null
+}
+
+export interface SyncResult {
+  synced: number
+  errors: number
+  message: string
+}
+
+export function useStoreIntegration() {
+  return useQuery<StoreIntegration>({
+    queryKey: ['store-integration'],
+    queryFn: () => api.get('/store/integration').then((r) => r.data),
+  })
+}
+
+export function useUpdateStoreIntegration() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: StoreIntegrationUpdate) =>
+      api.put('/store/integration', data).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['store-integration'] })
+    },
+  })
+}
+
+export function useTestStoreConnection() {
+  return useMutation<TestConnectionResult>({
+    mutationFn: () =>
+      api.post('/store/integration/test').then((r) => r.data),
+  })
+}
+
+export function useSyncStoreProducts() {
+  const queryClient = useQueryClient()
+  return useMutation<SyncResult>({
+    mutationFn: () =>
+      api.post('/store/integration/sync').then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['store-integration'] })
+      queryClient.invalidateQueries({ queryKey: ['store-items'] })
+    },
   })
 }

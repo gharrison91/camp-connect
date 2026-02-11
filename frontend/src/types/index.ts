@@ -821,3 +821,60 @@ export interface PortalCamper {
 export interface PortalInvoice extends Invoice {
   camper_names?: string[];
 }
+
+
+// ─── Deals / CRM Pipeline ─────────────────────────────────
+
+export interface Deal {
+  id: string;
+  organization_id: string;
+  contact_id: string | null;
+  family_id: string | null;
+  contact_name?: string;
+  family_name?: string;
+  title: string;
+  description: string | null;
+  value: number;
+  stage: 'lead' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost';
+  priority: 'low' | 'medium' | 'high';
+  source: string | null;
+  expected_close_date: string | null;
+  actual_close_date: string | null;
+  assigned_to: string | null;
+  assigned_to_name?: string;
+  notes: string | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DealCreate {
+  title: string;
+  contact_id?: string;
+  family_id?: string;
+  description?: string;
+  value?: number;
+  stage?: string;
+  priority?: string;
+  source?: string;
+  expected_close_date?: string;
+  assigned_to?: string;
+  notes?: string;
+}
+
+export interface DealUpdate extends Partial<DealCreate> {
+  actual_close_date?: string;
+  position?: number;
+}
+
+export interface DealPipeline {
+  stages: {
+    stage: string;
+    label: string;
+    deals: Deal[];
+    count: number;
+    total_value: number;
+  }[];
+  total_deals: number;
+  total_value: number;
+}

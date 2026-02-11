@@ -82,6 +82,9 @@ from app.api.v1.quotes import router as quotes_router
 from app.api.v1.payment_plans import router as payment_plans_router
 
 
+# Phase 13: CRM / Deals
+from app.api.v1.deals import router as deals_router
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
@@ -189,6 +192,9 @@ app.include_router(photo_albums_router, prefix=settings.api_v1_prefix)
 app.include_router(quotes_router, prefix=settings.api_v1_prefix)
 app.include_router(payment_plans_router, prefix=settings.api_v1_prefix)
 
+
+# Phase 13: CRM / Deals
+app.include_router(deals_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

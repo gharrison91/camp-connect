@@ -7,15 +7,18 @@ and submit health forms through the Parent Portal.
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.portal_deps import get_portal_user
 from app.database import get_db
+from app.models.payment import Invoice
 from app.services import portal_service
+from app.services.stripe_service import create_checkout_session, create_ach_checkout_session
 
 router = APIRouter(prefix="/portal", tags=["Parent Portal"])
 
@@ -29,8 +32,15 @@ class HealthFormSubmitRequest(BaseModel):
     form_data: Dict[str, Any]
 
 
+class PortalCheckoutRequest(BaseModel):
+    """Body for creating a Stripe checkout session from the portal."""
+    success_url: str
+    cancel_url: str
+    payment_method: str = "card"  # "card" or "ach"
+
+
 # ---------------------------------------------------------------------------
-# GET /portal/campers — list my campers
+# GET /portal/campers -- list my campers
 # ---------------------------------------------------------------------------
 
 @router.get("/campers")
@@ -47,7 +57,7 @@ async def list_my_campers(
 
 
 # ---------------------------------------------------------------------------
-# GET /portal/campers/{camper_id} — get camper profile (scoped)
+# GET /portal/campers/{camper_id} -- get camper profile (scoped)
 # ---------------------------------------------------------------------------
 
 @router.get("/campers/{camper_id}")
@@ -75,7 +85,7 @@ async def get_my_camper_profile(
 
 
 # ---------------------------------------------------------------------------
-# GET /portal/invoices — list my invoices
+# GET /portal/invoices -- list my invoices
 # ---------------------------------------------------------------------------
 
 @router.get("/invoices")
@@ -92,7 +102,94 @@ async def list_my_invoices(
 
 
 # ---------------------------------------------------------------------------
-# GET /portal/photos — list photos for my campers
+# POST /portal/invoices/{invoice_id}/checkout -- create Stripe checkout
+# ---------------------------------------------------------------------------
+
+@router.post("/invoices/{invoice_id}/checkout")
+async def create_portal_checkout(
+    invoice_id: uuid.UUID,
+    body: PortalCheckoutRequest,
+    portal_user: Dict[str, Any] = Depends(get_portal_user),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Create a Stripe checkout session for a portal invoice.
+    Supports both card and ACH (US bank account) payment methods.
+
+    Returns:
+        { session_id: str, checkout_url: str }
+    """
+    # Fetch the invoice, scoped to this contact and org
+    result = await db.execute(
+        select(Invoice)
+        .where(Invoice.id == invoice_id)
+        .where(Invoice.organization_id == portal_user["organization_id"])
+        .where(Invoice.contact_id == portal_user["contact_id"])
+        .where(Invoice.deleted_at.is_(None))
+    )
+    invoice = result.scalar_one_or_none()
+
+    if invoice is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found or not linked to your account.",
+        )
+
+    if invoice.status in ("paid", "cancelled"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invoice is already {invoice.status}. Cannot create checkout.",
+        )
+
+    # Build line items from the invoice
+    line_items: List[Dict[str, Any]] = []
+    if invoice.line_items:
+        for item in invoice.line_items:
+            line_items.append({
+                "name": item.get("description", "Camp Invoice Item"),
+                "amount": int(float(item.get("amount", 0)) * 100),  # dollars to cents
+                "quantity": item.get("quantity", 1),
+            })
+    else:
+        # Fallback: single line item for the total
+        line_items.append({
+            "name": f"Invoice Payment",
+            "amount": int(float(invoice.total) * 100),
+            "quantity": 1,
+        })
+
+    try:
+        if body.payment_method == "ach":
+            session_data = await create_ach_checkout_session(
+                organization_id=portal_user["organization_id"],
+                invoice_id=invoice.id,
+                line_items=line_items,
+                return_url=body.success_url,
+            )
+        else:
+            session_data = await create_checkout_session(
+                organization_id=portal_user["organization_id"],
+                invoice_id=invoice.id,
+                line_items=line_items,
+                success_url=body.success_url,
+                cancel_url=body.cancel_url,
+            )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+    return session_data
+
+
+# ---------------------------------------------------------------------------
+# GET /portal/photos -- list photos for my campers
 # ---------------------------------------------------------------------------
 
 @router.get("/photos")
@@ -109,7 +206,7 @@ async def list_my_photos(
 
 
 # ---------------------------------------------------------------------------
-# POST /portal/health-forms/{health_form_id}/submit — submit a health form
+# POST /portal/health-forms/{health_form_id}/submit -- submit a health form
 # ---------------------------------------------------------------------------
 
 @router.post("/health-forms/{health_form_id}/submit")

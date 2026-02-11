@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import type { Invoice, InvoiceCreate, InvoiceUpdate, Payment } from '../types'
 
-// ─── Invoice Queries ────────────────────────────────────────
+// --- Invoice Queries ---
 
 export function useInvoices(filters?: { status?: string; family_id?: string; contact_id?: string }) {
   return useQuery<Invoice[]>({
@@ -24,7 +24,7 @@ export function useInvoice(invoiceId: string | undefined) {
   })
 }
 
-// ─── Invoice Mutations ──────────────────────────────────────
+// --- Invoice Mutations ---
 
 export function useCreateInvoice() {
   const queryClient = useQueryClient()
@@ -70,7 +70,7 @@ export function useGenerateInvoice() {
   })
 }
 
-// ─── Payment Queries ────────────────────────────────────────
+// --- Payment Queries ---
 
 export function usePayments(filters?: { invoice_id?: string; contact_id?: string }) {
   return useQuery<Payment[]>({
@@ -80,7 +80,7 @@ export function usePayments(filters?: { invoice_id?: string; contact_id?: string
   })
 }
 
-// ─── Payment Mutations ──────────────────────────────────────
+// --- Payment Mutations ---
 
 export function useRecordPayment() {
   const queryClient = useQueryClient()
@@ -119,5 +119,32 @@ export function useACHSetup() {
   return useMutation({
     mutationFn: (data: { invoice_id: string; return_url: string }) =>
       api.post('/payments/ach-setup', data).then((r) => r.data),
+  })
+}
+
+// --- Portal Checkout (Stripe) ---
+
+export interface PortalCheckoutRequest {
+  invoiceId: string
+  success_url: string
+  cancel_url: string
+  payment_method: 'card' | 'ach'
+}
+
+export interface PortalCheckoutResponse {
+  session_id: string
+  checkout_url: string
+}
+
+export function useCreatePortalCheckout() {
+  return useMutation<PortalCheckoutResponse, Error, PortalCheckoutRequest>({
+    mutationFn: ({ invoiceId, success_url, cancel_url, payment_method }) =>
+      api
+        .post(`/portal/invoices/${invoiceId}/checkout`, {
+          success_url,
+          cancel_url,
+          payment_method,
+        })
+        .then((r) => r.data),
   })
 }

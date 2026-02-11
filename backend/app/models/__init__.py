@@ -72,6 +72,10 @@ from app.models.contact_alert import ContactAlert
 from app.models.quote import Quote
 from app.models.payment_plan import PaymentPlan, PaymentPlanInstallment
 
+
+# Phase 13: CRM / Deals
+from app.models.deal import Deal
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -145,4 +149,6 @@ __all__ = [
     "Quote",
     "PaymentPlan",
     "PaymentPlanInstallment",
+    # Phase 13
+    "Deal",
 ]

@@ -20,6 +20,7 @@ export interface FormFieldDef {
   custom_css?: string
   html_content?: string
   css_content?: string
+  mapping?: string
 }
 
 export interface FormTemplate {
@@ -89,6 +90,25 @@ export interface FormSubmissionCreate {
   related_entity_type?: string
   related_entity_id?: string
   status?: string
+}
+
+export interface FieldMappingOption {
+  key: string
+  label: string
+  type: string
+  required: boolean
+}
+
+export interface FieldMappingsResponse {
+  contact_fields: FieldMappingOption[]
+  camper_fields: FieldMappingOption[]
+}
+
+export interface FileUploadResponse {
+  url: string
+  file_name: string
+  file_size: number
+  mime_type: string
 }
 
 // ─── Template Hooks ─────────────────────────────────────────
@@ -218,6 +238,34 @@ export function useCreateFormSubmission() {
       api.post('/forms/submissions', data).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['form-submissions'] })
+    },
+  })
+}
+
+// ─── Field Mapping Hooks ────────────────────────────────────
+
+export function useFieldMappings() {
+  return useQuery<FieldMappingsResponse>({
+    queryKey: ['form-field-mappings'],
+    queryFn: async () => {
+      const res = await api.get('/forms/field-mappings')
+      return res.data
+    },
+    staleTime: 10 * 60 * 1000, // 10 min cache
+  })
+}
+
+// ─── File Upload Hook ───────────────────────────────────────
+
+export function useUploadFormFile() {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await api.post('/forms/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return res.data as FileUploadResponse
     },
   })
 }

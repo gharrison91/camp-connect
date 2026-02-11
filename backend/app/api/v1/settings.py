@@ -5,7 +5,7 @@ Get and update organization settings (JSONB).
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -101,4 +101,102 @@ async def update_settings(
         "settings": org.settings or {},
         "enabled_modules": org.enabled_modules or ["core"],
         "subscription_tier": org.subscription_tier or "free",
+    }
+
+
+@router.get("/developer-reference")
+async def get_developer_reference(
+    current_user: Dict[str, Any] = Depends(
+        require_permission("core.settings.manage")
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get developer reference data for the organization.
+    Returns all entity IDs and names for API integration reference.
+    Requires core.settings.manage permission.
+    """
+    from app.models.activity import Activity
+    from app.models.bunk import Bunk
+    from app.models.event import Event
+    from app.models.form_builder import FormTemplate
+    from app.models.location import Location
+    from app.models.role import Role
+
+    org_id = current_user["organization_id"]
+
+    # Helper to serialize rows with id, name, created_at
+    def serialize(rows: List[Any]) -> List[Dict[str, Any]]:
+        results = []
+        for row in rows:
+            item: Dict[str, Any] = {
+                "id": str(row.id),
+                "name": row.name or "",
+            }
+            if hasattr(row, "created_at") and row.created_at is not None:
+                item["created_at"] = row.created_at.isoformat()
+            else:
+                item["created_at"] = None
+            results.append(item)
+        return results
+
+    # Events (soft-deletable)
+    events_result = await db.execute(
+        select(Event)
+        .where(Event.organization_id == org_id, Event.is_deleted == False)
+        .order_by(Event.name)
+    )
+    events = serialize(events_result.scalars().all())
+
+    # Activities (soft-deletable)
+    activities_result = await db.execute(
+        select(Activity)
+        .where(Activity.organization_id == org_id, Activity.is_deleted == False)
+        .order_by(Activity.name)
+    )
+    activities = serialize(activities_result.scalars().all())
+
+    # Bunks (soft-deletable)
+    bunks_result = await db.execute(
+        select(Bunk)
+        .where(Bunk.organization_id == org_id, Bunk.is_deleted == False)
+        .order_by(Bunk.name)
+    )
+    bunks = serialize(bunks_result.scalars().all())
+
+    # Locations (soft-deletable)
+    locations_result = await db.execute(
+        select(Location)
+        .where(Location.organization_id == org_id, Location.is_deleted == False)
+        .order_by(Location.name)
+    )
+    locations = serialize(locations_result.scalars().all())
+
+    # Roles (no soft delete)
+    roles_result = await db.execute(
+        select(Role)
+        .where(Role.organization_id == org_id)
+        .order_by(Role.name)
+    )
+    roles = serialize(roles_result.scalars().all())
+
+    # Form Templates (no soft delete)
+    forms_result = await db.execute(
+        select(FormTemplate)
+        .where(FormTemplate.organization_id == org_id)
+        .order_by(FormTemplate.name)
+    )
+    form_templates = serialize(forms_result.scalars().all())
+
+    return {
+        "organization_id": str(org_id),
+        "api_base_url": "https://camp-connect-api.onrender.com/api/v1",
+        "entities": {
+            "events": events,
+            "activities": activities,
+            "bunks": bunks,
+            "locations": locations,
+            "roles": roles,
+            "form_templates": form_templates,
+        },
     }

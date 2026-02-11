@@ -27,6 +27,7 @@ import {
   MessageCircle,
   Heart,
   Bell,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -97,6 +98,7 @@ const navSections: NavSection[] = [
       { label: 'Store', icon: ShoppingBag, path: '/app/store', permission: 'store.manage.manage' },
       { label: 'Forms', icon: FileText, path: '/app/forms', permission: null },
       { label: 'Workflows', icon: Workflow, path: '/app/workflows', permission: null },
+      { label: 'Deals', icon: Target, path: '/app/deals', permission: null },
       { label: 'Settings', icon: Settings, path: '/app/settings', permission: null },
     ],
   },
