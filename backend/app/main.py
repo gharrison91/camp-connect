@@ -109,6 +109,20 @@ from app.api.v1.lead_enrichment import router as lead_enrichment_router
 # Branding / Theme
 from app.api.v1.branding import router as branding_router
 
+# Awards & Achievements (Gamification)
+from app.api.v1.awards import router as awards_router
+# Phase 17: Inventory & Equipment
+from app.api.v1.inventory import router as inventory_router
+
+# Transportation
+from app.api.v1.transportation import router as transportation_router
+
+# Meal Planning
+from app.api.v1.meals import router as meals_router
+
+# Incident & Safety Reporting
+from app.api.v1.incidents import router as incidents_router
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
@@ -243,6 +257,21 @@ app.include_router(lead_enrichment_router, prefix=settings.api_v1_prefix)
 
 # Branding / Theme
 app.include_router(branding_router, prefix=settings.api_v1_prefix)
+
+# Awards & Achievements (Gamification)
+app.include_router(awards_router, prefix=settings.api_v1_prefix)
+
+# Phase 17: Inventory & Equipment
+app.include_router(inventory_router, prefix=settings.api_v1_prefix)
+
+# Transportation
+app.include_router(transportation_router, prefix=settings.api_v1_prefix)
+
+# Meal Planning
+app.include_router(meals_router, prefix=settings.api_v1_prefix)
+
+# Incident & Safety Reporting
+app.include_router(incidents_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

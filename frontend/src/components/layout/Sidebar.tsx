@@ -31,6 +31,11 @@ import {
   ShieldCheck,
   Briefcase,
   Radar,
+  Package,
+  Utensils,
+  AlertTriangle,
+  Award,
+  Bus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -71,7 +76,9 @@ const navSections: NavSection[] = [
       { label: 'Registrations', icon: ClipboardList, path: '/app/registrations', permission: 'core.registrations.read' },
       { label: 'Families', icon: UsersRound, path: '/app/families', permission: 'core.families.read' },
       { label: 'Activities', icon: Tent, path: '/app/activities', permission: 'core.activities.read' },
+      { label: 'Awards', icon: Award, path: '/app/awards', permission: null },
       { label: 'Bunks', icon: BedDouble, path: '/app/bunks', permission: 'core.bunks.read' },
+      { label: 'Meals', icon: Utensils, path: '/app/meals', permission: 'core.settings.manage' },
     ],
   },
   {
@@ -85,6 +92,9 @@ const navSections: NavSection[] = [
       { label: 'Nurse Schedule', icon: Heart, path: '/app/nurse-schedule', permission: null },
       { label: 'Photos', icon: Camera, path: '/app/photos', permission: 'photos.media.view' },
       { label: 'Job Board', icon: Briefcase, path: '/app/jobs', permission: null },
+      { label: 'Inventory', icon: Package, path: '/app/inventory', permission: null },
+      { label: 'Incidents', icon: AlertTriangle, path: '/app/incidents', permission: null },
+      { label: 'Transportation', icon: Bus, path: '/app/transportation', permission: null },
     ],
   },
   {

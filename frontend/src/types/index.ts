@@ -1204,3 +1204,192 @@ export interface CabinCreate {
 }
 
 export interface CabinUpdate extends Partial<CabinCreate> {}
+
+
+// ─── Transportation ──────────────────────────────────────────
+
+export interface Vehicle {
+  id: string
+  org_id: string
+  name: string
+  type: 'bus' | 'van' | 'car'
+  capacity: number
+  license_plate: string
+  driver_name: string
+  driver_phone: string
+  status: 'active' | 'maintenance' | 'retired'
+  notes: string
+  created_at: string
+}
+
+export interface RouteStop {
+  stop_order: number
+  location_name: string
+  address: string
+  estimated_time: string
+  camper_ids: string[]
+}
+
+export interface TransportRoute {
+  id: string
+  org_id: string
+  vehicle_id: string
+  vehicle_name?: string
+  name: string
+  route_type: 'pickup' | 'dropoff' | 'field_trip'
+  date: string
+  departure_time: string
+  arrival_time: string
+  stops: RouteStop[]
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+  created_at: string
+}
+
+
+// ─── Incident & Safety Reporting ────────────────────────────
+
+export interface IncidentParty {
+  person_type: 'camper' | 'staff';
+  person_id: string;
+  person_name: string;
+  role: 'involved' | 'witness' | 'reporter';
+}
+
+export interface IncidentFollowUp {
+  id: string;
+  note: string;
+  author_id: string;
+  author_name: string;
+  created_at: string;
+}
+
+export interface Incident {
+  id: string;
+  org_id: string;
+  title: string;
+  description: string;
+  incident_type: 'injury' | 'behavioral' | 'property' | 'safety_hazard' | 'medical' | 'other';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  status: 'open' | 'investigating' | 'resolved' | 'closed';
+  location: string;
+  date_time: string;
+  reported_by: string;
+  reported_by_name: string;
+  involved_parties: IncidentParty[];
+  actions_taken: string;
+  follow_ups: IncidentFollowUp[];
+  resolution: string;
+  attachments: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+
+// ---------------------------------------------------------------------------
+// Inventory & Equipment
+// ---------------------------------------------------------------------------
+
+export interface InventoryItem {
+  id: string;
+  org_id: string;
+  name: string;
+  category: 'sports' | 'arts' | 'kitchen' | 'medical' | 'maintenance' | 'office' | 'other';
+  sku: string;
+  quantity: number;
+  min_quantity: number;
+  location: string;
+  condition: 'new' | 'good' | 'fair' | 'poor' | 'broken';
+  unit_cost: number;
+  total_value: number;
+  notes: string;
+  last_checked: string;
+  created_at: string;
+}
+
+export interface CheckoutRecord {
+  id: string;
+  item_id: string;
+  item_name: string;
+  checked_out_by: string;
+  checked_out_to: string;
+  quantity_out: number;
+  checkout_date: string;
+  expected_return: string;
+  actual_return: string | null;
+  status: 'out' | 'returned' | 'overdue';
+}
+
+
+// ---- Meal Planning & Dietary Management ----
+
+export interface Meal {
+  id: string;
+  org_id: string;
+  name: string;
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  date: string;
+  description: string;
+  menu_items: string[];
+  allergens: string[];
+  nutritional_info: Record<string, any>;
+  created_at: string;
+}
+
+export interface MealPlan {
+  id: string;
+  org_id: string;
+  name: string;
+  week_start: string;
+  meals: Meal[];
+  created_at: string;
+}
+
+export interface DietaryRestriction {
+  id: string;
+  camper_id: string;
+  camper_name?: string;
+  restriction_type: 'allergy' | 'intolerance' | 'preference' | 'religious';
+  item: string;
+  severity: 'mild' | 'moderate' | 'severe';
+  notes: string;
+}
+
+
+// ---- Awards & Achievements (Gamification) ----
+
+export interface AwardBadge {
+  id: string;
+  org_id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  category: 'skill' | 'behavior' | 'achievement' | 'milestone' | 'special';
+  points: number;
+  criteria: string;
+  max_awards_per_session: number | null;
+  times_awarded?: number;
+  created_at: string;
+}
+
+export interface AwardGrant {
+  id: string;
+  badge_id: string;
+  badge_name: string;
+  badge_icon: string;
+  badge_color: string;
+  camper_id: string;
+  camper_name: string;
+  granted_by: string;
+  granted_by_name: string;
+  reason: string;
+  granted_at: string;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  camper_id: string;
+  camper_name: string;
+  total_points: number;
+  badge_count: number;
+}

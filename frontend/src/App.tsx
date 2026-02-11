@@ -99,6 +99,7 @@ const AlertsPage = lazy(() => import('@/features/alerts/AlertsPage').then(m => (
 const DealsPage = lazy(() => import('@/features/deals/DealsPage').then(m => ({ default: m.DealsPage })))
 const JobsPage = lazy(() => import('@/features/jobs/JobsPage').then(m => ({ default: m.JobsPage })))
 const BackgroundChecksPage = lazy(() => import('@/features/staff/BackgroundChecksPage').then(m => ({ default: m.BackgroundChecksPage })))
+const IncidentsPage = lazy(() => import('@/features/incidents/IncidentsPage').then(m => ({ default: m.IncidentsPage })))
 const PublicFormPage = lazy(() => import('@/features/forms/PublicFormPage').then(m => ({ default: m.PublicFormPage })))
 const InvoiceTemplateSettings = lazy(() => import('@/features/admin/InvoiceTemplateSettings').then(m => ({ default: m.InvoiceTemplateSettings })))
 const CustomFieldsSettingsPage = lazy(() => import('@/features/admin/CustomFieldsSettingsPage').then(m => ({ default: m.CustomFieldsSettingsPage })))
@@ -110,7 +111,19 @@ const CampProfileSettings = lazy(() => import('@/features/admin/CampProfileSetti
 
 // Phase 15: Lead Enrichment, Portal enhancements
 const LeadEnrichmentPage = lazy(() => import('@/features/leads/LeadEnrichmentPage').then(m => ({ default: m.LeadEnrichmentPage })))
+
+// Awards & Achievements
+const AwardsPage = lazy(() => import('@/features/awards/AwardsPage').then(m => ({ default: m.AwardsPage })))
 const BrandingSettingsPage = lazy(() => import('@/features/admin/BrandingSettingsPage').then(m => ({ default: m.BrandingSettingsPage })))
+
+// Phase 17: Inventory & Equipment
+const InventoryPage = lazy(() => import('@/features/inventory/InventoryPage').then(m => ({ default: m.InventoryPage })))
+
+// Meal Planning
+const MealsPage = lazy(() => import('@/features/meals/MealsPage').then(m => ({ default: m.MealsPage })))
+
+// Transportation
+const TransportationPage = lazy(() => import('@/features/transportation/TransportationPage').then(m => ({ default: m.TransportationPage })))
 
 
 function LoadingSpinner() {
@@ -219,9 +232,22 @@ function App() {
 
               {/* Phase 14: Background Checks */}
               <Route path="background-checks" element={<BackgroundChecksPage />} />
+              <Route path="incidents" element={<IncidentsPage />} />
 
               {/* Phase 16: Lead Enrichment */}
               <Route path="leads" element={<LeadEnrichmentPage />} />
+
+              {/* Awards & Achievements */}
+              <Route path="awards" element={<AwardsPage />} />
+
+              {/* Phase 17: Inventory & Equipment */}
+              <Route path="inventory" element={<InventoryPage />} />
+
+              {/* Meal Planning */}
+              <Route path="meals" element={<MealsPage />} />
+
+              {/* Transportation */}
+              <Route path="transportation" element={<TransportationPage />} />
 
               {/* Settings (nested routes) */}
               <Route path="settings" element={<SettingsLayout />}>
