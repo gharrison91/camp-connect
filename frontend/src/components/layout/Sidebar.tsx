@@ -58,6 +58,11 @@ Hash,
   Building2,
   PackageOpen,
   Users2,
+  Car,
+  Search,
+  Pill,
+  StickyNote,
+  LogIn,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -137,6 +142,11 @@ const navSections: NavSection[] = [
       { label: 'Resources', icon: Building2, path: '/app/resource-booking', permission: null },
       { label: 'Supply Requests', icon: PackageOpen, path: '/app/supply-requests', permission: null },
       { label: 'Alumni', icon: Users2, path: '/app/alumni', permission: null },
+      { label: 'Carpools', icon: Car, path: '/app/carpools', permission: null },
+      { label: 'Lost & Found', icon: Search, path: '/app/lost-found', permission: null },
+      { label: 'Allergy Matrix', icon: Pill, path: '/app/allergy-matrix', permission: null },
+      { label: 'Group Notes', icon: StickyNote, path: '/app/group-notes', permission: null },
+      { label: 'Check-In/Out', icon: LogIn, path: '/app/check-in', permission: null },
     ],
   },
   {

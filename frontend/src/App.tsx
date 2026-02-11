@@ -193,6 +193,13 @@ const SurveysPage = lazy(() => import('@/features/surveys/SurveysPage').then(m =
 const ResourceBookingPage = lazy(() => import('@/features/resources/ResourceBookingPage').then(m => ({ default: m.ResourceBookingPage })))
 const SupplyRequestsPage = lazy(() => import('@/features/supplies/SupplyRequestsPage').then(m => ({ default: m.SupplyRequestsPage })))
 
+// Phase 24: Carpool, Lost & Found, Allergy Matrix, Group Notes, Check-In/Out
+const CarpoolPage = lazy(() => import('@/features/carpools/CarpoolPage').then(m => ({ default: m.CarpoolPage })))
+const LostFoundPage = lazy(() => import('@/features/lost-found/LostFoundPage').then(m => ({ default: m.LostFoundPage })))
+const AllergyMatrixPage = lazy(() => import('@/features/health/AllergyMatrixPage').then(m => ({ default: m.AllergyMatrixPage })))
+const GroupNotesPage = lazy(() => import('@/features/groups/GroupNotesPage').then(m => ({ default: m.GroupNotesPage })))
+const CheckInOutPage = lazy(() => import('@/features/checkin/CheckInOutPage').then(m => ({ default: m.CheckInOutPage })))
+
 
 function LoadingSpinner() {
   return (
@@ -338,6 +345,13 @@ function App() {
               <Route path="surveys" element={<SurveysPage />} />
               <Route path="resource-booking" element={<ResourceBookingPage />} />
               <Route path="supply-requests" element={<SupplyRequestsPage />} />
+
+              {/* Phase 24 */}
+              <Route path="carpools" element={<CarpoolPage />} />
+              <Route path="lost-found" element={<LostFoundPage />} />
+              <Route path="allergy-matrix" element={<AllergyMatrixPage />} />
+              <Route path="group-notes" element={<GroupNotesPage />} />
+              <Route path="check-in" element={<CheckInOutPage />} />
 
               {/* Parent Communication Log */}
               <Route path="parent-logs" element={<ParentLogsPage />} />

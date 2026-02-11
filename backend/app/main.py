@@ -189,6 +189,13 @@ from app.api.v1.surveys import router as surveys_router
 from app.api.v1.resource_bookings import router as resource_bookings_router
 from app.api.v1.supply_requests import router as supply_requests_router
 
+# Phase 24: Carpool, Lost & Found, Allergy Matrix, Group Notes, Check-In/Out
+from app.api.v1.carpools import router as carpools_router
+from app.api.v1.lost_found import router as lost_found_router
+from app.api.v1.allergy_matrix import router as allergy_matrix_router
+from app.api.v1.group_notes import router as group_notes_router
+from app.api.v1.checkin import router as checkin_router
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
@@ -404,6 +411,13 @@ app.include_router(alumni_router, prefix=settings.api_v1_prefix)
 app.include_router(surveys_router, prefix=settings.api_v1_prefix)
 app.include_router(resource_bookings_router, prefix=settings.api_v1_prefix)
 app.include_router(supply_requests_router, prefix=settings.api_v1_prefix)
+
+# Phase 24: Carpool, Lost & Found, Allergy Matrix, Group Notes, Check-In/Out
+app.include_router(carpools_router, prefix=settings.api_v1_prefix)
+app.include_router(lost_found_router, prefix=settings.api_v1_prefix)
+app.include_router(allergy_matrix_router, prefix=settings.api_v1_prefix)
+app.include_router(group_notes_router, prefix=settings.api_v1_prefix)
+app.include_router(checkin_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
