@@ -107,7 +107,7 @@ class Workflow(Base):
         String(20), default="draft"
     )  # draft, active, paused, archived
     trigger: Mapped[dict] = mapped_column(JSONB, default=dict)
-    steps: Mapped[dict] = mapped_column(JSONB, default=list)
+    steps: Mapped[list] = mapped_column(JSONB, default=list)
     # Enrollment settings
     enrollment_type: Mapped[str] = mapped_column(
         String(20), default="automatic"

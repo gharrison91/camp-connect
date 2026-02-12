@@ -18,6 +18,7 @@ class WeatherCondition(BaseModel):
     conditions: str
     uv_index: int
     precipitation_chance: int
+    location_name: str = ""
 
 
 class WeatherForecast(BaseModel):

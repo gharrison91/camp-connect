@@ -344,6 +344,13 @@ export function WeatherPage() {
           </div>
         ) : conditions ? (
           <div className="relative z-10">
+            {/* Location header */}
+            {conditions.location_name && (
+              <div className="mb-3 flex items-center gap-2 text-white/80">
+                <MapPin className="h-4 w-4" />
+                <span className="text-sm font-medium">{conditions.location_name}</span>
+              </div>
+            )}
             <div className="flex flex-wrap items-start justify-between gap-6">
               <div>
                 <div className="flex items-center gap-3">

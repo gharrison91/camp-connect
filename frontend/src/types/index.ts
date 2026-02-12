@@ -1423,6 +1423,7 @@ export interface WeatherCondition {
   conditions: 'sunny' | 'cloudy' | 'rainy' | 'stormy' | 'snowy';
   uv_index: number;
   precipitation_chance: number;
+  location_name: string;
 }
 
 export interface WeatherForecast {

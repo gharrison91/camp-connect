@@ -29,10 +29,11 @@ router = APIRouter(prefix="/weather", tags=["Weather"])
 @router.get("/conditions", response_model=WeatherCondition)
 async def get_conditions(
     current_user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Get current weather conditions (mock data)."""
+    """Get current weather conditions for the camp location."""
     org_id = str(current_user["organization_id"])
-    return await weather_service.get_current_conditions(org_id)
+    return await weather_service.get_current_conditions(org_id, db)
 
 
 # ─── Forecast ────────────────────────────────────────────
@@ -40,10 +41,11 @@ async def get_conditions(
 @router.get("/forecast", response_model=List[WeatherForecast])
 async def get_forecast(
     current_user: Dict[str, Any] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Get 7-day weather forecast (mock data)."""
+    """Get 7-day weather forecast for the camp location."""
     org_id = str(current_user["organization_id"])
-    return await weather_service.get_forecast(org_id)
+    return await weather_service.get_forecast(org_id, db)
 
 
 # ─── Active Alerts ───────────────────────────────────────
