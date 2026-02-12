@@ -5,17 +5,21 @@ Get and update the current organization.
 
 from __future__ import annotations
 
-import os
+import logging
 import uuid as uuid_mod
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from supabase import create_client
 
 from app.api.deps import get_current_user, require_permission
+from app.config import settings
 from app.database import get_db
 from app.schemas.organization import OrganizationResponse, OrganizationUpdate
 from app.services import org_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/organizations", tags=["Organizations"])
 
@@ -26,7 +30,19 @@ ALLOWED_CONTENT_TYPES = {
     "image/webp",
 }
 MAX_LOGO_SIZE = 2 * 1024 * 1024  # 2MB
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "logos")
+LOGO_BUCKET = "org-logos"
+
+_supabase_client = None
+
+def _get_supabase():
+    """Lazy-init Supabase client for storage operations."""
+    global _supabase_client
+    if _supabase_client is None:
+        _supabase_client = create_client(
+            settings.supabase_url,
+            settings.supabase_service_role_key,
+        )
+    return _supabase_client
 
 
 @router.get(
@@ -87,9 +103,9 @@ async def upload_organization_logo(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Upload an organization logo image.
+    Upload an organization logo image to Supabase Storage.
     Accepts PNG, JPEG, SVG, or WebP. Max 2MB.
-    Saves file locally and updates the org's logo_url.
+    Returns a public URL for the uploaded logo.
     """
     # Validate content type
     if file.content_type not in ALLOWED_CONTENT_TYPES:
@@ -115,20 +131,28 @@ async def upload_organization_logo(
     }
     ext = ext_map.get(file.content_type, ".png")
 
-    # Generate unique filename
+    # Generate unique filename scoped to org
     org_id = str(current_user["organization_id"])
     filename = f"{org_id}_{uuid_mod.uuid4().hex[:8]}{ext}"
+    storage_path = f"logos/{filename}"
 
-    # Ensure upload directory exists
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    # Upload to Supabase Storage
+    try:
+        supabase = _get_supabase()
+        supabase.storage.from_(LOGO_BUCKET).upload(
+            path=storage_path,
+            file=content,
+            file_options={"content-type": file.content_type, "upsert": "true"},
+        )
+    except Exception as e:
+        logger.error(f"Failed to upload logo to Supabase Storage: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload logo: {e}",
+        )
 
-    # Save file
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(content)
-
-    # Build the URL path (served statically or via Supabase storage later)
-    logo_url = f"/uploads/logos/{filename}"
+    # Build a permanent public URL
+    logo_url = f"{settings.supabase_url}/storage/v1/object/public/{LOGO_BUCKET}/{storage_path}"
 
     # Update organization record
     try:
@@ -138,9 +162,12 @@ async def upload_organization_logo(
             data={"logo_url": logo_url},
         )
     except ValueError as e:
-        # Cleanup file on DB error
-        if os.path.exists(filepath):
-            os.remove(filepath)
+        # Attempt to clean up the uploaded file
+        try:
+            supabase = _get_supabase()
+            supabase.storage.from_(LOGO_BUCKET).remove([storage_path])
+        except Exception:
+            pass
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
