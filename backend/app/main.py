@@ -199,6 +199,9 @@ from app.api.v1.checkin import router as checkin_router
 # Program Evaluation
 from app.api.v1.program_eval import router as program_eval_router
 
+# Feedback Collection
+from app.api.v1.feedback import router as feedback_router
+
 # Referral Tracking
 from app.api.v1.referrals import router as referrals_router
 
@@ -208,6 +211,14 @@ from app.api.v1.behavior import router as behavior_router
 # Staff Scheduling
 from app.api.v1.staff_schedule import router as staff_schedule_router
 from app.api.v1.dietary import router as dietary_router
+
+# Announcement Board
+from app.api.v1.announcements import router as announcements_router
+
+# Task Assignments
+from app.api.v1.tasks import router as tasks_router
+from app.api.v1.goals import router as goals_router
+from app.api.v1.room_booking import router as room_booking_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -436,6 +447,9 @@ app.include_router(checkin_router, prefix=settings.api_v1_prefix)
 app.include_router(staff_schedule_router, prefix=settings.api_v1_prefix)
 app.include_router(dietary_router, prefix=settings.api_v1_prefix)
 
+# Task Assignments
+app.include_router(tasks_router, prefix=settings.api_v1_prefix)
+
 # Referral Tracking
 app.include_router(referrals_router, prefix=settings.api_v1_prefix)
 
@@ -444,6 +458,18 @@ app.include_router(behavior_router, prefix=settings.api_v1_prefix)
 
 # Program Evaluation
 app.include_router(program_eval_router, prefix=settings.api_v1_prefix)
+
+# Announcement Board
+app.include_router(announcements_router, prefix=settings.api_v1_prefix)
+
+# Feedback Collection
+app.include_router(feedback_router, prefix=settings.api_v1_prefix)
+
+# Goal Setting
+app.include_router(goals_router, prefix=settings.api_v1_prefix)
+
+# Room Booking
+app.include_router(room_booking_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

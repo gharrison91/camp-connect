@@ -142,6 +142,9 @@ const EmergencyPage = lazy(() => import('@/features/emergency/EmergencyPage').th
 // Facility Maintenance
 const MaintenancePage = lazy(() => import('@/features/maintenance/MaintenancePage').then(m => ({ default: m.MaintenancePage })))
 
+// Task Assignments
+const TasksPage = lazy(() => import('@/features/tasks/TasksPage').then(m => ({ default: m.TasksPage })))
+
 // Weather Monitoring
 const WeatherPage = lazy(() => import('@/features/weather/WeatherPage').then(m => ({ default: m.WeatherPage })))
 
@@ -204,8 +207,12 @@ const CheckInOutPage = lazy(() => import('@/features/checkin/CheckInOutPage').th
 
 // Phase 25: Behavior, Program Eval, Referrals
 const BehaviorPage = lazy(() => import('@/features/behavior/BehaviorPage').then(m => ({ default: m.BehaviorPage })))
+const GoalsPage = lazy(() => import('@/features/goals/GoalsPage').then(m => ({ default: m.GoalsPage })))
+const AnnouncementsPage = lazy(() => import('@/features/announcements/AnnouncementsPage').then(m => ({ default: m.AnnouncementsPage })))
 const ProgramEvalPage = lazy(() => import('@/features/programs/ProgramEvalPage').then(m => ({ default: m.ProgramEvalPage })))
+const FeedbackPage = lazy(() => import('@/features/feedback/FeedbackPage').then(m => ({ default: m.FeedbackPage })))
 const ReferralsPage = lazy(() => import('@/features/referrals/ReferralsPage').then(m => ({ default: m.ReferralsPage })))
+const RoomBookingPage = lazy(() => import('@/features/rooms/RoomBookingPage').then(m => ({ default: m.RoomBookingPage })))
 
 
 function LoadingSpinner() {
@@ -364,8 +371,14 @@ function App() {
 
               {/* Phase 25 */}
               <Route path="behavior" element={<BehaviorPage />} />
+              <Route path="goals" element={<GoalsPage />} />
+
+              {/* Announcement Board */}
+              <Route path="announcements" element={<AnnouncementsPage />} />
               <Route path="program-eval" element={<ProgramEvalPage />} />
               <Route path="referrals" element={<ReferralsPage />} />
+              <Route path="feedback" element={<FeedbackPage />} />
+              <Route path="room-booking" element={<RoomBookingPage />} />
 
               {/* Parent Communication Log */}
               <Route path="parent-logs" element={<ParentLogsPage />} />
@@ -378,6 +391,9 @@ function App() {
 
               {/* Facility Maintenance */}
               <Route path="maintenance" element={<MaintenancePage />} />
+
+              {/* Task Assignments */}
+              <Route path="tasks" element={<TasksPage />} />
 
               {/* Weather Monitoring */}
               <Route path="weather" element={<WeatherPage />} />
