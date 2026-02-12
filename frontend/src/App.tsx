@@ -101,6 +101,7 @@ const DealsPage = lazy(() => import('@/features/deals/DealsPage').then(m => ({ d
 const JobsPage = lazy(() => import('@/features/jobs/JobsPage').then(m => ({ default: m.JobsPage })))
 const BackgroundChecksPage = lazy(() => import('@/features/staff/BackgroundChecksPage').then(m => ({ default: m.BackgroundChecksPage })))
 const CertificationsPage = lazy(() => import('@/features/staff/CertificationsPage').then(m => ({ default: m.CertificationsPage })))
+const StaffSchedulePage = lazy(() => import('@/features/staff/StaffSchedulePage').then(m => ({ default: m.StaffSchedulePage })))
 const IncidentsPage = lazy(() => import('@/features/incidents/IncidentsPage').then(m => ({ default: m.IncidentsPage })))
 const PublicFormPage = lazy(() => import('@/features/forms/PublicFormPage').then(m => ({ default: m.PublicFormPage })))
 const InvoiceTemplateSettings = lazy(() => import('@/features/admin/InvoiceTemplateSettings').then(m => ({ default: m.InvoiceTemplateSettings })))
@@ -197,8 +198,14 @@ const SupplyRequestsPage = lazy(() => import('@/features/supplies/SupplyRequests
 const CarpoolPage = lazy(() => import('@/features/carpools/CarpoolPage').then(m => ({ default: m.CarpoolPage })))
 const LostFoundPage = lazy(() => import('@/features/lost-found/LostFoundPage').then(m => ({ default: m.LostFoundPage })))
 const AllergyMatrixPage = lazy(() => import('@/features/health/AllergyMatrixPage').then(m => ({ default: m.AllergyMatrixPage })))
+const DietaryPage = lazy(() => import('@/features/dietary/DietaryPage').then(m => ({ default: m.DietaryPage })))
 const GroupNotesPage = lazy(() => import('@/features/groups/GroupNotesPage').then(m => ({ default: m.GroupNotesPage })))
 const CheckInOutPage = lazy(() => import('@/features/checkin/CheckInOutPage').then(m => ({ default: m.CheckInOutPage })))
+
+// Phase 25: Behavior, Program Eval, Referrals
+const BehaviorPage = lazy(() => import('@/features/behavior/BehaviorPage').then(m => ({ default: m.BehaviorPage })))
+const ProgramEvalPage = lazy(() => import('@/features/programs/ProgramEvalPage').then(m => ({ default: m.ProgramEvalPage })))
+const ReferralsPage = lazy(() => import('@/features/referrals/ReferralsPage').then(m => ({ default: m.ReferralsPage })))
 
 
 function LoadingSpinner() {
@@ -268,6 +275,7 @@ function App() {
               {/* Phase 4: Staff & Onboarding */}
               <Route path="staff" element={<StaffDirectoryPage />} />
               <Route path="staff/:id" element={<StaffProfilePage />} />
+              <Route path="staff-schedule" element={<StaffSchedulePage />} />
               <Route path="onboarding" element={<OnboardingWizard />} />
               <Route path="onboarding/manage" element={<OnboardingDashboard />} />
 
@@ -350,8 +358,14 @@ function App() {
               <Route path="carpools" element={<CarpoolPage />} />
               <Route path="lost-found" element={<LostFoundPage />} />
               <Route path="allergy-matrix" element={<AllergyMatrixPage />} />
+              <Route path="dietary" element={<DietaryPage />} />
               <Route path="group-notes" element={<GroupNotesPage />} />
               <Route path="check-in" element={<CheckInOutPage />} />
+
+              {/* Phase 25 */}
+              <Route path="behavior" element={<BehaviorPage />} />
+              <Route path="program-eval" element={<ProgramEvalPage />} />
+              <Route path="referrals" element={<ReferralsPage />} />
 
               {/* Parent Communication Log */}
               <Route path="parent-logs" element={<ParentLogsPage />} />

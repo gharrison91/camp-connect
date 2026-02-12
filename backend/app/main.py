@@ -196,6 +196,19 @@ from app.api.v1.allergy_matrix import router as allergy_matrix_router
 from app.api.v1.group_notes import router as group_notes_router
 from app.api.v1.checkin import router as checkin_router
 
+# Program Evaluation
+from app.api.v1.program_eval import router as program_eval_router
+
+# Referral Tracking
+from app.api.v1.referrals import router as referrals_router
+
+# Behavior Tracking
+from app.api.v1.behavior import router as behavior_router
+
+# Staff Scheduling
+from app.api.v1.staff_schedule import router as staff_schedule_router
+from app.api.v1.dietary import router as dietary_router
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
@@ -418,6 +431,19 @@ app.include_router(lost_found_router, prefix=settings.api_v1_prefix)
 app.include_router(allergy_matrix_router, prefix=settings.api_v1_prefix)
 app.include_router(group_notes_router, prefix=settings.api_v1_prefix)
 app.include_router(checkin_router, prefix=settings.api_v1_prefix)
+
+# Staff Scheduling
+app.include_router(staff_schedule_router, prefix=settings.api_v1_prefix)
+app.include_router(dietary_router, prefix=settings.api_v1_prefix)
+
+# Referral Tracking
+app.include_router(referrals_router, prefix=settings.api_v1_prefix)
+
+# Behavior Tracking
+app.include_router(behavior_router, prefix=settings.api_v1_prefix)
+
+# Program Evaluation
+app.include_router(program_eval_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

@@ -63,6 +63,11 @@ Hash,
   Pill,
   StickyNote,
   LogIn,
+  Apple,
+  ClipboardPenLine,
+  Share2,
+  MessageSquareWarning,
+  CalendarClock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -147,6 +152,10 @@ const navSections: NavSection[] = [
       { label: 'Allergy Matrix', icon: Pill, path: '/app/allergy-matrix', permission: null },
       { label: 'Group Notes', icon: StickyNote, path: '/app/group-notes', permission: null },
       { label: 'Check-In/Out', icon: LogIn, path: '/app/check-in', permission: null },
+      { label: 'Dietary', icon: Apple, path: '/app/dietary', permission: null },
+      { label: 'Behavior', icon: MessageSquareWarning, path: '/app/behavior', permission: null },
+      { label: 'Staff Schedule', icon: CalendarClock, path: '/app/staff-schedule', permission: null },
+      { label: 'Referrals', icon: Share2, path: '/app/referrals', permission: null },
     ],
   },
   {
@@ -158,6 +167,7 @@ const navSections: NavSection[] = [
       { label: 'Alerts', icon: Bell, path: '/app/alerts', permission: null },
       { label: 'Audit Log', icon: Shield, path: '/app/audit-log', permission: null },
       { label: 'Surveys', icon: ClipboardList, path: '/app/surveys', permission: null },
+      { label: 'Program Eval', icon: ClipboardPenLine, path: '/app/program-eval', permission: null },
     ],
   },
   {
