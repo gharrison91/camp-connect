@@ -86,3 +86,27 @@ class EnrichmentHistoryItem(BaseModel):
 class EnrichmentHistoryResponse(BaseModel):
     items: List[EnrichmentHistoryItem]
     total: int
+
+
+class TestConnectionResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class LeadImportRequest(BaseModel):
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    title: Optional[str] = None
+    company: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    location: Optional[str] = None
+    confidence_score: Optional[float] = None
+
+
+class LeadImportResponse(BaseModel):
+    contact_id: str
+    first_name: str
+    last_name: str
+    email: Optional[str] = None
+    message: str

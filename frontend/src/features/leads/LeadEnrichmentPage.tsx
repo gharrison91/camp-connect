@@ -31,7 +31,9 @@ import { useToast } from '@/components/ui/Toast'
 import {
   useLeadEnrichmentSettings,
   useUpdateLeadEnrichmentSettings,
+  useTestConnection,
   useLeadSearch,
+  useImportLead,
   useEnrichmentHistory,
 } from '@/hooks/useLeadEnrichment'
 import type { LeadSearchResult } from '@/hooks/useLeadEnrichment'
@@ -49,6 +51,7 @@ function SettingsPanel() {
   const [apiKey, setApiKey] = useState('')
   const [showKey, setShowKey] = useState(false)
   const [testing, setTesting] = useState(false)
+  const testConnection = useTestConnection()
 
   if (isLoading) {
     return (
@@ -95,13 +98,16 @@ function SettingsPanel() {
 
   const handleTestConnection = async () => {
     setTesting(true)
-    // Simulate a test
-    await new Promise((r) => setTimeout(r, 1500))
-    setTesting(false)
-    if (settings?.api_key_set) {
-      toast({ type: 'success', message: 'Connection successful! API key is valid.' })
-    } else {
-      toast({ type: 'error', message: 'No API key configured. Please add your key first.' })
+    try {
+      const result = await testConnection.mutateAsync()
+      toast({
+        type: result.success ? 'success' : 'error',
+        message: result.message,
+      })
+    } catch {
+      toast({ type: 'error', message: 'Failed to test connection. Please try again.' })
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -238,6 +244,8 @@ function SettingsPanel() {
 
 function SearchPanel() {
   const { toast } = useToast()
+  const importLead = useImportLead()
+  const [importingId, setImportingId] = useState<string | null>(null)
   const [domain, setDomain] = useState('')
   const [company, setCompany] = useState('')
   const [title, setTitle] = useState('')
@@ -265,8 +273,29 @@ function SearchPanel() {
     setSearchParams(params)
   }
 
-  const handleImport = (lead: LeadSearchResult) => {
-    toast({ type: 'success', message: `Imported ${lead.name} to contacts` })
+  const handleImport = async (lead: LeadSearchResult) => {
+    setImportingId(lead.id)
+    try {
+      const result = await importLead.mutateAsync({
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        title: lead.title,
+        company: lead.company,
+        linkedin_url: lead.linkedin_url,
+        location: lead.location,
+        confidence_score: lead.confidence_score,
+      })
+      toast({ type: 'success', message: result.message })
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { detail?: string } } }
+      toast({
+        type: 'error',
+        message: axiosErr?.response?.data?.detail || `Failed to import ${lead.name}`,
+      })
+    } finally {
+      setImportingId(null)
+    }
   }
 
   return (
@@ -479,9 +508,15 @@ function SearchPanel() {
                     <td className="whitespace-nowrap px-6 py-3 text-right">
                       <button
                         onClick={() => handleImport(lead)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                        disabled={importingId === lead.id}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
                       >
-                        <Download className="h-3.5 w-3.5" /> Import
+                        {importingId === lead.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5" />
+                        )}
+                        {importingId === lead.id ? 'Importing...' : 'Import'}
                       </button>
                     </td>
                   </tr>

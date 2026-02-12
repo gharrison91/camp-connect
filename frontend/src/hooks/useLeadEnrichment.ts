@@ -54,6 +54,19 @@ interface EnrichmentHistoryResponse {
   total: number
 }
 
+interface TestConnectionResponse {
+  success: boolean
+  message: string
+}
+
+interface LeadImportResponse {
+  contact_id: string
+  first_name: string
+  last_name: string
+  email: string | null
+  message: string
+}
+
 // Settings
 
 export function useLeadEnrichmentSettings() {
@@ -80,6 +93,42 @@ export function useUpdateLeadEnrichmentSettings() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['lead-enrichment', 'settings'] })
+    },
+  })
+}
+
+// Test Connection
+
+export function useTestConnection() {
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post('/lead-enrichment/test-connection')
+      return data as TestConnectionResponse
+    },
+  })
+}
+
+// Import Lead
+
+export function useImportLead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (lead: {
+      name: string
+      email?: string | null
+      phone?: string | null
+      title?: string | null
+      company?: string | null
+      linkedin_url?: string | null
+      location?: string | null
+      confidence_score?: number | null
+    }) => {
+      const { data } = await api.post('/lead-enrichment/import-lead', lead)
+      return data as LeadImportResponse
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['lead-enrichment', 'history'] })
+      qc.invalidateQueries({ queryKey: ['contacts'] })
     },
   })
 }
@@ -151,4 +200,4 @@ export function useEnrichmentHistory(limit = 50) {
   })
 }
 
-export type { LeadSearchResult, LeadSearchResponse, BulkEnrichResponse, EnrichmentHistoryItem, EnrichmentHistoryResponse }
+export type { LeadSearchResult, LeadSearchResponse, BulkEnrichResponse, EnrichmentHistoryItem, EnrichmentHistoryResponse, TestConnectionResponse, LeadImportResponse }
