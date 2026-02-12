@@ -74,6 +74,7 @@ Hash,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuthStore } from '@/stores/authStore';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -197,6 +198,8 @@ const navSections: NavSection[] = [
 export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProps) {
   const location = useLocation();
   const { hasPermission } = usePermissions();
+  const { user } = useAuthStore();
+  const isPlatformAdmin = user?.platform_role === 'platform_admin';
 
   // Filter nav sections based on user permissions
   const visibleSections = navSections
@@ -328,6 +331,31 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
 
         {/* Footer */}
         <div className="shrink-0 border-t border-white/[0.08] px-3 py-3">
+          {/* Super Admin link - only for platform_admin users */}
+          {isPlatformAdmin && (
+            <Link
+              to="/admin"
+              onClick={onClose}
+              className={cn(
+                'group mb-1 flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200',
+                location.pathname.startsWith('/admin')
+                  ? 'bg-violet-500/20 text-violet-400'
+                  : 'text-slate-400 hover:bg-white/[0.06] hover:text-white hover:translate-x-0.5'
+              )}
+              title={isCollapsed ? 'Super Admin' : undefined}
+            >
+              <Shield className={cn(
+                'h-[18px] w-[18px] shrink-0 transition-all duration-200',
+                location.pathname.startsWith('/admin')
+                  ? 'text-violet-400'
+                  : 'text-violet-500 group-hover:text-violet-300'
+              )} />
+              <span className={cn('truncate', isCollapsed && 'lg:sr-only')}>
+                Super Admin
+              </span>
+            </Link>
+          )}
+
           <button
             onClick={onToggleCollapse}
             className="hidden w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-500 transition-all duration-200 hover:bg-white/[0.06] hover:text-slate-300 lg:flex"

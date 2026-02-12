@@ -21,6 +21,7 @@ export interface UserProfile {
   seasonal_access_start?: string | null
   seasonal_access_end?: string | null
   created_at?: string | null
+  platform_role?: string | null
 }
 
 interface AuthState {

@@ -214,6 +214,14 @@ const FeedbackPage = lazy(() => import('@/features/feedback/FeedbackPage').then(
 const ReferralsPage = lazy(() => import('@/features/referrals/ReferralsPage').then(m => ({ default: m.ReferralsPage })))
 const RoomBookingPage = lazy(() => import('@/features/rooms/RoomBookingPage').then(m => ({ default: m.RoomBookingPage })))
 
+// Super Admin Pages
+const AdminLayout = lazy(() => import('@/features/super-admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
+const AdminDashboardPage = lazy(() => import('@/features/super-admin/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })))
+const AdminOrganizationsPage = lazy(() => import('@/features/super-admin/AdminOrganizationsPage').then(m => ({ default: m.AdminOrganizationsPage })))
+const AdminOrgDetailPage = lazy(() => import('@/features/super-admin/AdminOrgDetailPage').then(m => ({ default: m.AdminOrgDetailPage })))
+const AdminUsersPage = lazy(() => import('@/features/super-admin/AdminUsersPage').then(m => ({ default: m.AdminUsersPage })))
+const AdminActivityPage = lazy(() => import('@/features/super-admin/AdminActivityPage').then(m => ({ default: m.AdminActivityPage })))
+
 
 function LoadingSpinner() {
   return (
@@ -456,6 +464,22 @@ function App() {
               <Route path="documents" element={<PortalDocuments />} />
               <Route path="forms" element={<PortalForms />} />
               <Route path="bunk-buddies" element={<PortalBunkBuddies />} />
+            </Route>
+
+            {/* Super Admin Portal */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="organizations" element={<AdminOrganizationsPage />} />
+              <Route path="organizations/:orgId" element={<AdminOrgDetailPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="activity" element={<AdminActivityPage />} />
             </Route>
 
             {/* Legacy redirects - old routes to new /app prefix */}

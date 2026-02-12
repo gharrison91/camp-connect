@@ -220,6 +220,9 @@ from app.api.v1.tasks import router as tasks_router
 from app.api.v1.goals import router as goals_router
 from app.api.v1.room_booking import router as room_booking_router
 
+# Super Admin Portal
+from app.api.v1.admin import router as admin_router
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
@@ -470,6 +473,9 @@ app.include_router(goals_router, prefix=settings.api_v1_prefix)
 
 # Room Booking
 app.include_router(room_booking_router, prefix=settings.api_v1_prefix)
+
+# Super Admin Portal
+app.include_router(admin_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

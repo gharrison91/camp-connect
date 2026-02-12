@@ -72,6 +72,11 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # Platform-level role (null = normal user, "platform_admin" = super admin)
+    platform_role: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True, default=None
+    )
+
     # Financial info (JSONB for pay rate, employment dates, notes)
     financial_info: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 

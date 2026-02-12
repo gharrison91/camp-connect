@@ -95,6 +95,7 @@ async def get_current_user(
         "role_name": role_name,
         "permissions": permissions,
         "is_active": user.is_active,
+        "platform_role": getattr(user, "platform_role", None),
     }
 
 
@@ -134,6 +135,18 @@ def require_permission(permission: str):
         return current_user
 
     return _checker
+
+
+async def require_platform_admin(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Require the current user to be a platform admin (super admin)."""
+    if current_user.get("platform_role") != "platform_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Platform admin access required.",
+        )
+    return current_user
 
 
 async def get_client_ip(request: Request) -> str:
