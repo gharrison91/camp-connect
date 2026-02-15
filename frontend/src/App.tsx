@@ -106,6 +106,7 @@ const IncidentsPage = lazy(() => import('@/features/incidents/IncidentsPage').th
 const PublicFormPage = lazy(() => import('@/features/forms/PublicFormPage').then(m => ({ default: m.PublicFormPage })))
 const InvoiceTemplateSettings = lazy(() => import('@/features/admin/InvoiceTemplateSettings').then(m => ({ default: m.InvoiceTemplateSettings })))
 const CustomFieldsSettingsPage = lazy(() => import('@/features/admin/CustomFieldsSettingsPage').then(m => ({ default: m.CustomFieldsSettingsPage })))
+const NavigationSettingsPage = lazy(() => import('@/features/admin/NavigationSettingsPage').then(m => ({ default: m.NavigationSettingsPage })))
 
 // Phase 14: Camp Directory
 const CampDetailPage = lazy(() => import('@/features/directory/CampDetailPage').then(m => ({ default: m.CampDetailPage })))
@@ -435,6 +436,7 @@ function App() {
                 <Route path="roles" element={<RolesPage />} />
                 <Route path="users" element={<UsersPage />} />
                 <Route path="general" element={<GeneralSettingsPage />} />
+                <Route path="navigation" element={<NavigationSettingsPage />} />
                 <Route path="notifications" element={<NotificationSettingsPage />} />
                 <Route path="certifications" element={<CertificationsSettingsPage />} />
                 <Route path="job-titles" element={<JobTitlesSettingsPage />} />

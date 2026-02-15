@@ -75,6 +75,7 @@ Hash,
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuthStore } from '@/stores/authStore';
+import { useNavigationSettings } from '@/hooks/useNavigationSettings';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -200,13 +201,17 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
   const { hasPermission } = usePermissions();
   const { user } = useAuthStore();
   const isPlatformAdmin = user?.platform_role === 'platform_admin';
+  const { data: navSettings } = useNavigationSettings();
+  const hiddenNavItems = navSettings?.hidden_nav_items || [];
 
-  // Filter nav sections based on user permissions
+  // Filter nav sections based on user permissions and hidden items
   const visibleSections = navSections
     .map((section) => ({
       ...section,
       items: section.items.filter(
-        (item) => item.permission === null || hasPermission(item.permission)
+        (item) =>
+          (item.permission === null || hasPermission(item.permission)) &&
+          !hiddenNavItems.includes(item.path)
       ),
     }))
     .filter((section) => section.items.length > 0);

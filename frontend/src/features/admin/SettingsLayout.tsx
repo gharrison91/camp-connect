@@ -3,7 +3,7 @@
  */
 
 import { NavLink, Outlet } from 'react-router-dom'
-import { Building2, MapPin, Shield, Users, Sliders, Bell, Award, Briefcase, Code2, FileText, Tent, Layers, Paintbrush } from 'lucide-react'
+import { Building2, MapPin, Shield, Users, Sliders, Bell, Award, Briefcase, Code2, FileText, Tent, Layers, Paintbrush, LayoutList } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -13,6 +13,7 @@ const settingsTabs = [
   { label: 'Roles', icon: Shield, path: '/app/settings/roles', permission: 'core.roles.manage' },
   { label: 'Users', icon: Users, path: '/app/settings/users', permission: 'core.users.read' },
   { label: 'General', icon: Sliders, path: '/app/settings/general', permission: 'core.settings.manage' },
+  { label: 'Navigation', icon: LayoutList, path: '/app/settings/navigation', permission: 'core.settings.manage' },
   { label: 'Notifications', icon: Bell, path: '/app/settings/notifications', permission: 'core.settings.manage' },
   { label: 'Certifications', icon: Award, path: '/app/settings/certifications', permission: 'staff.employees.read' },
   { label: 'Job Titles', icon: Briefcase, path: '/app/settings/job-titles', permission: 'core.roles.manage' },
