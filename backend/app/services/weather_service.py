@@ -45,27 +45,63 @@ async def _get_camp_coords(org_id: str, db: AsyncSession) -> Optional[Dict[str, 
     """Look up the org's primary location and geocode it. Cached 15 min."""
     now = datetime.now(timezone.utc).timestamp()
 
+    # Normalize org_id to string for cache lookup
+    org_id_str = str(org_id)
+
     # Check cache
-    cached = _coord_cache.get(org_id)
+    cached = _coord_cache.get(org_id_str)
     if cached and (now - cached["fetched_at"]) < CACHE_TTL:
         return cached
 
     # Query primary location (prefer is_primary=True, fallback to first)
-    result = await db.execute(
-        select(Location).where(
-            Location.organization_id == org_id,
-            Location.deleted_at.is_(None),
-        ).order_by(Location.is_primary.desc()).limit(1)
-    )
-    location = result.scalar_one_or_none()
-    if not location or not location.city:
+    try:
+        result = await db.execute(
+            select(Location).where(
+                Location.organization_id == org_id,
+                Location.deleted_at.is_(None),
+            ).order_by(Location.is_primary.desc()).limit(1)
+        )
+        location = result.scalar_one_or_none()
+    except Exception as e:
+        logger.warning(f"Location query failed for org {org_id}: {e}")
         return None
 
-    location_name = f"{location.city}, {location.state}" if location.state else location.city
+    if not location:
+        logger.info(f"No location found for org {org_id}")
+        return None
+
+    # Build search term from available fields
+    # Prefer city, but also use address or zip_code if city is missing
+    search_parts = []
+    location_name = ""
+
+    if location.city:
+        search_parts.append(location.city)
+        location_name = location.city
+        if location.state:
+            search_parts.append(location.state)
+            location_name = f"{location.city}, {location.state}"
+    elif location.address:
+        # Try to use address if no city
+        search_parts.append(location.address)
+        location_name = location.address
+        if location.state:
+            search_parts.append(location.state)
+
+    if location.zip_code:
+        search_parts.append(location.zip_code)
+        if not location_name:
+            location_name = location.zip_code
+
+    if not search_parts:
+        logger.info(f"Location has no searchable fields for org {org_id}")
+        return None
+
+    search_term = " ".join(search_parts)
+    logger.info(f"Geocoding search term for org {org_id}: {search_term}")
 
     # Geocode using Open-Meteo geocoding API
     try:
-        search_term = f"{location.city} {location.state or ''} {location.zip_code or ''}".strip()
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
                 "https://geocoding-api.open-meteo.com/v1/search",
@@ -75,15 +111,19 @@ async def _get_camp_coords(org_id: str, db: AsyncSession) -> Optional[Dict[str, 
             data = resp.json()
             results = data.get("results", [])
             if not results:
+                logger.warning(f"No geocoding results for: {search_term}")
                 return None
             lat = results[0]["latitude"]
             lon = results[0]["longitude"]
+            # Use the geocoded name if we didn't have a good one
+            if not location_name or location_name == location.zip_code:
+                location_name = results[0].get("name", location_name)
     except Exception as e:
         logger.warning(f"Geocoding failed for org {org_id}: {e}")
         return None
 
     entry = {"lat": lat, "lon": lon, "name": location_name, "fetched_at": now}
-    _coord_cache[org_id] = entry
+    _coord_cache[org_id_str] = entry
     return entry
 
 

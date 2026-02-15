@@ -224,6 +224,7 @@ const AdminOrgDetailPage = lazy(() => import('@/features/super-admin/AdminOrgDet
 const AdminUsersPage = lazy(() => import('@/features/super-admin/AdminUsersPage').then(m => ({ default: m.AdminUsersPage })))
 const AdminActivityPage = lazy(() => import('@/features/super-admin/AdminActivityPage').then(m => ({ default: m.AdminActivityPage })))
 const AdminSettingsPage = lazy(() => import('@/features/super-admin/AdminSettingsPage').then(m => ({ default: m.AdminSettingsPage })))
+const AdminBillingPage = lazy(() => import('@/features/super-admin/AdminBillingPage').then(m => ({ default: m.AdminBillingPage })))
 
 
 function LoadingSpinner() {
@@ -487,6 +488,7 @@ function App() {
               <Route path="organizations/:orgId" element={<AdminOrgDetailPage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="activity" element={<AdminActivityPage />} />
+              <Route path="billing" element={<AdminBillingPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
             </Route>
 

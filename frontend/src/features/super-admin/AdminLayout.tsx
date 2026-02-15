@@ -11,6 +11,7 @@ import {
   Building2,
   Users,
   Activity,
+  DollarSign,
   Settings,
   ChevronsLeft,
   ChevronsRight,
@@ -23,6 +24,7 @@ const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
   { label: 'Organizations', icon: Building2, path: '/admin/organizations' },
   { label: 'Users', icon: Users, path: '/admin/users' },
+  { label: 'Billing', icon: DollarSign, path: '/admin/billing' },
   { label: 'Activity', icon: Activity, path: '/admin/activity' },
   { label: 'Settings', icon: Settings, path: '/admin/settings' },
 ]
