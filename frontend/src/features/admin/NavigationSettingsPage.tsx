@@ -19,7 +19,6 @@ import {
   BarChart3,
   FileBarChart,
   ShoppingBag,
-  Settings,
   UsersRound,
   BedDouble,
   FileText,
