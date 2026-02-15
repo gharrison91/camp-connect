@@ -58,7 +58,7 @@ async def _get_camp_coords(org_id: str, db: AsyncSession) -> Optional[Dict[str, 
         result = await db.execute(
             select(Location).where(
                 Location.organization_id == org_id,
-                Location.deleted_at.is_(None),
+                Location.is_deleted == False,
             ).order_by(Location.is_primary.desc()).limit(1)
         )
         location = result.scalar_one_or_none()

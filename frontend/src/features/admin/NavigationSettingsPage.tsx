@@ -80,6 +80,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNavigationSettings, useUpdateNavigationSettings } from '@/hooks/useNavigationSettings'
+import { useToast } from '@/components/ui/Toast'
 
 type NavItem = {
   label: string
@@ -199,6 +200,7 @@ const protectedPaths = ['/app/settings', '/app/dashboard']
 export function NavigationSettingsPage() {
   const { data: navSettings, isLoading } = useNavigationSettings()
   const updateSettings = useUpdateNavigationSettings()
+  const { toast: addToast } = useToast()
   const [hiddenItems, setHiddenItems] = useState<string[]>([])
   const [hasChanges, setHasChanges] = useState(false)
 
@@ -243,6 +245,12 @@ export function NavigationSettingsPage() {
     updateSettings.mutate(hiddenItems, {
       onSuccess: () => {
         setHasChanges(false)
+        addToast({ type: 'success', message: 'Navigation settings saved!' })
+      },
+      onError: (err: unknown) => {
+        const axiosErr = err as { response?: { data?: { detail?: string } } }
+        const detail = axiosErr?.response?.data?.detail || 'Failed to save navigation settings'
+        addToast({ type: 'error', message: detail })
       },
     })
   }

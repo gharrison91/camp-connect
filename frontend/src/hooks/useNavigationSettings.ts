@@ -26,11 +26,19 @@ export function useNavigationSettings() {
 export function useUpdateNavigationSettings() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (hiddenItems: string[]) =>
-      api.put('/settings', { hidden_nav_items: hiddenItems }).then((r) => r.data),
-    onSuccess: () => {
+    mutationFn: async (hiddenItems: string[]) => {
+      console.log('[NavSettings] Saving hidden items:', hiddenItems)
+      const response = await api.put('/settings', { hidden_nav_items: hiddenItems })
+      console.log('[NavSettings] Save response:', response.data)
+      return response.data
+    },
+    onSuccess: (data) => {
+      console.log('[NavSettings] Save successful:', data)
       queryClient.invalidateQueries({ queryKey: ['navigation-settings'] })
       queryClient.invalidateQueries({ queryKey: ['org-settings'] })
+    },
+    onError: (error: unknown) => {
+      console.error('[NavSettings] Save failed:', error)
     },
   })
 }
