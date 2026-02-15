@@ -210,3 +210,45 @@ export function useImpersonateOrg() {
     },
   })
 }
+
+// ─── Platform Settings ────────────────────────────────────────────────
+
+export interface PlatformSettings {
+  configured_integrations: string[]
+  allow_org_integrations: boolean
+  maintenance_mode: boolean
+  debug_mode: boolean
+}
+
+export function usePlatformSettings() {
+  return useQuery({
+    queryKey: ['admin', 'settings'],
+    queryFn: async () => {
+      const { data } = await api.get('/admin/settings')
+      return data as PlatformSettings
+    },
+    staleTime: 60_000,
+  })
+}
+
+export function useUpdatePlatformSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (updates: Record<string, string | boolean>) => {
+      const { data } = await api.put('/admin/settings', updates)
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'settings'] })
+    },
+  })
+}
+
+export function useTestPlatformIntegration() {
+  return useMutation({
+    mutationFn: async (integrationKey: string) => {
+      const { data } = await api.post(`/admin/settings/test/${integrationKey}`)
+      return data as { success: boolean; message: string }
+    },
+  })
+}

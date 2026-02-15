@@ -8,6 +8,7 @@ import { RegisterPage } from '@/features/auth/RegisterPage'
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
 import { LandingPage } from '@/features/landing/LandingPage'
 import { MarketingLayout } from '@/features/landing/MarketingLayout'
+import { TestLandingPage } from '@/features/landing/TestLandingPage'
 
 // Lazy-loaded page components (code splitting)
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -222,6 +223,7 @@ const AdminOrganizationsPage = lazy(() => import('@/features/super-admin/AdminOr
 const AdminOrgDetailPage = lazy(() => import('@/features/super-admin/AdminOrgDetailPage').then(m => ({ default: m.AdminOrgDetailPage })))
 const AdminUsersPage = lazy(() => import('@/features/super-admin/AdminUsersPage').then(m => ({ default: m.AdminUsersPage })))
 const AdminActivityPage = lazy(() => import('@/features/super-admin/AdminActivityPage').then(m => ({ default: m.AdminActivityPage })))
+const AdminSettingsPage = lazy(() => import('@/features/super-admin/AdminSettingsPage').then(m => ({ default: m.AdminSettingsPage })))
 
 
 function LoadingSpinner() {
@@ -238,8 +240,11 @@ function App() {
       <ToastProvider>
         <Suspense fallback={<LoadingSpinner />}>
           <Routes>
+            {/* Test Landing Page - for quick role-based logins */}
+            <Route path="/" element={<TestLandingPage />} />
+
             {/* Public marketing pages */}
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/home" element={<LandingPage />} />
             <Route element={<MarketingLayout />}>
               <Route path="/features" element={<FeaturesPage />} />
               <Route path="/gallery" element={<GalleryPage />} />
@@ -482,6 +487,7 @@ function App() {
               <Route path="organizations/:orgId" element={<AdminOrgDetailPage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="activity" element={<AdminActivityPage />} />
+              <Route path="settings" element={<AdminSettingsPage />} />
             </Route>
 
             {/* Legacy redirects - old routes to new /app prefix */}

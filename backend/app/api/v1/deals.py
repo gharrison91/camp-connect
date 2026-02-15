@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_permission
+from app.api.deps import get_current_user, require_permission
 from app.database import get_db
 from app.schemas.deal import DealCreate, DealUpdate, DealStageUpdate
 from app.services import deal_service
@@ -23,9 +23,7 @@ router = APIRouter(prefix="/deals", tags=["Deals"])
     "/pipeline",
 )
 async def get_pipeline(
-    current_user: Dict[str, Any] = Depends(
-        require_permission("payments.invoices.read")
-    ),
+    current_user: Dict[str, Any] = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get deals grouped by stage with counts and total values."""
@@ -42,9 +40,7 @@ async def list_deals(
     stage: Optional[str] = Query(default=None, description="Filter by stage"),
     assigned_to: Optional[uuid.UUID] = Query(default=None, description="Filter by assigned staff"),
     search: Optional[str] = Query(default=None, description="Search by title"),
-    current_user: Dict[str, Any] = Depends(
-        require_permission("payments.invoices.read")
-    ),
+    current_user: Dict[str, Any] = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """List all deals with optional filters."""

@@ -9,8 +9,6 @@ import {
   Settings2,
   History,
   Radar,
-  Eye,
-  EyeOff,
   Zap,
   Download,
   ExternalLink,
@@ -48,10 +46,8 @@ function SettingsPanel() {
   const { toast } = useToast()
   const { data: settings, isLoading } = useLeadEnrichmentSettings()
   const updateSettings = useUpdateLeadEnrichmentSettings()
-  const [apiKey, setApiKey] = useState('')
-  const [showKey, setShowKey] = useState(false)
-  const [testing, setTesting] = useState(false)
   const testConnection = useTestConnection()
+  const [testing, setTesting] = useState(false)
 
   if (isLoading) {
     return (
@@ -59,17 +55,6 @@ function SettingsPanel() {
         <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
       </div>
     )
-  }
-
-  const handleSaveKey = async () => {
-    if (!apiKey.trim()) return
-    try {
-      await updateSettings.mutateAsync({ api_key: apiKey })
-      toast({ type: 'success', message: 'API key saved successfully' })
-      setApiKey('')
-    } catch {
-      toast({ type: 'error', message: 'Failed to save API key' })
-    }
   }
 
   const handleToggleEnabled = async () => {
@@ -113,77 +98,49 @@ function SettingsPanel() {
 
   return (
     <div className="space-y-6">
-      {/* API Key Card */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
-            <Settings2 className="h-5 w-5 text-emerald-600" />
+      {/* Platform Configuration Notice */}
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-6">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+            <Settings2 className="h-5 w-5 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">API Configuration</h3>
-            <p className="text-xs text-gray-500">Connect your lead enrichment provider</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {/* Provider */}
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Provider</label>
-            <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-              <Radar className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-700 capitalize">{settings?.provider || 'apollo'}</span>
-            </div>
-          </div>
-
-          {/* API Key */}
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">API Key</label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={settings?.api_key_set ? '••••••••••••••••' : 'Enter your API key'}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowKey(!showKey)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
-                >
-                  {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+            <h3 className="text-sm font-semibold text-blue-900">API Configuration</h3>
+            <p className="mt-1 text-sm text-blue-700">
+              Lead enrichment API keys (Apollo, etc.) are configured at the platform level by your
+              Camp Connect administrator. This ensures secure, centralized management of integrations.
+            </p>
+            {settings?.api_key_set ? (
+              <div className="mt-3 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <span className="text-sm font-medium text-emerald-700">
+                  Apollo.io integration is active
+                </span>
               </div>
-              <button
-                onClick={handleSaveKey}
-                disabled={!apiKey.trim() || updateSettings.isPending}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                Save
-              </button>
-            </div>
-            {settings?.api_key_set && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-emerald-600">
-                <CheckCircle2 className="h-3 w-3" /> API key is configured
+            ) : (
+              <p className="mt-3 text-sm text-blue-600">
+                Contact your platform administrator to enable lead enrichment.
               </p>
             )}
           </div>
-
-          {/* Test Connection */}
-          <button
-            onClick={handleTestConnection}
-            disabled={testing}
-            className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            {testing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Zap className="h-4 w-4 text-amber-500" />
-            )}
-            Test Connection
-          </button>
         </div>
+
+        {settings?.api_key_set && (
+          <div className="mt-4">
+            <button
+              onClick={handleTestConnection}
+              disabled={testing}
+              className="flex items-center gap-2 rounded-lg border border-blue-300 bg-white px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+            >
+              {testing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4" />
+              )}
+              Test Connection
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Toggles Card */}

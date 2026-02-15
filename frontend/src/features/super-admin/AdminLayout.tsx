@@ -11,6 +11,7 @@ import {
   Building2,
   Users,
   Activity,
+  Settings,
   ChevronsLeft,
   ChevronsRight,
   Shield,
@@ -23,6 +24,7 @@ const navItems = [
   { label: 'Organizations', icon: Building2, path: '/admin/organizations' },
   { label: 'Users', icon: Users, path: '/admin/users' },
   { label: 'Activity', icon: Activity, path: '/admin/activity' },
+  { label: 'Settings', icon: Settings, path: '/admin/settings' },
 ]
 
 export function AdminLayout() {

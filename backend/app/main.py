@@ -222,6 +222,7 @@ from app.api.v1.room_booking import router as room_booking_router
 
 # Super Admin Portal
 from app.api.v1.admin import router as admin_router
+from app.api.v1.admin_settings import router as admin_settings_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -476,6 +477,7 @@ app.include_router(room_booking_router, prefix=settings.api_v1_prefix)
 
 # Super Admin Portal
 app.include_router(admin_router, prefix=settings.api_v1_prefix)
+app.include_router(admin_settings_router, prefix=settings.api_v1_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
