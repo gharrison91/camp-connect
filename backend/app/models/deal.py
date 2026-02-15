@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy import Column, String, Float, Text, DateTime, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
 
-from app.database import Base
+from app.models.base import Base
 
 
 class Deal(Base):

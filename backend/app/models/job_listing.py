@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Boolean, Float, Integer
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 
-from app.database import Base
+from app.models.base import Base
 
 
 class JobListing(Base):
