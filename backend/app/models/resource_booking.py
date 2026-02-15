@@ -6,6 +6,7 @@ Bookable resources (facilities, equipment, vehicles) and their bookings.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
